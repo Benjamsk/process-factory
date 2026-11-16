@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/@olevedeler/kaizen-factory/src/factory.config.schema.json",
+  "projectId": "process-factory",
+  "dashboardUrl": "http://localhost:3000",
+  "sensitivePaths": [
+    ".claude/",
+    ".github/",
+    ".gitignore",
+    "factory.config.json",
+    "package.json",
+    "pnpm-lock.yaml"
+  ],
+  "userInterfacePaths": [],
+  "allowedCommands": [
+    "pnpm test"
+  ]
+}

@@ -1,0 +1,4 @@
+/factory/*
+!/factory/README.md
+/.claude/worktrees/
+/node_modules/
