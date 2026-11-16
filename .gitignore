@@ -2,3 +2,4 @@
 !/factory/README.md
 /.claude/worktrees/
 /node_modules/
+.env*.local
