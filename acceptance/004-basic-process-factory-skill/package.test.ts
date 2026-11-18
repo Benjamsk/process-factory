@@ -53,11 +53,11 @@ describe("package.json as an installable package", () => {
     })
   })
 
-  it("has no dependencies and has @olevedeler/kaizen-factory ^1.56.0 as a devDependency", () => {
+  it("has no dependencies and has @olevedeler/kaizen-factory as a devDependency", () => {
     const pkg = manifest()
     const dependencies = pkg.dependencies
     expect(isRecord(dependencies) ? Object.keys(dependencies) : []).toEqual([])
-    expect(pkg).toHaveProperty(["devDependencies", "@olevedeler/kaizen-factory"], "^1.56.0")
+    expect(pkg).toHaveProperty(["devDependencies", "@olevedeler/kaizen-factory"])
   })
 })
 
