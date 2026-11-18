@@ -1,7 +1,7 @@
 {
   "name": "process-factory",
   "version": "1.0.0",
-  "description": "",
+  "description": "Process Factory: the process-factory command line and the /process skill for Claude Code it installs",
   "homepage": "https://github.com/Benjamsk/process-factory#readme",
   "bugs": {
     "url": "https://github.com/Benjamsk/process-factory/issues"
@@ -17,18 +17,23 @@
   "engines": {
     "node": ">=24.11.0"
   },
+  "bin": {
+    "process-factory": "./bin/process-factory.mjs"
+  },
+  "files": [
+    "bin",
+    "templates"
+  ],
   "scripts": {
-    "test": "vitest --project unit",
+    "test": "node bin/process-factory.mjs init && vitest --project unit",
     "test:acceptance": "vitest --project acceptance",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p .",
     "factory": "kaizen-factory"
   },
-  "dependencies": {
-    "@olevedeler/kaizen-factory": "^1.56.0"
-  },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@olevedeler/kaizen-factory": "^1.56.0",
     "@types/node": "^26.6.6",
     "@typescript-eslint/utils": "^8.72.2",
     "eslint": "^9.39.5",

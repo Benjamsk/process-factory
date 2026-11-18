@@ -7,14 +7,13 @@ settings:
 importers:
 
   .:
-    dependencies:
-      '@olevedeler/kaizen-factory':
-        specifier: ^1.56.0
-        version: 1.56.0
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.5
         version: 9.39.5
+      '@olevedeler/kaizen-factory':
+        specifier: ^1.56.0
+        version: 1.56.0
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6

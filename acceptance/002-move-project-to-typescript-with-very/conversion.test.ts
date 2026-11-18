@@ -77,7 +77,7 @@ describe("package.json", () => {
   it("has @typescript-eslint/utils as a devDependency and unchanged scripts", () => {
     expect(manifest).toHaveProperty(["devDependencies", "@typescript-eslint/utils"])
     expect(manifest).toHaveProperty("scripts", {
-      test: "vitest --project unit",
+      test: "node bin/process-factory.mjs init && vitest --project unit",
       "test:acceptance": "vitest --project acceptance",
       lint: "eslint .",
       typecheck: "tsc --noEmit -p .",
