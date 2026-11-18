@@ -1,11 +1,14 @@
 import { cpSync, existsSync, mkdirSync, rmSync, statSync } from "node:fs"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { binFile, board, boardFile, boardText, emptyFolder, entries, readFile, root, runCommand, runNode, writeFile } from "./store.ts"
+import { binFile, board, boardFile, boardText, emptyFolder, entries, readFile, root, runCommand, runNode, withoutTimes, writeFile } from "./store.ts"
 
 const breachId = "001-handle-a-personal-data-breach"
 const breachTitle = "Handle a personal data breach"
-const breachEntry = { id: breachId, title: breachTitle, stage: "intake" }
+const created = [{ stage: "intake" }]
+const breachEntry = { id: breachId, title: breachTitle, stage: "intake", history: created }
+const usage =
+  'Usage: process-factory init\n       process-factory new "<title>"\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n'
 const titleError = "process-factory: the title must be one line with at least one letter or digit\n"
 
 let project = ""
@@ -39,7 +42,8 @@ describe("process-factory new in an empty working directory", () => {
 
   it("writes processes/board.json with the process in the stage intake and nothing else in the working directory", () => {
     runCommand(project, ["new", breachTitle])
-    expect(readFile(project, boardFile)).toBe(boardText([breachEntry]))
+    expect(readFile(project, boardFile)).toBe(`${JSON.stringify(board(project), null, 2)}\n`)
+    expect(withoutTimes(board(project))).toEqual({ processes: [breachEntry] })
     expect(entries(project)).toEqual(["processes"])
     expect(entries(project, "processes")).toEqual([breachId, "board.json"])
   })
@@ -52,8 +56,8 @@ describe("the id of a new process", () => {
     const result = runCommand(project, ["new", title])
     expect(result.stdout).toBe("002-onboard-a-new-colleague-step-by\n")
     expect(result.status).toBe(0)
-    expect(board(project)).toEqual({
-      processes: [breachEntry, { id: "002-onboard-a-new-colleague-step-by", title, stage: "intake" }],
+    expect(withoutTimes(board(project))).toEqual({
+      processes: [breachEntry, { id: "002-onboard-a-new-colleague-step-by", title, stage: "intake", history: created }],
     })
     expect(readFile(project, `processes/${breachId}/request.md`)).toBe(`# ${breachTitle}\n`)
     expect(entries(project, "processes")).toEqual([breachId, "002-onboard-a-new-colleague-step-by", "board.json"])
@@ -70,8 +74,11 @@ describe("the id of a new process", () => {
     const result = runCommand(project, ["new", "  GDPR: access request (art. 15)  "])
     expect(result.stdout).toBe("008-gdpr-access-request-art-15\n")
     expect(result.status).toBe(0)
-    expect(board(project)).toEqual({
-      processes: [older, { id: "008-gdpr-access-request-art-15", title: "GDPR: access request (art. 15)", stage: "intake" }],
+    expect(withoutTimes(board(project))).toEqual({
+      processes: [
+        older,
+        { id: "008-gdpr-access-request-art-15", title: "GDPR: access request (art. 15)", stage: "intake", history: created },
+      ],
     })
     expect(readFile(project, "processes/008-gdpr-access-request-art-15/request.md")).toBe(
       "# GDPR: access request (art. 15)\n",
@@ -83,8 +90,8 @@ describe("the id of a new process", () => {
     writeFile(project, boardFile, boardText([owned]))
     const result = runCommand(project, ["new", "Handle a breach"])
     expect(result.stdout).toBe("002-handle-a-breach\n")
-    expect(board(project)).toEqual({
-      processes: [owned, { id: "002-handle-a-breach", title: "Handle a breach", stage: "intake" }],
+    expect(withoutTimes(board(project))).toEqual({
+      processes: [owned, { id: "002-handle-a-breach", title: "Handle a breach", stage: "intake", history: created }],
     })
   })
 
@@ -176,9 +183,9 @@ describe("process-factory with arguments that are no command", () => {
     ["the arguments init extra", ["init", "extra"]],
     ["new without a title", ["new"]],
     ["the arguments new a b", ["new", "a", "b"]],
-  ])("prints the two usage lines to standard error, exits with 1 and creates nothing with %s", (_name, args) => {
+  ])("prints the usage lines to standard error, exits with 1 and creates nothing with %s", (_name, args) => {
     const result = runCommand(project, args)
-    expect(result.stderr).toBe('Usage: process-factory init\n       process-factory new "<title>"\n')
+    expect(result.stderr).toBe(usage)
     expect(result.stdout).toBe("")
     expect(result.status).toBe(1)
     expect(entries(project)).toEqual([])
