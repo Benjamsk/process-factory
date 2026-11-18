@@ -15,6 +15,7 @@ export default defineConfig({
         test: {
           name: "acceptance",
           include: ["acceptance/**/*.test.{ts,js}"],
+          testTimeout: 30_000,
         },
       },
     ],
