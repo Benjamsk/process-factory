@@ -1,10 +1,12 @@
 #!/usr/bin/env node
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { constants, copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
 const skillPath = ".claude/skills/process/SKILL.md"
 const boardPath = "processes/board.json"
 const processFolders = ["cases", "drafts", "rounds", "versions", "feedback"]
+/** The files of the organisation context, in the order `org init` creates them. */
+const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.md", "authority.md"]
 /** The ten stages, each with the stages a process may move to from it. */
 const allowedMoves = {
   intake: ["clarify", "spec"],
@@ -149,9 +151,36 @@ function showProcesses(id) {
   return 0
 }
 
+/** Copies the organisation templates into `organisation/`, keeping every file that is already there. */
+function initialiseOrganisation() {
+  let createdAny = false
+  for (const file of organisationFiles) {
+    const targetFile = path.join(process.cwd(), "organisation", file)
+    try {
+      mkdirSync(path.dirname(targetFile), { recursive: true })
+    } catch (error) {
+      process.stderr.write(`process-factory: cannot write organisation/${file}: ${errorMessage(error)}\n`)
+      return 1
+    }
+    try {
+      copyFileSync(path.join(packageFolder, "templates", "organisation", file), targetFile, constants.COPYFILE_EXCL)
+    } catch (error) {
+      if (error.code !== "EEXIST") {
+        process.stderr.write(`process-factory: cannot write organisation/${file}: ${errorMessage(error)}\n`)
+        return 1
+      }
+      continue
+    }
+    process.stdout.write(`Created organisation/${file}\n`)
+    createdAny = true
+  }
+  if (!createdAny) process.stdout.write("No files created.\n")
+  return 0
+}
+
 function printUsage() {
   process.stderr.write(
-    'Usage: process-factory init\n       process-factory new "<title>"\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n',
+    'Usage: process-factory init\n       process-factory new "<title>"\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory org init\n',
   )
   return 1
 }
@@ -161,4 +190,5 @@ if (commandArguments.length === 1 && commandArguments[0] === "init") process.exi
 else if (commandArguments.length === 2 && commandArguments[0] === "new") process.exitCode = createProcess(commandArguments[1])
 else if (commandArguments.length === 3 && commandArguments[0] === "move") process.exitCode = moveProcess(commandArguments[1], commandArguments[2])
 else if (commandArguments.length <= 2 && commandArguments[0] === "show") process.exitCode = showProcesses(commandArguments[1])
+else if (commandArguments.length === 2 && commandArguments[0] === "org" && commandArguments[1] === "init") process.exitCode = initialiseOrganisation()
 else process.exitCode = printUsage()

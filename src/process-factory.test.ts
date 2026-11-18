@@ -10,7 +10,8 @@ const templateFile = path.join(repositoryRoot, "templates", "skills", "process",
 const skillPath = ".claude/skills/process/SKILL.md"
 const boardPath = "processes/board.json"
 const usage =
-  'Usage: process-factory init\n       process-factory new "<title>"\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n'
+  'Usage: process-factory init\n       process-factory new "<title>"\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory org init\n'
+const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.md", "authority.md"]
 const timeForm = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
 
 let workingDirectory = ""
@@ -314,8 +315,56 @@ describe("process-factory show", () => {
   })
 })
 
+describe("process-factory org init", () => {
+  it("creates the five files in the fixed order, reports each one and copies the templates", () => {
+    const result = runCommand(["org", "init"])
+    expect(result.stdout).toBe(organisationFiles.map((file) => `Created organisation/${file}\n`).join(""))
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    expect(readdirSync(workingDirectory)).toEqual(["organisation"])
+    for (const file of organisationFiles) {
+      const template = readFileSync(path.join(repositoryRoot, "templates", "organisation", file), "utf8")
+      expect(readWorkingFile(`organisation/${file}`)).toBe(template)
+    }
+  })
+
+  it("prints No files created. on a second run and leaves what the user wrote", () => {
+    expect(runCommand(["org", "init"]).status).toBe(0)
+    writeWorkingFile("organisation/policies.md", "# Policies\n\nWhat the user wrote.\n")
+
+    const result = runCommand(["org", "init"])
+
+    expect(result.stdout).toBe("No files created.\n")
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    expect(readWorkingFile("organisation/policies.md")).toBe("# Policies\n\nWhat the user wrote.\n")
+  })
+
+  it("keeps a file that is already there and creates the four that are missing", () => {
+    writeWorkingFile("organisation/roles.md", "# Roles\n\nKari is the managing director.\n")
+
+    const result = runCommand(["org", "init"])
+
+    expect(result.stdout).toBe(
+      "Created organisation/systems.md\nCreated organisation/processors.md\nCreated organisation/policies.md\nCreated organisation/authority.md\n",
+    )
+    expect(result.status).toBe(0)
+    expect(readWorkingFile("organisation/roles.md")).toBe("# Roles\n\nKari is the managing director.\n")
+    expect(readdirSync(path.join(workingDirectory, "organisation")).sort()).toEqual([...organisationFiles].sort())
+  })
+
+  it("fails with exit code 1 and names roles.md when organisation is a file", () => {
+    writeWorkingFile("organisation", "not a folder\n")
+    const result = runCommand(["org", "init"])
+    expect(result.status).toBe(1)
+    expect(result.stdout).toBe("")
+    expect(result.stderr).toMatch(/^process-factory: cannot write organisation\/roles\.md: .+\n$/)
+    expect(readWorkingFile("organisation")).toBe("not a folder\n")
+  })
+})
+
 describe("process-factory with anything other than a command", () => {
-  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]]])(
+  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]], [["org"]], [["org", "init", "extra"]]])(
     "prints the usage and writes nothing for %j",
     (commandArguments) => {
       const result = runCommand(commandArguments)
