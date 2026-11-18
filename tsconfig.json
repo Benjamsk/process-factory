@@ -3,13 +3,18 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "allowJs": true,
-    "checkJs": true,
     "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
     "noEmit": true,
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src", "acceptance", "vitest.config.ts", "eslint.config.mjs"],
+  "include": ["src", "lint", "acceptance", "vitest.config.ts"],
   "exclude": ["node_modules", ".claude", "factory"]
 }
