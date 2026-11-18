@@ -83,7 +83,9 @@ describe("plain text only", () => {
     expect(readme).not.toContain("](")
     expect(readme).not.toContain("http://")
     expect(readme).not.toContain("https://")
-    expect(readme).not.toMatch(/<\/?[a-zA-Z][^>]*>/)
+    // Text in an inline code span, such as `/process <prompt>`, is shown literally and is not an HTML tag.
+    const withoutInlineCode = readme.replace(/`[^`\r\n]*`/g, "")
+    expect(withoutInlineCode).not.toMatch(/<\/?[a-zA-Z][^>]*>/)
     expect(readme).not.toContain("```")
     expect(readme).not.toContain("~~~")
   })
