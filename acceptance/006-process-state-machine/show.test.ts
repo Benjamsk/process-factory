@@ -134,7 +134,7 @@ describe("process-factory with arguments that are no command", () => {
     ["the arguments move a", ["move", "a"]],
     ["the arguments move a b c", ["move", "a", "b", "c"]],
     ["the arguments show a b", ["show", "a", "b"]],
-  ])("prints the four usage lines to standard error, exits with 1 and creates nothing with %s", (_name, args) => {
+  ])("prints the usage lines to standard error, exits with 1 and creates nothing with %s", (_name, args) => {
     const result = runCommand(project, args)
     expect(result.stderr).toBe(usage)
     expect(result.stdout).toBe("")

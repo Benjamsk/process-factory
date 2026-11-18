@@ -5,7 +5,7 @@ import { binFile, emptyFolder, installedFile, root, runCommand, runNode, templat
 
 const installedLine = "Installed .claude/skills/process/SKILL.md\n"
 const usageLine =
-  'Usage: process-factory init\n       process-factory new "<title>"\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n'
+  'Usage: process-factory init\n       process-factory new "<title>"\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory org init\n'
 
 let project = ""
 
