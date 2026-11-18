@@ -14,4 +14,6 @@ Process Factory applies the same idea to a different result. What it produces is
 
 ## Status
 
-The product is at its start. This README describes what is being built, not what already works.
+The product is at its start. It cannot generate processes yet. What works today is one skill for Claude Code: `/process <prompt>` sends a prompt to the process factory, and Claude answers it in conversation.
+
+To use it in a project, add the package with `pnpm add -D github:Benjamsk/process-factory` and run `pnpm exec process-factory init` in the project's folder. That writes `.claude/skills/process/SKILL.md`, and `/process` is available in the next Claude Code session there. Run `init` again after an upgrade.
