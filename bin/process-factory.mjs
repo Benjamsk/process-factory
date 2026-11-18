@@ -2,7 +2,9 @@
 import { constants, copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
-const skillPath = ".claude/skills/process/SKILL.md"
+const skillFolder = ".claude/skills/process"
+/** The files of the skill, in the order `init` installs them. */
+const skillFiles = ["SKILL.md", "interviewer.md"]
 const boardPath = "processes/board.json"
 const processFolders = ["cases", "drafts", "rounds", "versions", "feedback"]
 /** The files of the organisation context, in the order `org init` creates them. */
@@ -21,22 +23,23 @@ const allowedMoves = {
   regenerate: ["review"],
 }
 const packageFolder = path.dirname(import.meta.dirname)
-const templateFile = path.join(packageFolder, "templates", "skills", "process", "SKILL.md")
 
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error)
 }
 
 function installSkill() {
-  const targetFile = path.join(process.cwd(), skillPath)
-  try {
-    mkdirSync(path.dirname(targetFile), { recursive: true })
-    copyFileSync(templateFile, targetFile)
-  } catch (error) {
-    process.stderr.write(`process-factory: cannot write ${skillPath}: ${errorMessage(error)}\n`)
-    return 1
+  for (const file of skillFiles) {
+    const targetFile = path.join(process.cwd(), skillFolder, file)
+    try {
+      mkdirSync(path.dirname(targetFile), { recursive: true })
+      copyFileSync(path.join(packageFolder, "templates", "skills", "process", file), targetFile)
+    } catch (error) {
+      process.stderr.write(`process-factory: cannot write ${skillFolder}/${file}: ${errorMessage(error)}\n`)
+      return 1
+    }
+    process.stdout.write(`Installed ${skillFolder}/${file}\n`)
   }
-  process.stdout.write(`Installed ${skillPath}\n`)
   return 0
 }
 

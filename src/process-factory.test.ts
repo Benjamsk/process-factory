@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 const repositoryRoot = path.resolve(import.meta.dirname, "..")
 const commandFile = path.join(repositoryRoot, "bin", "process-factory.mjs")
-const templateFile = path.join(repositoryRoot, "templates", "skills", "process", "SKILL.md")
-const skillPath = ".claude/skills/process/SKILL.md"
+const skillFolder = ".claude/skills/process"
+const skillFiles = ["SKILL.md", "interviewer.md"]
 const boardPath = "processes/board.json"
 const usage =
   'Usage: process-factory init\n       process-factory new "<title>"\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory org init\n'
@@ -38,8 +38,12 @@ function readWorkingFile(file: string): string {
   return readFileSync(path.join(workingDirectory, file), "utf8")
 }
 
-function installedSkill(): Buffer {
-  return readFileSync(path.join(workingDirectory, skillPath))
+function installedFilesEqualTheirTemplates(): boolean {
+  return skillFiles.every((file) =>
+    readFileSync(path.join(workingDirectory, skillFolder, file)).equals(
+      readFileSync(path.join(repositoryRoot, "templates", "skills", "process", file)),
+    ),
+  )
 }
 
 function writeBoardFile(processes: Record<string, unknown>[]): void {
@@ -47,18 +51,19 @@ function writeBoardFile(processes: Record<string, unknown>[]): void {
 }
 
 describe("process-factory init", () => {
-  it("copies the template byte for byte into an empty folder and reports it", () => {
+  it("copies both templates byte for byte into an empty folder and reports each one", () => {
     const result = runCommand(["init"])
-    expect(result.stdout).toBe(`Installed ${skillPath}\n`)
+    expect(result.stdout).toBe(skillFiles.map((file) => `Installed ${skillFolder}/${file}\n`).join(""))
     expect(result.stderr).toBe("")
     expect(result.status).toBe(0)
-    expect(installedSkill().equals(readFileSync(templateFile))).toBe(true)
+    expect(readdirSync(path.join(workingDirectory, skillFolder)).sort()).toEqual([...skillFiles].sort())
+    expect(installedFilesEqualTheirTemplates()).toBe(true)
   })
 
-  it("replaces an older copy of the skill", () => {
-    writeWorkingFile(skillPath, "old\n")
+  it("replaces older copies of both files of the skill", () => {
+    for (const file of skillFiles) writeWorkingFile(`${skillFolder}/${file}`, "old\n")
     expect(runCommand(["init"]).status).toBe(0)
-    expect(installedSkill().equals(readFileSync(templateFile))).toBe(true)
+    expect(installedFilesEqualTheirTemplates()).toBe(true)
   })
 
   it("keeps other files under .claude", () => {
