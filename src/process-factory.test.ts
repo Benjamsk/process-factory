@@ -9,6 +9,9 @@ const commandFile = path.join(repositoryRoot, "bin", "process-factory.mjs")
 const templateFile = path.join(repositoryRoot, "templates", "skills", "process", "SKILL.md")
 const skillPath = ".claude/skills/process/SKILL.md"
 const boardPath = "processes/board.json"
+const usage =
+  'Usage: process-factory init\n       process-factory new "<title>"\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n'
+const timeForm = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
 
 let workingDirectory = ""
 
@@ -36,6 +39,10 @@ function readWorkingFile(file: string): string {
 
 function installedSkill(): Buffer {
   return readFileSync(path.join(workingDirectory, skillPath))
+}
+
+function writeBoardFile(processes: Record<string, unknown>[]): void {
+  writeWorkingFile(boardPath, `${JSON.stringify({ processes }, null, 2)}\n`)
 }
 
 describe("process-factory init", () => {
@@ -90,15 +97,21 @@ describe("process-factory new", () => {
     expect(readWorkingFile(`${folder}/request.md`)).toBe("# Handle a personal data breach\n")
   })
 
-  it("lists the process on the board in the stage intake and writes nothing else", () => {
+  it("lists the process on the board in the stage intake with one dated history entry and writes nothing else", () => {
     runCommand(["new", "Handle a personal data breach"])
-    expect(readWorkingFile(boardPath)).toBe(
-      `${JSON.stringify(
-        { processes: [{ id: "001-handle-a-personal-data-breach", title: "Handle a personal data breach", stage: "intake" }] },
-        null,
-        2,
-      )}\n`,
-    )
+    const text = readWorkingFile(boardPath)
+    const parsed: unknown = JSON.parse(text)
+    expect(parsed).toEqual({
+      processes: [
+        {
+          id: "001-handle-a-personal-data-breach",
+          title: "Handle a personal data breach",
+          stage: "intake",
+          history: [{ at: expect.stringMatching(timeForm), stage: "intake" }],
+        },
+      ],
+    })
+    expect(text).toBe(`${JSON.stringify(parsed, null, 2)}\n`)
     expect(readdirSync(workingDirectory)).toEqual(["processes"])
   })
 
@@ -113,6 +126,7 @@ describe("process-factory new", () => {
           id: "008-onboard-a-new-colleague-step-by",
           title: "Onboard a new colleague, step by step, in two weeks",
           stage: "intake",
+          history: [{ at: expect.stringMatching(timeForm), stage: "intake" }],
         },
       ],
     })
@@ -166,12 +180,146 @@ describe("process-factory new", () => {
   })
 })
 
-describe("process-factory with anything other than init", () => {
-  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b"]]])(
+describe("process-factory move", () => {
+  it("prints the new stage, stores it and appends a dated history entry", () => {
+    writeBoardFile([
+      { id: "001-handle-a-breach", title: "Handle a breach", stage: "intake", history: [{ at: "2026-11-18T17:02:11.123Z", stage: "intake" }] },
+    ])
+
+    const result = runCommand(["move", "001-handle-a-breach", "spec"])
+
+    expect(result.stdout).toBe("spec\n")
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    expect(JSON.parse(readWorkingFile(boardPath))).toEqual({
+      processes: [
+        {
+          id: "001-handle-a-breach",
+          title: "Handle a breach",
+          stage: "spec",
+          history: [
+            { at: "2026-11-18T17:02:11.123Z", stage: "intake" },
+            { at: expect.stringMatching(timeForm), stage: "spec" },
+          ],
+        },
+      ],
+    })
+  })
+
+  it("keeps the other entries and the keys it does not know", () => {
+    const older = { id: "001-older-process", title: "Older process", stage: "review", owner: "Kari" }
+    writeBoardFile([older, { id: "002-handle-a-breach", title: "Handle a breach", stage: "cases", owner: "Ola" }])
+
+    expect(runCommand(["move", "002-handle-a-breach", "draft"]).status).toBe(0)
+
+    expect(JSON.parse(readWorkingFile(boardPath))).toEqual({
+      processes: [
+        older,
+        {
+          id: "002-handle-a-breach",
+          title: "Handle a breach",
+          stage: "draft",
+          owner: "Ola",
+          history: [{ at: expect.stringMatching(timeForm), stage: "draft" }],
+        },
+      ],
+    })
+  })
+
+  it.each([
+    ["published", "intake", "(allowed from intake: clarify, spec)"],
+    ["intake", "intake", "(allowed from intake: clarify, spec)"],
+    ["done", "review", "(allowed from review: rework, approval)"],
+    ["intake", "archived", "(allowed from archived: none)"],
+  ])("refuses the move to %s from %s and leaves the board as it was", (to, from, allowed) => {
+    writeBoardFile([{ id: "001-handle-a-breach", title: "Handle a breach", stage: from }])
+    const before = readWorkingFile(boardPath)
+
+    const result = runCommand(["move", "001-handle-a-breach", to])
+
+    expect(result.stderr).toBe(`process-factory: cannot move 001-handle-a-breach from ${from} to ${to} ${allowed}\n`)
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(readWorkingFile(boardPath)).toBe(before)
+  })
+
+  it("says there is no process and writes nothing when there is no board", () => {
+    const result = runCommand(["move", "../../outside", "clarify"])
+    expect(result.stderr).toBe("process-factory: there is no process ../../outside\n")
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(readdirSync(workingDirectory)).toEqual([])
+  })
+
+  it.each([["{ not json\n"], ['{ "processes": "none" }\n']])(
+    "names the board it cannot read and writes nothing for %j",
+    (content) => {
+      writeWorkingFile(boardPath, content)
+      const result = runCommand(["move", "001-handle-a-breach", "clarify"])
+      expect(result.status).toBe(1)
+      expect(result.stdout).toBe("")
+      expect(result.stderr).toMatch(/^process-factory: cannot read processes\/board\.json: .+\n$/)
+      expect(readWorkingFile(boardPath)).toBe(content)
+    },
+  )
+})
+
+describe("process-factory show", () => {
+  it("prints one line per process with id, stage and title, in the board's order", () => {
+    writeBoardFile([
+      { id: "001-handle-a-breach", title: "Handle a breach", stage: "clarify" },
+      { id: "002-onboard-a-new-colleague", title: "Onboard a new colleague", stage: "intake" },
+    ])
+    const result = runCommand(["show"])
+    expect(result.stdout).toBe("001-handle-a-breach  clarify  Handle a breach\n002-onboard-a-new-colleague  intake  Onboard a new colleague\n")
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+  })
+
+  it("prints No processes. and creates nothing when there is no board", () => {
+    const result = runCommand(["show"])
+    expect(result.stdout).toBe("No processes.\n")
+    expect(result.status).toBe(0)
+    expect(readdirSync(workingDirectory)).toEqual([])
+  })
+
+  it("prints one process with its history, oldest first, and leaves the board as it was", () => {
+    writeBoardFile([
+      { id: "001-handle-a-breach", title: "Handle a breach", stage: "clarify", history: [{ at: "2026-11-18T17:02:11.123Z", stage: "intake" }, { at: "2026-11-18T17:05:40.456Z", stage: "clarify" }] },
+    ])
+    const before = readWorkingFile(boardPath)
+
+    const result = runCommand(["show", "001-handle-a-breach"])
+
+    expect(result.stdout).toBe(
+      "001-handle-a-breach\nTitle: Handle a breach\nStage: clarify\nHistory:\n  2026-11-18T17:02:11.123Z  intake\n  2026-11-18T17:05:40.456Z  clarify\n",
+    )
+    expect(result.status).toBe(0)
+    expect(readWorkingFile(boardPath)).toBe(before)
+  })
+
+  it("ends with the line History: for a process stored without a history", () => {
+    writeBoardFile([{ id: "001-handle-a-breach", title: "Handle a breach", stage: "intake" }])
+    const result = runCommand(["show", "001-handle-a-breach"])
+    expect(result.stdout).toBe("001-handle-a-breach\nTitle: Handle a breach\nStage: intake\nHistory:\n")
+    expect(result.status).toBe(0)
+  })
+
+  it("says there is no process for an id that is not on the board", () => {
+    writeBoardFile([{ id: "001-handle-a-breach", title: "Handle a breach", stage: "intake" }])
+    const result = runCommand(["show", "002-handle-a-breach"])
+    expect(result.stderr).toBe("process-factory: there is no process 002-handle-a-breach\n")
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+  })
+})
+
+describe("process-factory with anything other than a command", () => {
+  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]]])(
     "prints the usage and writes nothing for %j",
     (commandArguments) => {
       const result = runCommand(commandArguments)
-      expect(result.stderr).toBe('Usage: process-factory init\n       process-factory new "<title>"\n')
+      expect(result.stderr).toBe(usage)
       expect(result.stdout).toBe("")
       expect(result.status).toBe(1)
       expect(readdirSync(workingDirectory)).toEqual([])

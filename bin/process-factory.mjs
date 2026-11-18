@@ -5,6 +5,19 @@ import path from "node:path"
 const skillPath = ".claude/skills/process/SKILL.md"
 const boardPath = "processes/board.json"
 const processFolders = ["cases", "drafts", "rounds", "versions", "feedback"]
+/** The ten stages, each with the stages a process may move to from it. */
+const allowedMoves = {
+  intake: ["clarify", "spec"],
+  clarify: ["spec"],
+  spec: ["clarify", "cases"],
+  cases: ["draft"],
+  draft: ["review"],
+  review: ["rework", "approval"],
+  rework: ["review"],
+  approval: ["published", "rework"],
+  published: ["regenerate"],
+  regenerate: ["review"],
+}
 const packageFolder = path.dirname(import.meta.dirname)
 const templateFile = path.join(packageFolder, "templates", "skills", "process", "SKILL.md")
 
@@ -38,6 +51,27 @@ function readProcesses() {
   return board.processes
 }
 
+/** The processes on the board, or null after printing why the board cannot be read. */
+function readProcessesOrPrintReason() {
+  try {
+    return readProcesses()
+  } catch (error) {
+    process.stderr.write(`process-factory: cannot read ${boardPath}: ${errorMessage(error)}\n`)
+    return null
+  }
+}
+
+/** The entry with this id, or undefined after printing that there is no such process. */
+function findProcessOrPrintReason(processes, id) {
+  const entry = processes.find((candidate) => candidate.id === id)
+  if (entry === undefined) process.stderr.write(`process-factory: there is no process ${id}\n`)
+  return entry
+}
+
+function writeBoard(processes) {
+  writeFileSync(path.join(process.cwd(), boardPath), `${JSON.stringify({ processes }, null, 2)}\n`)
+}
+
 function processId(processes, title) {
   const highestNumber = processes.reduce((highest, entry) => Math.max(highest, Number.parseInt(entry.id, 10) || 0), 0)
   const slug = title
@@ -64,18 +98,13 @@ function createProcess(argument) {
     process.stderr.write("process-factory: the title must be one line with at least one letter or digit\n")
     return 1
   }
-  let processes
-  try {
-    processes = readProcesses()
-  } catch (error) {
-    process.stderr.write(`process-factory: cannot read ${boardPath}: ${errorMessage(error)}\n`)
-    return 1
-  }
+  const processes = readProcessesOrPrintReason()
+  if (processes === null) return 1
   const id = processId(processes, title)
   try {
     writeProcessFolder(id, title)
-    const board = { processes: [...processes, { id, title, stage: "intake" }] }
-    writeFileSync(path.join(process.cwd(), boardPath), `${JSON.stringify(board, null, 2)}\n`)
+    const entry = { id, title, stage: "intake", history: [{ at: new Date().toISOString(), stage: "intake" }] }
+    writeBoard([...processes, entry])
   } catch (error) {
     process.stderr.write(`process-factory: cannot create process ${id}: ${errorMessage(error)}\n`)
     return 1
@@ -84,12 +113,52 @@ function createProcess(argument) {
   return 0
 }
 
+function moveProcess(id, stage) {
+  const processes = readProcessesOrPrintReason()
+  if (processes === null) return 1
+  const entry = findProcessOrPrintReason(processes, id)
+  if (entry === undefined) return 1
+  const allowed = Object.hasOwn(allowedMoves, entry.stage) ? allowedMoves[entry.stage] : []
+  if (!allowed.includes(stage)) {
+    const stages = allowed.join(", ") || "none"
+    process.stderr.write(
+      `process-factory: cannot move ${id} from ${entry.stage} to ${stage} (allowed from ${entry.stage}: ${stages})\n`,
+    )
+    return 1
+  }
+  entry.stage = stage
+  entry.history = [...(entry.history ?? []), { at: new Date().toISOString(), stage }]
+  writeBoard(processes)
+  process.stdout.write(`${stage}\n`)
+  return 0
+}
+
+function showProcesses(id) {
+  const processes = readProcessesOrPrintReason()
+  if (processes === null) return 1
+  if (id === undefined) {
+    if (processes.length === 0) process.stdout.write("No processes.\n")
+    else for (const entry of processes) process.stdout.write(`${entry.id}  ${entry.stage}  ${entry.title}\n`)
+    return 0
+  }
+  const entry = findProcessOrPrintReason(processes, id)
+  if (entry === undefined) return 1
+  const lines = [entry.id, `Title: ${entry.title}`, `Stage: ${entry.stage}`, "History:"]
+  for (const change of entry.history ?? []) lines.push(`  ${change.at}  ${change.stage}`)
+  process.stdout.write(`${lines.join("\n")}\n`)
+  return 0
+}
+
 function printUsage() {
-  process.stderr.write('Usage: process-factory init\n       process-factory new "<title>"\n')
+  process.stderr.write(
+    'Usage: process-factory init\n       process-factory new "<title>"\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n',
+  )
   return 1
 }
 
 const commandArguments = process.argv.slice(2)
 if (commandArguments.length === 1 && commandArguments[0] === "init") process.exitCode = installSkill()
 else if (commandArguments.length === 2 && commandArguments[0] === "new") process.exitCode = createProcess(commandArguments[1])
+else if (commandArguments.length === 3 && commandArguments[0] === "move") process.exitCode = moveProcess(commandArguments[1], commandArguments[2])
+else if (commandArguments.length <= 2 && commandArguments[0] === "show") process.exitCode = showProcesses(commandArguments[1])
 else process.exitCode = printUsage()
