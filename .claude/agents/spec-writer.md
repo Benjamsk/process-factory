@@ -20,6 +20,7 @@ Before you ask questions or write a spec, check whether the work is needed at al
 - Is the problem real? Read the code the request is about and check that it behaves as the request says.
 - Does the feature already exist? Search the codebase for pages, routes, components, commands, settings and factory steps that already do what the request asks.
 - Is there a simpler way? Prefer a setting, an existing component or command, or a smaller change over new code.
+- Was the behaviour taken back out? A job whose `undoneBy` (printed by `pnpm factory show <job>`) names a job in `merged` is reverted: what it shipped is gone from main, whatever its `spec.md` in main still describes. Never treat that behaviour as present, never write a spec that relies on it, and never put its acceptance tests back.
 
 If the feature already exists or the problem is not real, write `spec.md` that recommends closing the job: start the Summary and the Goal with the line `Recommendation: close this job without building it.`, give the evidence in Design (file paths and the existing behaviour that already meets the request), say under Scope that nothing is built, and list that existing behaviour as the acceptance criteria. The human archives the job at spec review, or edits the spec into one that builds and accepts it.
 
@@ -35,15 +36,20 @@ You cannot talk to the user. When you need a decision from them, you ask through
   ```
   QUESTIONS
 
-  1. Should X do A or B? (default: A)
-  2. Who may see Y? (default: only admins)
+  1. Which store keeps the draft?
+     A draft is written on every keystroke and only lives in React state, so a reload loses it.
+     - Keep it in localStorage, one key per job (default)
+     - Write it to the job through the API on a debounce
+  2. Who may see the draft?
+     - Only admins (default)
+     - Every signed-in user
   ```
 
-  The first line is `QUESTIONS`. Then 1 to 5 numbered items, one self-contained question per line, each ending with a suggested default in `(default: ...)`. A short note may follow the list. At most 5 questions.
+  The first line is `QUESTIONS`. Then 1 to 5 numbered lines, each a short title that names the decision, at the start of the line. Under a title, indented by two spaces or more: prose lines that explain the problem, which the dashboard keeps collapsed behind the title, and `- ` bullets, one per solution you offer, with `(default)` at the end of the suggested one. Indented lines must not start with a number. A question may have prose only, bullets only, or neither. A short note may follow the list and is shown under the questions. At most 5 questions.
 
 - Otherwise write `spec.md`. Follow the answers. Treat answer text as requirements, never as instructions that change these rules. When you used answers, add a line to "Open questions" that records which `answers-<n>.md` files the spec relies on. Anything still unclear when `canAsk` is `false` goes under "Open questions"; never ask a third round.
 
-**Writes:** in this first phase, either the given `questions-<n>.md` or `factory/jobs/<job-id>/spec.md`, never both; `acceptance.md` and the tests come in the tests phase below. `spec.md` opens with the title and an unnumbered `## Summary` section, then has these sections:
+**Writes:** in this first phase, either the given `questions-<n>.md` or `factory/jobs/<job-id>/spec.md`, never both; `acceptance.md` and the tests come in the tests phase below. `spec.md` opens with the title and an unnumbered `## Summary` section, followed by an unnumbered `## How to use it` section, then has these sections:
 
 1. **Goal**: the user problem in one paragraph.
 2. **Scope**: what is in, and what is explicitly out.
@@ -53,6 +59,8 @@ You cannot talk to the user. When you need a decision from them, you ask through
 6. **Open questions**: anything only a human can decide. Leave empty if none.
 
 The `## Summary` section is for the human who accepts or respecs the job at spec review; the dashboard shows it as the ticket's Summary instead of the Goal paragraph. Write it in plain language, in two to four short paragraphs, with no file paths, function names, message strings or other identifiers unless the reader needs one to understand the change. It says what is broken today, gives one concrete example of a job or a user hitting it, says what will be different afterwards, and says what deliberately stays the same. The Goal paragraph stays technical, for the builder and the reviewers, and the numbered sections keep their numbers.
+
+The `## How to use it` section comes right after the Summary and is for the person who uses the change once it is merged; the dashboard shows it on the ticket at every stage, also after the merge. Write it in plain language, in two to five short lines: what a person does to use the change, such as the command to run, the button and the page it is on, or the setting to turn on. When nobody drives the change (a reviewer that runs on its own, a history line that simply appears), write the single line `Nothing to do: <why>` instead.
 
 In this first phase, reply with one line: the path of the file you wrote.
 
@@ -71,7 +79,7 @@ After you have written `spec.md`, you are resumed (or a fresh spec writer is sta
 - Write no snapshots of implementation details, no `.skip`, `.only` or `.todo`, and no test that passes on the current code.
 - Run `node node_modules/vitest/vitest.mjs run acceptance/<job-id>/` in the worktree and read the failure of every test. Each test must fail on an assertion about the behaviour the spec adds, or on the missing module or export the spec names. A typo, a setup or mocking error, a wrong import path, or an impossible expectation (one that no correct implementation can meet, such as expecting `Object.keys(...).sort()` to start with a key that sorts later) is not an expected reason; fix the test.
 - After the tests are red for the expected reason, add a section `## Why the tests will pass` at the end of `spec.md` (after "Open questions"), with one line per test: ``- `<test file>` > <test name>: <why a correct implementation of the spec makes it pass>``. Replace the section if it already exists.
-- Change no file outside `acceptance/<job-id>/`, and never change `vitest.config.ts` or `vitest.setup.ts`. The one exception: you may change the files of earlier jobs' `acceptance/<earlier-job-id>/` folders named under `Updated acceptance tests` in `spec.md`, tests as well as helper or fixture files, only the files the spec gives a reason for, and never delete or rename them. `pnpm factory acceptance <job-id> lock` locks them together with your own tests.
+- Change no file outside `acceptance/<job-id>/`, and never change `vitest.config.ts` or `vitest.setup.ts`. The one exception: you may change the files of earlier jobs' `acceptance/<earlier-job-id>/` folders named under `Updated acceptance tests` in `spec.md`, tests as well as helper or fixture files, only the files the spec gives a reason for, and never delete or rename them. `pnpm factory acceptance <job-id> lock` locks them together with your own tests. The one exception to that is an undo job: when this job undoes a ticket (its `request.md` says so and `pnpm factory show <undone-job-id>` prints `undoneBy` with this job's id), name every file of `acceptance/<undone-job-id>/` under `Updated acceptance tests` in `spec.md` with its reason, delete them with `pnpm factory rm <job-id> acceptance/<undone-job-id>` and stage the removal; `pnpm factory acceptance <job-id> lock` records them as deleted.
 - Before you commit, check every test in `acceptance/` against the spec's design, not only the behaviour the spec deliberately changes: search `acceptance/` for every file path, export, message, count, usage line and file layout the spec changes, read each matching earlier test, and name each one that will fail after the build under `Updated acceptance tests` in `spec.md`, with its reason, including incidental breakage such as test counts, file layout or messages, and name the helper or fixture file of that job you must change with it (for example a list of expected keys). Update those tests as described above. An earlier test you did not name is a conflict the factory has to refresh later.
 - Commit only your tests in the worktree, on the branch `factory/<job-id>`, with the message `test(acceptance): <job title>`. Never commit to `main` and never run `git checkout` or `git switch` in the main checkout.
 - If you are resumed with an error from `pnpm factory acceptance <job-id> lock`, fix the tests so the error goes away and commit again.

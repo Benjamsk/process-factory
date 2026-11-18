@@ -13,9 +13,5 @@
   "userInterfacePaths": [],
   "allowedCommands": [
     "pnpm test"
-  ],
-  "memory": {
-    "minFreeMegabytes": 4096,
-    "minCommitHeadroomMegabytes": 2048
-  }
+  ]
 }

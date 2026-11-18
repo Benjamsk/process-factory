@@ -12,8 +12,8 @@ importers:
         specifier: ^9.39.5
         version: 9.39.5
       '@olevedeler/kaizen-factory':
-        specifier: ^1.56.0
-        version: 1.56.0
+        specifier: ^1.70.0
+        version: 1.70.0
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
@@ -255,8 +255,8 @@ packages:
   '@jridgewell/sourcemap-codec@1.6.0':
     resolution: {integrity: sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw==}
 
-  '@olevedeler/kaizen-factory@1.56.0':
-    resolution: {integrity: sha512-FUye2JEEyCZ4I+AUU6cm1BG4HkmOhuXv29tMEIDziYXHQdyl3av0w8F03wfF9EkVeMIT0QHGpQ6RrWnX9GzDAw==, tarball: https://npm.pkg.github.com/download/@olevedeler/kaizen-factory/1.56.0/f77cc5795340012d03680a2150b77ac6aeed3416}
+  '@olevedeler/kaizen-factory@1.70.0':
+    resolution: {integrity: sha512-qT491Qlcl0tvuGJFalXuiGTXUF8GkjVEbNF1T6k++M+CSvEP5wUe+or2u37UX5AyelrGmERtlVmQGfb+qG4Tqw==, tarball: https://npm.pkg.github.com/download/@olevedeler/kaizen-factory/1.70.0/d9c5e4dc23698879c17c59ff6e9c5f4255b10965}
     hasBin: true
 
   '@rollup/rollup-android-arm-eabi@4.68.4':
@@ -1184,7 +1184,7 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.6.0': {}
 
-  '@olevedeler/kaizen-factory@1.56.0':
+  '@olevedeler/kaizen-factory@1.70.0':
     dependencies:
       dotenv: 17.4.2
       tsx: 4.23.15

@@ -1,0 +1,103 @@
+name: Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag or commit to test
+        required: true
+        type: string
+      targets:
+        description: Test files or folders separated by spaces; empty runs every project
+        required: false
+        default: ""
+        type: string
+      id:
+        description: Id the caller uses to find this run
+        required: true
+        type: string
+      digest:
+        description: SHA-256 hex digest of targets; stands in for targets in the concurrency group
+        required: true
+        type: string
+      expect:
+        description: pass, or fail when the run is green only if the tests fail
+        required: false
+        default: pass
+        type: string
+      shards:
+        description: JSON list of the shard numbers 1..n, one job per entry; [1] runs the targets in one job
+        required: false
+        default: "[1]"
+        type: string
+      step:
+        description: Pipeline step that dispatched the run, for its name
+        required: false
+        default: ""
+        type: string
+      job:
+        description: Job id the run belongs to, for its name
+        required: false
+        default: ""
+        type: string
+      summary:
+        description: Short form of targets for the run name; the first target and +N more, or every project
+        required: false
+        default: ""
+        type: string
+
+run-name: ${{ inputs.step }} ${{ inputs.job }} on ${{ inputs.ref }} (${{ inputs.summary }}) expect=${{ inputs.expect }} id=${{ inputs.id }}
+
+concurrency:
+  group: ${{ inputs.targets == 'acceptance/' && 'acceptance-suite' || format('tests {0} {1} {2}', inputs.ref, inputs.digest, inputs.expect) }}
+  cancel-in-progress: ${{ inputs.targets != 'acceptance/' }}
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  vitest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(inputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - env:
+          TARGETS: ${{ inputs.targets }}
+          EXPECT: ${{ inputs.expect }}
+          SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
+        run: |
+          status=0
+          set -o pipefail
+          node node_modules/vitest/vitest.mjs run $TARGETS --shard=$SHARD --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest-report.json" 2>&1 | tee "$RUNNER_TEMP/vitest-output.txt" || status=$?
+          sed -i "s#$GITHUB_WORKSPACE/##g" "$RUNNER_TEMP/vitest-report.json"
+          if [ "$EXPECT" = fail ]; then
+            if [ "$status" -eq 0 ]; then
+              echo "::error::The tests passed but this run expected them to fail"
+              exit 1
+            fi
+            exit 0
+          fi
+          exit $status
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-report-${{ matrix.shard }}
+          path: |
+            ${{ runner.temp }}/vitest-report.json
+            ${{ runner.temp }}/vitest-output.txt
