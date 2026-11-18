@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { binFile, emptyFolder, installedFile, root, runCommand, runNode, templateFile } from "./repository.ts"
 
 const installedLine = "Installed .claude/skills/process/SKILL.md\n"
-const usageLine = "Usage: process-factory init\n"
+const usageLine = 'Usage: process-factory init\n       process-factory new "<title>"\n'
 
 let project = ""
 
