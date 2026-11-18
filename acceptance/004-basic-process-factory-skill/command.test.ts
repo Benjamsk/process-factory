@@ -3,7 +3,7 @@ import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { binFile, emptyFolder, installedFile, root, runCommand, runNode, templateFile } from "./repository.ts"
 
-const installedLine = "Installed .claude/skills/process/SKILL.md\n"
+const installedLine = "Installed .claude/skills/process/SKILL.md\nInstalled .claude/skills/process/interviewer.md\n"
 const usageLine =
   'Usage: process-factory init\n       process-factory new "<title>"\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory org init\n'
 
@@ -39,7 +39,7 @@ describe("process-factory init", () => {
     expect(installed().equals(template())).toBe(true)
   })
 
-  it("prints exactly one Installed line to standard output and nothing to standard error", () => {
+  it("prints one Installed line per file to standard output and nothing to standard error", () => {
     const result = runCommand(project, ["init"])
     expect(result.stdout).toBe(installedLine)
     expect(result.stderr).toBe("")
