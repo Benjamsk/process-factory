@@ -42,11 +42,11 @@ describe("the frontmatter of templates/skills/process/SKILL.md", () => {
     expect(frontmatterValue("name")).toBe("process")
   })
 
-  it("has a one-line description that names /process <prompt> and says it does not generate processes yet", () => {
+  it("has a one-line description that names /process <prompt> and /process next <process-id>", () => {
     const description = frontmatterValue("description")
     expect(frontmatterLines()).toHaveLength(2)
     expect(description).toContain("/process <prompt>")
-    expect(description).toContain("It does not generate processes yet")
+    expect(description).toContain("/process next <process-id>")
   })
 })
 
@@ -60,18 +60,18 @@ describe("the body of the skill", () => {
 
   it("takes the user's prompt from $ARGUMENTS", () => {
     expect(body()).toContain("$ARGUMENTS")
-    expect(body()).toContain("Treat the input as the user's prompt to the process factory")
+    expect(body()).toContain("The input is the user's prompt.")
   })
 
-  it("says it does not generate processes yet and only lets the user talk to Claude", () => {
-    expect(body()).toContain("It does not generate processes yet.")
-    expect(body()).toContain("For now it only lets the user talk to Claude.")
+  it("says the skill is how the user talks to the factory and no longer that it only converses", () => {
+    expect(body()).toContain("This skill is how the user talks to the factory")
+    expect(body()).not.toContain("It does not generate processes yet.")
+    expect(body()).not.toContain("For now it only lets the user talk to Claude.")
   })
 
-  it("tells Claude not to change files, run commands or start factory jobs", () => {
-    expect(body()).toContain(
-      "do not create, change or delete files, do not run commands and do not start factory jobs",
-    )
+  it("tells Claude not to change files, run other commands or start factory jobs", () => {
+    expect(body()).toContain("Do not create, change or delete files yourself, and do not start factory jobs.")
+    expect(body()).toContain("run no other command")
   })
 })
 
