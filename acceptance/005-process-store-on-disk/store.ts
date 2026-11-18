@@ -51,3 +51,8 @@ export function board(folder: string): unknown {
 export function boardText(processes: Record<string, string>[]): string {
   return `${JSON.stringify({ processes }, null, 2)}\n`
 }
+
+/** A parsed board without the times in the histories, which differ on every run. */
+export function withoutTimes(parsed: unknown): unknown {
+  return JSON.parse(JSON.stringify(parsed, (key, value: unknown) => (key === "at" ? undefined : value)))
+}
