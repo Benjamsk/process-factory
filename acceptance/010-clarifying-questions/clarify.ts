@@ -10,7 +10,7 @@ export const skillTemplate = "templates/skills/process/SKILL.md"
 export const questionerTemplate = "templates/skills/process/questioner.md"
 export const installedFolder = ".claude/skills/process"
 /** The files of the skill, in the order `init` installs them. */
-export const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md"]
+export const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md"]
 export const usage =
   'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory org init\n'
 
