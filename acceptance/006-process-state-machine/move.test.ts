@@ -96,10 +96,13 @@ describe("process-factory move with a move the machine allows", () => {
 
   it("walks a new process through the whole loop and lists every stage in the history", () => {
     const loop = ["clarify", "spec", "cases", "draft", "review", "rework", "review", "approval", "published", "regenerate", "review"]
+    const sections = ["Trigger", "Scope", "Roles", "Steps", "AI steps", "Deadlines", "Legal basis", "Duties to notify", "Escalation", "Records"]
     runCommand(project, ["new", breachTitle])
+    writeFile(project, `processes/${breachId}/spec.md`, `# Specification: ${breachTitle}\n\n${sections.map((name) => `## ${name}\n\nStatus: decided\n\nSettled.\n`).join("\n")}`)
     for (const stage of loop) {
-      const result = runCommand(project, ["move", breachId, stage])
-      expect(result.stdout).toBe(`${stage}\n`)
+      const accepts = stage === "cases"
+      const result = runCommand(project, accepts ? ["accept-spec", breachId] : ["move", breachId, stage])
+      expect(result.stdout).toBe(accepts ? `Accepted processes/${breachId}/spec.md\ncases\n` : `${stage}\n`)
       expect(result.status).toBe(0)
     }
     const entry = processes(project)[0]
@@ -173,7 +176,11 @@ describe("process-factory move with a move the machine refuses", () => {
       expect(refused).toContain(from)
       for (const to of refused) {
         const result = runCommand(project, ["move", "001-handle-a-breach", to])
-        expect(result.stderr).toBe(refusal("001-handle-a-breach", from, to, allowed))
+        expect(result.stderr).toBe(
+          from === "spec" && to === "cases"
+            ? "process-factory: cannot move 001-handle-a-breach from spec to cases: only accept-spec 001-handle-a-breach moves a process from spec to cases\n"
+            : refusal("001-handle-a-breach", from, to, allowed),
+        )
         expect(result.stdout).toBe("")
         expect(result.status).toBe(1)
         expect(readFile(project, boardFile)).toBe(before)

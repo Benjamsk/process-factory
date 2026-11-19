@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { constants, copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
+import { constants, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
 const skillFolder = ".claude/skills/process"
@@ -9,11 +9,13 @@ const boardPath = "processes/board.json"
 const processFolders = ["cases", "drafts", "rounds", "versions", "feedback"]
 /** The files of the organisation context, in the order `org init` creates them. */
 const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.md", "authority.md"]
+/** The ten sections of a specification, in the order of `spec-writer.md`. */
+const specSections = ["Trigger", "Scope", "Roles", "Steps", "AI steps", "Deadlines", "Legal basis", "Duties to notify", "Escalation", "Records"]
 /** The ten stages, each with the stages a process may move to from it. */
 const allowedMoves = {
   intake: ["clarify", "spec"],
   clarify: ["spec"],
-  spec: ["clarify", "cases"],
+  spec: ["clarify"],
   cases: ["draft"],
   draft: ["review"],
   review: ["rework", "approval"],
@@ -125,6 +127,10 @@ function moveProcess(id, stage) {
   if (entry === undefined) return 1
   const allowed = Object.hasOwn(allowedMoves, entry.stage) ? allowedMoves[entry.stage] : []
   if (!allowed.includes(stage)) {
+    if (entry.stage === "spec" && stage === "cases") {
+      process.stderr.write(`process-factory: cannot move ${id} from spec to cases: only accept-spec ${id} moves a process from spec to cases\n`)
+      return 1
+    }
     const stages = allowed.join(", ") || "none"
     process.stderr.write(
       `process-factory: cannot move ${id} from ${entry.stage} to ${stage} (allowed from ${entry.stage}: ${stages})\n`,
@@ -194,6 +200,61 @@ function answerProcess(id, file) {
   return moveProcess(id, "spec")
 }
 
+/** The sections of a `spec.md` that are not marked decided, in the order of the ten. */
+function openSpecSections(folder) {
+  let lines
+  try {
+    lines = readFileSync(path.join(folder, "spec.md"), "utf8")
+      .split(/\r?\n/)
+      .map((line) => line.trimEnd())
+  } catch {
+    return specSections
+  }
+  return specSections.filter((name) => {
+    const heading = lines.indexOf(`## ${name}`)
+    if (heading === -1) return true
+    const body = lines.slice(heading + 1)
+    const end = body.findIndex((line) => line.startsWith("## "))
+    return (end === -1 ? body : body.slice(0, end)).find((line) => line !== "") !== "Status: decided"
+  })
+}
+
+function acceptSpec(id) {
+  const processes = readProcessesOrPrintReason()
+  if (processes === null) return 1
+  if (!/^[a-z0-9-]+$/.test(id)) {
+    process.stderr.write(`process-factory: there is no process ${id}\n`)
+    return 1
+  }
+  const entry = findProcessOrPrintReason(processes, id)
+  if (entry === undefined) return 1
+  if (entry.stage !== "spec") {
+    process.stderr.write(`process-factory: cannot accept the spec of ${id}: it is in the stage ${entry.stage}, not in spec\n`)
+    return 1
+  }
+  const folder = `processes/${id}`
+  const open = openSpecSections(path.join(process.cwd(), folder))
+  if (open.length > 0) {
+    process.stderr.write(`process-factory: cannot accept the spec of ${id}: these sections of ${folder}/spec.md are open\n`)
+    for (const name of open) process.stderr.write(`  ${name}\n`)
+    const number = newestQuestionsNumber(path.join(process.cwd(), folder))
+    if (number !== null && !existsSync(path.join(process.cwd(), folder, `answers-${number}.md`))) {
+      process.stderr.write(`process-factory: ${folder}/questions-${number}.md has no answers yet: ${id} moves to clarify\n`)
+      moveProcess(id, "clarify")
+      return 1
+    }
+    process.stderr.write(`process-factory: ${id} stays in spec: /process next ${id} writes the questions for the open sections\n`)
+    return 1
+  }
+  const at = new Date().toISOString()
+  entry.stage = "cases"
+  entry.history = [...(entry.history ?? []), { at, stage: "cases" }]
+  entry.specAcceptedAt = at
+  writeBoard(processes)
+  process.stdout.write(`Accepted ${folder}/spec.md\ncases\n`)
+  return 0
+}
+
 function showProcesses(id) {
   const processes = readProcessesOrPrintReason()
   if (processes === null) return 1
@@ -204,7 +265,9 @@ function showProcesses(id) {
   }
   const entry = findProcessOrPrintReason(processes, id)
   if (entry === undefined) return 1
-  const lines = [entry.id, `Title: ${entry.title}`, `Stage: ${entry.stage}`, "History:"]
+  const lines = [entry.id, `Title: ${entry.title}`, `Stage: ${entry.stage}`]
+  if (entry.specAcceptedAt !== undefined) lines.push(`Spec accepted: ${entry.specAcceptedAt}`)
+  lines.push("History:")
   for (const change of entry.history ?? []) lines.push(`  ${change.at}  ${change.stage}`)
   process.stdout.write(`${lines.join("\n")}\n`)
   return 0
@@ -239,7 +302,7 @@ function initialiseOrganisation() {
 
 function printUsage() {
   process.stderr.write(
-    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory org init\n',
+    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory org init\n',
   )
   return 1
 }
@@ -249,6 +312,7 @@ if (commandArguments.length === 1 && commandArguments[0] === "init") process.exi
 else if ((commandArguments.length === 2 || commandArguments.length === 3) && commandArguments[0] === "new") process.exitCode = createProcess(commandArguments[1], commandArguments[2])
 else if (commandArguments.length === 3 && commandArguments[0] === "move") process.exitCode = moveProcess(commandArguments[1], commandArguments[2])
 else if (commandArguments.length === 3 && commandArguments[0] === "answer") process.exitCode = answerProcess(commandArguments[1], commandArguments[2])
+else if (commandArguments.length === 2 && commandArguments[0] === "accept-spec") process.exitCode = acceptSpec(commandArguments[1])
 else if (commandArguments.length <= 2 && commandArguments[0] === "show") process.exitCode = showProcesses(commandArguments[1])
 else if (commandArguments.length === 2 && commandArguments[0] === "org" && commandArguments[1] === "init") process.exitCode = initialiseOrganisation()
 else process.exitCode = printUsage()
