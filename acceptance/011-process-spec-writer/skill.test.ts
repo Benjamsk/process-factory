@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest"
 import { headings, readFile, root, section, sectionLines, skillTemplate, tableRows } from "../010-clarifying-questions/clarify.ts"
 
 describe("the section The command line of the skill", () => {
-  it("lets Claude run move to cases inside /process next, next to the commands it ran before", () => {
+  it("lets Claude run accept-spec inside /process next, next to the commands it ran before", () => {
     const text = section(skillTemplate, "The command line")
-    expect(text).toContain("`move <process-id> cases`")
+    expect(text).toContain("`accept-spec <process-id>`")
     expect(text).toContain('run only `new "<title>" "<prompt>"`, `show`, `show <process-id>` and `org init`')
   })
 
@@ -119,11 +119,11 @@ describe("the section Write the spec of the skill", () => {
   it("moves the process to cases only after a yes and leaves it in spec otherwise", () => {
     const lines = sectionLines(skillTemplate, "Write the spec")
     const text = lines.join("\n")
-    expect(text).toContain("When the user says yes, run `move <process-id> cases`")
+    expect(text).toContain("When the user says yes, run `accept-spec <process-id>`")
     expect(text).toContain("the factory cannot run the stage `cases` yet")
     expect(text).toContain("When the user says anything else, run nothing and move nothing.")
     expect(text).toContain("the process stays in the stage `spec`")
-    const movesToCases = lines.filter((line) => line.includes("move <process-id> cases"))
+    const movesToCases = lines.filter((line) => line.includes("accept-spec <process-id>"))
     expect(movesToCases).toHaveLength(1)
     expect(movesToCases[0]).toContain("When the user says yes")
   })

@@ -12,7 +12,7 @@ export const installedFolder = ".claude/skills/process"
 /** The files of the skill, in the order `init` installs them. */
 export const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md"]
 export const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory org init\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory org init\n'
 
 /** A new empty folder outside the repository. */
 export function emptyFolder(): string {

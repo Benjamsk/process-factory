@@ -8,7 +8,7 @@ const breachTitle = "Handle a personal data breach"
 const created = [{ stage: "intake" }]
 const breachEntry = { id: breachId, title: breachTitle, stage: "intake", history: created }
 const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory org init\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory org init\n'
 const titleError = "process-factory: the title must be one line with at least one letter or digit\n"
 
 let project = ""
