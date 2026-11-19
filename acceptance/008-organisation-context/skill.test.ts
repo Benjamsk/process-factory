@@ -13,7 +13,7 @@ describe("the description of the process skill", () => {
 
 describe("the section The command line", () => {
   it("lets Claude run org init next to new and show, and keeps the other limits", () => {
-    expect(skillBody()).toContain('run only `new "<title>"`, `show`, `show <process-id>` and `org init`')
+    expect(skillBody()).toContain('run only `new "<title>" "<prompt>"`, `show`, `show <process-id>` and `org init`')
     expect(skillBody()).toContain("Never run `move`")
     expect(skillBody()).toContain("run no other command")
     expect(skillBody()).toContain("Only the command line writes the store.")

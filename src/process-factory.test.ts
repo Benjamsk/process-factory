@@ -7,10 +7,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 const repositoryRoot = path.resolve(import.meta.dirname, "..")
 const commandFile = path.join(repositoryRoot, "bin", "process-factory.mjs")
 const skillFolder = ".claude/skills/process"
-const skillFiles = ["SKILL.md", "interviewer.md"]
+const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md"]
 const boardPath = "processes/board.json"
 const usage =
-  'Usage: process-factory init\n       process-factory new "<title>"\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory org init\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory org init\n'
 const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.md", "authority.md"]
 const timeForm = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
 
@@ -51,7 +51,7 @@ function writeBoardFile(processes: Record<string, unknown>[]): void {
 }
 
 describe("process-factory init", () => {
-  it("copies both templates byte for byte into an empty folder and reports each one", () => {
+  it("copies the three templates byte for byte into an empty folder and reports each one", () => {
     const result = runCommand(["init"])
     expect(result.stdout).toBe(skillFiles.map((file) => `Installed ${skillFolder}/${file}\n`).join(""))
     expect(result.stderr).toBe("")
@@ -60,7 +60,7 @@ describe("process-factory init", () => {
     expect(installedFilesEqualTheirTemplates()).toBe(true)
   })
 
-  it("replaces older copies of both files of the skill", () => {
+  it("replaces older copies of the three files of the skill", () => {
     for (const file of skillFiles) writeWorkingFile(`${skillFolder}/${file}`, "old\n")
     expect(runCommand(["init"]).status).toBe(0)
     expect(installedFilesEqualTheirTemplates()).toBe(true)
@@ -136,6 +136,19 @@ describe("process-factory new", () => {
         },
       ],
     })
+  })
+
+  it("writes the trimmed prompt under the title in request.md and keeps it off the board", () => {
+    const result = runCommand(["new", "Handle a breach", "  A laptop was lost.\nWho do we tell?  "])
+    expect(result.stdout).toBe("001-handle-a-breach\n")
+    expect(result.status).toBe(0)
+    expect(readWorkingFile("processes/001-handle-a-breach/request.md")).toBe("# Handle a breach\n\nA laptop was lost.\nWho do we tell?\n")
+    expect(readWorkingFile(boardPath)).not.toContain("A laptop was lost.")
+  })
+
+  it("writes request.md as the title alone for a prompt of only whitespace", () => {
+    expect(runCommand(["new", "Handle a breach", " \n "]).status).toBe(0)
+    expect(readWorkingFile("processes/001-handle-a-breach/request.md")).toBe("# Handle a breach\n")
   })
 
   it("keeps a title with dots and slashes inside the store", () => {
@@ -320,6 +333,135 @@ describe("process-factory show", () => {
   })
 })
 
+describe("process-factory answer", () => {
+  const processFolder = "processes/001-handle-a-breach"
+  const answers = "# Answers 1\n\n## 1. Who reports a lost laptop?\n\nThe employee.\n"
+
+  function prepareClarify(questionsFiles: string[]): void {
+    writeBoardFile([
+      { id: "001-handle-a-breach", title: "Handle a breach", stage: "clarify", history: [{ at: "2026-11-18T17:02:11.123Z", stage: "clarify" }] },
+    ])
+    for (const file of questionsFiles) writeWorkingFile(`${processFolder}/${file}`, "# Questions\n")
+    writeWorkingFile("my-answers.md", answers)
+  }
+
+  it("stores the answers under the number of the newest questions file and moves the process to spec", () => {
+    prepareClarify(["questions-9.md", "questions-10.md"])
+
+    const result = runCommand(["answer", "001-handle-a-breach", "my-answers.md"])
+
+    expect(result.stdout).toBe(`Stored ${processFolder}/answers-10.md\nspec\n`)
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    expect(readWorkingFile(`${processFolder}/answers-10.md`)).toBe(answers)
+    expect(readWorkingFile("my-answers.md")).toBe(answers)
+    expect(JSON.parse(readWorkingFile(boardPath))).toEqual({
+      processes: [
+        {
+          id: "001-handle-a-breach",
+          title: "Handle a breach",
+          stage: "spec",
+          history: [
+            { at: "2026-11-18T17:02:11.123Z", stage: "clarify" },
+            { at: expect.stringMatching(timeForm), stage: "spec" },
+          ],
+        },
+      ],
+    })
+  })
+
+  it("names the stage when the process is not in clarify and writes nothing", () => {
+    writeBoardFile([{ id: "001-handle-a-breach", title: "Handle a breach", stage: "intake" }])
+    writeWorkingFile(`${processFolder}/questions-1.md`, "# Questions\n")
+    writeWorkingFile("my-answers.md", answers)
+    const before = readWorkingFile(boardPath)
+
+    const result = runCommand(["answer", "001-handle-a-breach", "my-answers.md"])
+
+    expect(result.stderr).toBe("process-factory: cannot answer 001-handle-a-breach: it is in the stage intake, not in clarify\n")
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(readWorkingFile(boardPath)).toBe(before)
+    expect(readdirSync(path.join(workingDirectory, processFolder))).toEqual(["questions-1.md"])
+  })
+
+  it.each([["002-handle-a-breach"], ["../../outside"]])("says there is no process %s and writes nothing", (unknown) => {
+    prepareClarify(["questions-1.md"])
+    const before = readWorkingFile(boardPath)
+
+    const result = runCommand(["answer", unknown, "my-answers.md"])
+
+    expect(result.stderr).toBe(`process-factory: there is no process ${unknown}\n`)
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(readWorkingFile(boardPath)).toBe(before)
+    expect(readdirSync(path.join(workingDirectory, processFolder))).toEqual(["questions-1.md"])
+  })
+
+  it.each([
+    ["the folder holds only questions-one.md", "questions-one.md"],
+    ["the folder of the process is missing", ""],
+  ])("says there is no questions file and leaves the board as it was when %s", (_name, questionsFile) => {
+    prepareClarify(questionsFile === "" ? [] : [questionsFile])
+    const before = readWorkingFile(boardPath)
+
+    const result = runCommand(["answer", "001-handle-a-breach", "my-answers.md"])
+
+    expect(result.stderr).toBe(`process-factory: cannot answer 001-handle-a-breach: there is no questions file in ${processFolder}\n`)
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(readWorkingFile(boardPath)).toBe(before)
+  })
+
+  it("names the file it cannot read and stores nothing", () => {
+    prepareClarify(["questions-1.md"])
+
+    const result = runCommand(["answer", "001-handle-a-breach", "missing.md"])
+
+    expect(result.stderr).toMatch(/^process-factory: cannot read missing\.md: .+\n$/)
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(readdirSync(path.join(workingDirectory, processFolder))).toEqual(["questions-1.md"])
+  })
+
+  it("says the file is empty when it holds only whitespace", () => {
+    prepareClarify(["questions-1.md"])
+    writeWorkingFile("blank.md", " \n\t\n")
+
+    const result = runCommand(["answer", "001-handle-a-breach", "blank.md"])
+
+    expect(result.stderr).toBe("process-factory: cannot answer 001-handle-a-breach: blank.md is empty\n")
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(readdirSync(path.join(workingDirectory, processFolder))).toEqual(["questions-1.md"])
+  })
+
+  it("never replaces an answers file that is already there and leaves the process in clarify", () => {
+    prepareClarify(["questions-1.md"])
+    writeWorkingFile(`${processFolder}/answers-1.md`, "the earlier answers\n")
+    const before = readWorkingFile(boardPath)
+
+    const result = runCommand(["answer", "001-handle-a-breach", "my-answers.md"])
+
+    expect(result.stderr).toMatch(/^process-factory: cannot write processes\/001-handle-a-breach\/answers-1\.md: .+\n$/)
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(readWorkingFile(`${processFolder}/answers-1.md`)).toBe("the earlier answers\n")
+    expect(readWorkingFile(boardPath)).toBe(before)
+  })
+
+  it.each([["{ not json\n"], ['{ "processes": "none" }\n']])("names the board it cannot read for %j", (content) => {
+    writeWorkingFile(boardPath, content)
+
+    const result = runCommand(["answer", "001-handle-a-breach", "my-answers.md"])
+
+    expect(result.stderr).toMatch(/^process-factory: cannot read processes\/board\.json: .+\n$/)
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(readWorkingFile(boardPath)).toBe(content)
+  })
+})
+
 describe("process-factory org init", () => {
   it("creates the five files in the fixed order, reports each one and copies the templates", () => {
     const result = runCommand(["org", "init"])
@@ -369,7 +511,7 @@ describe("process-factory org init", () => {
 })
 
 describe("process-factory with anything other than a command", () => {
-  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]], [["org"]], [["org", "init", "extra"]]])(
+  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b", "c"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]], [["org"]], [["org", "init", "extra"]], [["answer"]], [["answer", "a"]], [["answer", "a", "b", "c"]]])(
     "prints the usage and writes nothing for %j",
     (commandArguments) => {
       const result = runCommand(commandArguments)

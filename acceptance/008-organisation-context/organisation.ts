@@ -9,7 +9,7 @@ export const templateFolder = "templates/organisation"
 /** The files of the organisation context, in the order the command line creates them. */
 export const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.md", "authority.md"]
 export const usage =
-  'Usage: process-factory init\n       process-factory new "<title>"\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory org init\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory org init\n'
 
 /** A new empty folder outside the repository. */
 export function emptyFolder(): string {

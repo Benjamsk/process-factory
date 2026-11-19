@@ -25,12 +25,10 @@ describe("the description of the process skill", () => {
 })
 
 describe("the section The command line of the skill", () => {
-  it("makes the interview the one exception to the rule that Claude writes no files", () => {
+  it("makes the interview one of the exceptions to the rule that Claude writes no files", () => {
     const text = section(skillTemplate, "The command line")
-    expect(text).toContain(
-      "The one exception is the interview of `/process org`: while it runs, you write the files in `organisation/` as `interviewer.md` says, and no other file.",
-    )
-    expect(text).toContain('run only `new "<title>"`, `show`, `show <process-id>` and `org init`')
+    expect(text).toContain("In the interview of `/process org` you write the files in `organisation/` as `interviewer.md` says.")
+    expect(text).toContain('run only `new "<title>" "<prompt>"`, `show`, `show <process-id>` and `org init`')
     expect(text).toContain("Only the command line writes the store.")
     expect(text).toContain("Do not create, change or delete files yourself, and do not start factory jobs.")
   })
@@ -66,7 +64,7 @@ describe("the section What the input means of the skill", () => {
 })
 
 describe("the level 2 headings of the skill", () => {
-  it("are the ten of the spec, with Interview the user after Create the organisation context", () => {
+  it("are the twelve of the spec, with Interview the user after Create the organisation context", () => {
     expect(headings(skillTemplate, 2)).toEqual([
       "The command line",
       "The organisation context",
@@ -78,6 +76,8 @@ describe("the level 2 headings of the skill", () => {
       "Show the board",
       "Show one process",
       "Run the stage",
+      "Ask the questions",
+      "Collect the answers",
     ])
   })
 })

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { constants, copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { constants, copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
 const skillFolder = ".claude/skills/process"
 /** The files of the skill, in the order `init` installs them. */
-const skillFiles = ["SKILL.md", "interviewer.md"]
+const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md"]
 const boardPath = "processes/board.json"
 const processFolders = ["cases", "drafts", "rounds", "versions", "feedback"]
 /** The files of the organisation context, in the order `org init` creates them. */
@@ -89,15 +89,15 @@ function processId(processes, title) {
   return `${String(highestNumber + 1).padStart(3, "0")}-${slug}`
 }
 
-function writeProcessFolder(id, title) {
+function writeProcessFolder(id, title, prompt) {
   const folder = path.join(process.cwd(), "processes", id)
   mkdirSync(path.join(process.cwd(), "processes"), { recursive: true })
   mkdirSync(folder)
-  writeFileSync(path.join(folder, "request.md"), `# ${title}\n`)
+  writeFileSync(path.join(folder, "request.md"), prompt === "" ? `# ${title}\n` : `# ${title}\n\n${prompt}\n`)
   for (const name of processFolders) mkdirSync(path.join(folder, name))
 }
 
-function createProcess(argument) {
+function createProcess(argument, promptArgument) {
   const title = argument.trim()
   if (/[\r\n]/.test(title) || !/[a-zA-Z0-9]/.test(title)) {
     process.stderr.write("process-factory: the title must be one line with at least one letter or digit\n")
@@ -107,7 +107,7 @@ function createProcess(argument) {
   if (processes === null) return 1
   const id = processId(processes, title)
   try {
-    writeProcessFolder(id, title)
+    writeProcessFolder(id, title, (promptArgument ?? "").trim())
     const entry = { id, title, stage: "intake", history: [{ at: new Date().toISOString(), stage: "intake" }] }
     writeBoard([...processes, entry])
   } catch (error) {
@@ -136,6 +136,62 @@ function moveProcess(id, stage) {
   writeBoard(processes)
   process.stdout.write(`${stage}\n`)
   return 0
+}
+
+/** The highest number among the files `questions-<n>.md` in the folder, or null when there is none. */
+function newestQuestionsNumber(folder) {
+  let names
+  try {
+    names = readdirSync(folder)
+  } catch {
+    return null
+  }
+  const numbers = names.flatMap((name) => {
+    const match = /^questions-(\d+)\.md$/.exec(name)
+    return match === null ? [] : [Number(match[1])]
+  })
+  return numbers.length === 0 ? null : Math.max(...numbers)
+}
+
+function answerProcess(id, file) {
+  const processes = readProcessesOrPrintReason()
+  if (processes === null) return 1
+  if (!/^[a-z0-9-]+$/.test(id)) {
+    process.stderr.write(`process-factory: there is no process ${id}\n`)
+    return 1
+  }
+  const entry = findProcessOrPrintReason(processes, id)
+  if (entry === undefined) return 1
+  if (entry.stage !== "clarify") {
+    process.stderr.write(`process-factory: cannot answer ${id}: it is in the stage ${entry.stage}, not in clarify\n`)
+    return 1
+  }
+  const folder = `processes/${id}`
+  const number = newestQuestionsNumber(path.join(process.cwd(), folder))
+  if (number === null) {
+    process.stderr.write(`process-factory: cannot answer ${id}: there is no questions file in ${folder}\n`)
+    return 1
+  }
+  let answers
+  try {
+    answers = readFileSync(file)
+  } catch (error) {
+    process.stderr.write(`process-factory: cannot read ${file}: ${errorMessage(error)}\n`)
+    return 1
+  }
+  if (answers.toString("utf8").trim() === "") {
+    process.stderr.write(`process-factory: cannot answer ${id}: ${file} is empty\n`)
+    return 1
+  }
+  const answersFile = `${folder}/answers-${number}.md`
+  try {
+    writeFileSync(path.join(process.cwd(), answersFile), answers, { flag: "wx" })
+  } catch (error) {
+    process.stderr.write(`process-factory: cannot write ${answersFile}: ${errorMessage(error)}\n`)
+    return 1
+  }
+  process.stdout.write(`Stored ${answersFile}\n`)
+  return moveProcess(id, "spec")
 }
 
 function showProcesses(id) {
@@ -183,15 +239,16 @@ function initialiseOrganisation() {
 
 function printUsage() {
   process.stderr.write(
-    'Usage: process-factory init\n       process-factory new "<title>"\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory org init\n',
+    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory org init\n',
   )
   return 1
 }
 
 const commandArguments = process.argv.slice(2)
 if (commandArguments.length === 1 && commandArguments[0] === "init") process.exitCode = installSkill()
-else if (commandArguments.length === 2 && commandArguments[0] === "new") process.exitCode = createProcess(commandArguments[1])
+else if ((commandArguments.length === 2 || commandArguments.length === 3) && commandArguments[0] === "new") process.exitCode = createProcess(commandArguments[1], commandArguments[2])
 else if (commandArguments.length === 3 && commandArguments[0] === "move") process.exitCode = moveProcess(commandArguments[1], commandArguments[2])
+else if (commandArguments.length === 3 && commandArguments[0] === "answer") process.exitCode = answerProcess(commandArguments[1], commandArguments[2])
 else if (commandArguments.length <= 2 && commandArguments[0] === "show") process.exitCode = showProcesses(commandArguments[1])
 else if (commandArguments.length === 2 && commandArguments[0] === "org" && commandArguments[1] === "init") process.exitCode = initialiseOrganisation()
 else process.exitCode = printUsage()
