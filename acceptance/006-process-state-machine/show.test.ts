@@ -129,7 +129,7 @@ describe("process-factory with arguments that are no command", () => {
     ["the argument help", ["help"]],
     ["the arguments init extra", ["init", "extra"]],
     ["new without a title", ["new"]],
-    ["the arguments new a b", ["new", "a", "b"]],
+    ["the arguments new a b c", ["new", "a", "b", "c"]],
     ["move alone", ["move"]],
     ["the arguments move a", ["move", "a"]],
     ["the arguments move a b c", ["move", "a", "b", "c"]],
