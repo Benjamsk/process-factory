@@ -16,14 +16,14 @@ afterEach(() => {
 })
 
 describe("process-factory init in an empty working directory", () => {
-  it("prints the three Installed lines in order, nothing to standard error, and exits with 0", () => {
+  it("prints the four Installed lines in order, nothing to standard error, and exits with 0", () => {
     const result = runCommand(project, ["init"])
     expect(result.stderr).toBe("")
     expect(result.stdout).toBe(installedLines)
     expect(result.status).toBe(0)
   })
 
-  it("creates .claude/skills/process with exactly SKILL.md, interviewer.md and questioner.md, each byte-identical to its template", () => {
+  it("creates .claude/skills/process with exactly SKILL.md, interviewer.md, questioner.md and spec-writer.md, each byte-identical to its template", () => {
     expect(runCommand(project, ["init"]).status).toBe(0)
     expect(entries(project, installedFolder)).toEqual(skillFiles)
     for (const file of skillFiles) {
@@ -55,7 +55,7 @@ describe("process-factory init from an installed copy", () => {
 })
 
 describe("the copies that Claude Code loads in this repository", () => {
-  it("has SKILL.md, interviewer.md and questioner.md in .claude/skills/process, each byte-identical to its template", () => {
+  it("has SKILL.md, interviewer.md, questioner.md and spec-writer.md in .claude/skills/process, each byte-identical to its template", () => {
     for (const file of skillFiles) {
       const template = path.join(root, "templates/skills/process", file)
       const copy = path.join(root, installedFolder, file)
