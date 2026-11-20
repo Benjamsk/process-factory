@@ -13,8 +13,9 @@ import {
   skillTemplate,
   writeFile,
 } from "./interview.ts"
+import { skillFiles } from "../010-clarifying-questions/clarify.ts"
 
-const installedLines = `Installed ${installedFolder}/SKILL.md\nInstalled ${installedFolder}/interviewer.md\nInstalled ${installedFolder}/questioner.md\nInstalled ${installedFolder}/spec-writer.md\nInstalled ${installedFolder}/case-writer.md\nInstalled ${installedFolder}/draft-writer.md\n`
+const installedLines = skillFiles.map((file) => `Installed ${installedFolder}/${file}\n`).join("")
 
 let project = ""
 
@@ -31,20 +32,20 @@ function installed(file: string): Buffer {
 }
 
 describe("process-factory init in an empty working directory", () => {
-  it("prints the six Installed lines in order, nothing to standard error, and exits with 0", () => {
+  it("prints one Installed line per file of the skill in order, nothing to standard error, and exits with 0", () => {
     const result = runCommand(project, ["init"])
     expect(result.stderr).toBe("")
     expect(result.stdout).toBe(installedLines)
     expect(result.status).toBe(0)
   })
 
-  it("creates .claude/skills/process with exactly SKILL.md, case-writer.md, draft-writer.md, interviewer.md, questioner.md and spec-writer.md, each byte-identical to its template", () => {
+  it("creates .claude/skills/process with exactly the files of the skill, SKILL.md and interviewer.md byte-identical to their templates", () => {
     expect(existsSync(path.join(root, interviewerTemplate))).toBe(true)
     expect(runCommand(project, ["init"]).status).toBe(0)
     expect(entries(project)).toEqual([".claude"])
     expect(entries(project, ".claude")).toEqual(["skills"])
     expect(entries(project, ".claude/skills")).toEqual(["process"])
-    expect(entries(project, installedFolder)).toEqual(["SKILL.md", "case-writer.md", "draft-writer.md", "interviewer.md", "questioner.md", "spec-writer.md"])
+    expect(entries(project, installedFolder)).toEqual([...skillFiles].sort())
     expect(installed("SKILL.md").equals(readFileSync(path.join(root, skillTemplate)))).toBe(true)
     expect(installed("interviewer.md").equals(readFileSync(path.join(root, interviewerTemplate)))).toBe(true)
   })

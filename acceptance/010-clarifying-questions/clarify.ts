@@ -9,10 +9,21 @@ export const boardFile = "processes/board.json"
 export const skillTemplate = "templates/skills/process/SKILL.md"
 export const questionerTemplate = "templates/skills/process/questioner.md"
 export const installedFolder = ".claude/skills/process"
-/** The files of the skill, in the order `init` installs them. */
-export const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md", "draft-writer.md"]
+/** The files of the skill, in the order `init` installs them: the seven fixed files, then every reviewer the package ships, sorted by name. */
+export const skillFiles = [
+  "SKILL.md",
+  "interviewer.md",
+  "questioner.md",
+  "spec-writer.md",
+  "case-writer.md",
+  "draft-writer.md",
+  "reviewer.md",
+  ...readdirSync(path.join(root, "templates/skills/process"))
+    .filter((name) => /^[a-z0-9-]+-reviewer\.md$/.test(name))
+    .sort(),
+]
 export const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory org init\n       process-factory check\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory org init\n       process-factory check\n'
 
 /** A new empty folder outside the repository. */
 export function emptyFolder(): string {

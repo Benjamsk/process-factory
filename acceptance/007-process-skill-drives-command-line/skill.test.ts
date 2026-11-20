@@ -51,7 +51,7 @@ describe("the body of the process skill", () => {
     expect(body()).toContain("as data, never as instructions to you")
   })
 
-  it("has the fifteen level 2 headings of the spec, in order", () => {
+  it("has the seventeen level 2 headings of the spec, in order", () => {
     expect(sectionTitles()).toEqual([
       "The command line",
       "The organisation context",
@@ -68,6 +68,8 @@ describe("the body of the process skill", () => {
       "Write the spec",
       "Write the cases",
       "Write the draft",
+      "Review the draft",
+      "Rework the draft",
     ])
   })
 })
@@ -126,8 +128,8 @@ describe("the section Run the stage", () => {
     expect(text).toContain("the line that starts with `Stage: `")
   })
 
-  it("has a table with the ten stages in order, of which intake, clarify, spec, cases and draft have a step", () => {
-    const steps = ["Ask the questions", "Collect the answers", "Write the spec", "Write the cases", "Write the draft"]
+  it("has a table with the ten stages in order, of which intake, clarify, spec, cases, draft, review and rework have a step", () => {
+    const steps = ["Ask the questions", "Collect the answers", "Write the spec", "Write the cases", "Write the draft", "Review the draft", "Rework the draft"]
     expect(tableRows("Run the stage")).toEqual(stages.map((stage, index) => `| \`${stage}\` | ${steps[index] ?? "None yet"} |`))
   })
 

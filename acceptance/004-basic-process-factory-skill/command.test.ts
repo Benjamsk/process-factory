@@ -1,11 +1,12 @@
 import { appendFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { skillFiles } from "../010-clarifying-questions/clarify.ts"
 import { binFile, emptyFolder, installedFile, root, runCommand, runNode, templateFile } from "./repository.ts"
 
-const installedLine = "Installed .claude/skills/process/SKILL.md\nInstalled .claude/skills/process/interviewer.md\nInstalled .claude/skills/process/questioner.md\nInstalled .claude/skills/process/spec-writer.md\nInstalled .claude/skills/process/case-writer.md\nInstalled .claude/skills/process/draft-writer.md\n"
+const installedLine = skillFiles.map((file) => `Installed .claude/skills/process/${file}\n`).join("")
 const usageLine =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory org init\n       process-factory check\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory org init\n       process-factory check\n'
 
 let project = ""
 
