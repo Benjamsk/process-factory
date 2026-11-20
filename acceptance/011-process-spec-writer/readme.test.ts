@@ -6,7 +6,7 @@ describe("the Status section of README.md", () => {
     const text = readmeStatus()
     expect(text).toContain("Five stages have a step.")
     expect(text).toContain(
-      "In `spec` a spec writer agent writes `spec.md` in the folder of the process, with ten sections that are each marked decided or open.",
+      "In `spec` a spec writer agent writes `spec.md` in the folder of the process, with eleven sections that are each marked decided or open.",
     )
     expect(text).toContain("moves the process to `cases` after the user accepts it")
     expect(text).toContain("For every other stage `next` reports the stage and moves nothing.")

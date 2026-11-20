@@ -96,7 +96,7 @@ describe("process-factory move with a move the machine allows", () => {
 
   it("walks a new process through the whole loop and lists every stage in the history", () => {
     const loop = ["clarify", "spec", "cases", "draft", "review", "rework", "review", "approval", "published", "regenerate", "review"]
-    const sections = ["Trigger", "Scope", "Roles", "Steps", "AI steps", "Deadlines", "Legal basis", "Duties to notify", "Escalation", "Records"]
+    const sections = ["Trigger", "Scope", "Roles", "Steps", "AI steps", "Deadlines", "Legal basis", "Duties to notify", "Escalation", "Records", "Dependencies"]
     runCommand(project, ["new", breachTitle])
     writeFile(project, `processes/${breachId}/spec.md`, `# Specification: ${breachTitle}\n\n${sections.map((name) => `## ${name}\n\nStatus: decided\n\nSettled.\n`).join("\n")}`)
     for (const stage of loop) {

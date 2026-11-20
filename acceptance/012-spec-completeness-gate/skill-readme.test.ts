@@ -46,7 +46,7 @@ describe("the Status section of README.md", () => {
     expect(text).toContain(
       "`process-factory accept-spec <process-id>` records on the board that the user accepted `spec.md` of a process in `spec` and moves the process to `cases`.",
     )
-    expect(text).toContain("It refuses while one of the ten sections is not marked decided, names the open sections")
+    expect(text).toContain("It refuses while one of the eleven sections is not marked decided, names the open sections")
     expect(text).toContain("`move` never moves a process from `spec` to `cases`.")
     expect(text.indexOf("process-factory accept-spec <process-id>")).toBeGreaterThan(text.indexOf("process-factory answer <process-id> <file>"))
   })
