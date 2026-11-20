@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 const repositoryRoot = path.resolve(import.meta.dirname, "..")
 const commandFile = path.join(repositoryRoot, "bin", "process-factory.mjs")
 const skillFolder = ".claude/skills/process"
+const templateFolder = path.join(repositoryRoot, "templates", "skills", "process")
 const skillFiles = [
   "SKILL.md",
   "interviewer.md",
@@ -15,7 +16,7 @@ const skillFiles = [
   "case-writer.md",
   "draft-writer.md",
   "reviewer.md",
-  ...readdirSync(path.join(repositoryRoot, "templates", "skills", "process"))
+  ...readdirSync(templateFolder)
     .filter((name) => /^[a-z0-9-]+-reviewer\.md$/.test(name))
     .sort(),
 ]
@@ -51,9 +52,7 @@ function readWorkingFile(file: string): string {
 
 function installedFilesEqualTheirTemplates(): boolean {
   return skillFiles.every((file) =>
-    readFileSync(path.join(workingDirectory, skillFolder, file)).equals(
-      readFileSync(path.join(repositoryRoot, "templates", "skills", "process", file)),
-    ),
+    readFileSync(path.join(workingDirectory, skillFolder, file)).equals(readFileSync(path.join(templateFolder, file))),
   )
 }
 
