@@ -26,13 +26,13 @@ describe("the Status section of README.md", () => {
 
   it("says init also writes reviewer.md and one file for every reviewer the package ships", () => {
     expect(readmeStatus()).toContain(
-      "`draft-writer.md` next to it, together with `reviewer.md` and one file `<name>-reviewer.md` for every reviewer the package ships",
+      "`incident.md` next to it, together with `reviewer.md` and one file `<name>-reviewer.md` for every reviewer the package ships",
     )
   })
 
-  it("names the five exceptions to the command line as the only writer of the store, the fifth being the reviewers", () => {
+  it("names the six exceptions to the command line as the only writer of the store, the fifth being the reviewers", () => {
     expect(readmeStatus()).toContain(
-      "with five exceptions: the questioner writes `questions-<n>.md`, the spec writer writes `spec.md` and `questions-<n>.md`, the case writer writes the files `case-<n>.md` in `cases`, the draft writer writes `draft-<n>.md` in `drafts`, and every reviewer writes its findings file in a folder `round-<n>` in `rounds`.",
+      "with six exceptions: the questioner writes `questions-<n>.md`, the spec writer writes `spec.md` and `questions-<n>.md`, the case writer writes the files `case-<n>.md` in `cases`, the draft writer writes `draft-<n>.md` in `drafts`, every reviewer writes its findings file in a folder `round-<n>` in `rounds`, and the interview of `/process incident` writes new files `case-<n>.md` in `cases`.",
     )
   })
 

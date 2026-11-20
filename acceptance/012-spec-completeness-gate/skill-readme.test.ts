@@ -34,9 +34,9 @@ describe("the section Write the spec of the skill", () => {
 })
 
 describe("the skill as a whole", () => {
-  it("names move <process-id> cases nowhere and has seventeen level 2 headings", () => {
+  it("names move <process-id> cases nowhere and has eighteen level 2 headings", () => {
     expect(readFile(root, skillTemplate)).not.toContain("move <process-id> cases")
-    expect(headings(skillTemplate, 2)).toHaveLength(17)
+    expect(headings(skillTemplate, 2)).toHaveLength(18)
   })
 })
 

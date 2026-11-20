@@ -14,6 +14,7 @@ const skillFiles = [
   "spec-writer.md",
   "case-writer.md",
   "draft-writer.md",
+  "incident.md",
   "reviewer.md",
   ...readdirSync(path.join(repositoryRoot, "templates", "skills", "process"))
     .filter((name) => /^[a-z0-9-]+-reviewer\.md$/.test(name))

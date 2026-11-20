@@ -65,17 +65,17 @@ describe("the section The organisation context", () => {
 describe("the section What the input means", () => {
   it("makes input that starts with org but is not org init a prompt, and has rows for org and org init", () => {
     const text = skillSection("What the input means")
-    expect(text).toContain("Input that starts with `show`, `next` or `org` but does not fit its row exactly is a prompt.")
-    expect(text).toContain("| nothing, or only `next` | Greet the user |")
+    expect(text).toContain("Input that starts with `show`, `next`, `org` or `incident` but does not fit its row exactly is a prompt.")
+    expect(text).toContain("| nothing, or only `next` or `incident` | Greet the user |")
     expect(text).toContain("| `org` | Interview the user |")
     expect(text).toContain("| `org init` | Create the organisation context |")
   })
 })
 
 describe("the section Greet the user", () => {
-  it("lists five forms, the fourth being /process org init", () => {
+  it("lists six forms, the fourth being /process org init", () => {
     const text = skillSection("Greet the user")
-    expect(text).toContain("list the five forms")
+    expect(text).toContain("list the six forms")
     expect(text).toContain("`/process org init` creates the organisation context")
   })
 })
