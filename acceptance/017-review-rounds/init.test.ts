@@ -36,7 +36,7 @@ function installedPackage(): string {
 }
 
 describe("process-factory init with the templates of this repository", () => {
-  it("ships reviewer.md, which is one of the seven files, is installed once and is not a reviewer", () => {
+  it("ships reviewer.md", () => {
     expect(existsSync(path.join(root, reviewerTemplate))).toBe(true)
     expect(skillFiles.slice(0, sevenFiles.length)).toEqual(sevenFiles)
     expect(shippedReviewers).toEqual(entries(root, templateFolder).filter((name) => name.endsWith("-reviewer.md")))
@@ -45,7 +45,7 @@ describe("process-factory init with the templates of this repository", () => {
     expect(lines.filter((line) => line === `Installed ${installedFolder}/reviewer.md`)).toHaveLength(1)
   })
 
-  it("prints the seven Installed lines in order, ending with reviewer.md, then one line per shipped reviewer, nothing to standard error, and exits with 0", () => {
+  it("prints the seven Installed lines in order, ending with reviewer.md, then one for every reviewer the repository ships, sorted by name, nothing to standard error, and exits with 0", () => {
     const result = runCommand(project, ["init"])
     expect(result.stderr).toBe("")
     expect(result.stdout).toBe(sevenLines + installedLines(shippedReviewers))
