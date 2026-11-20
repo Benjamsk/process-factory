@@ -3,8 +3,12 @@ import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { binFile, emptyFolder, entries, installedFolder, root, runCommand, runNode } from "../010-clarifying-questions/clarify.ts"
 
-const incidentTemplate = "templates/skills/process/incident.md"
-const eightFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md", "draft-writer.md", "incident.md", "reviewer.md"]
+const templateFolder = "templates/skills/process"
+const incidentTemplate = `${templateFolder}/incident.md`
+/** The fixed files `init` installs, in its order: the seven of `main` and `incident.md`, the seventh, before `reviewer.md`. */
+const eightFiles =["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md", "draft-writer.md", "incident.md", "reviewer.md"]
+/** The reviewers the package ships, sorted by name. `init` installs them after the fixed files; this job adds none and removes none. */
+const shippedReviewers = entries(root, templateFolder).filter((name) => /^[a-z0-9-]+-reviewer\.md$/.test(name))
 const installedLines =
   "Installed .claude/skills/process/SKILL.md\n" +
   "Installed .claude/skills/process/interviewer.md\n" +
@@ -13,7 +17,8 @@ const installedLines =
   "Installed .claude/skills/process/case-writer.md\n" +
   "Installed .claude/skills/process/draft-writer.md\n" +
   "Installed .claude/skills/process/incident.md\n" +
-  "Installed .claude/skills/process/reviewer.md\n"
+  "Installed .claude/skills/process/reviewer.md\n" +
+  shippedReviewers.map((file) => `Installed .claude/skills/process/${file}\n`).join("")
 
 let project = ""
 
@@ -26,27 +31,18 @@ afterEach(() => {
 })
 
 describe("process-factory init in an empty working directory", () => {
-  it("prints the eight Installed lines in order, with incident.md as the seventh, nothing to standard error, and exits with 0", () => {
+  it("prints the eight Installed lines of the fixed files in order, with incident.md as the seventh and reviewer.md as the eighth, then one line per shipped reviewer, nothing to standard error, and exits with 0", () => {
     const result = runCommand(project, ["init"])
     expect(result.stderr).toBe("")
     expect(result.stdout).toBe(installedLines)
     expect(result.status).toBe(0)
   })
 
-  it("creates .claude/skills/process with exactly the eight files, each byte-identical to its template", () => {
+  it("creates .claude/skills/process with exactly the eight fixed files and the shipped reviewers, each byte-identical to its template", () => {
     expect(runCommand(project, ["init"]).status).toBe(0)
-    expect(entries(project, installedFolder)).toEqual([
-      "SKILL.md",
-      "case-writer.md",
-      "draft-writer.md",
-      "incident.md",
-      "interviewer.md",
-      "questioner.md",
-      "reviewer.md",
-      "spec-writer.md",
-    ])
-    for (const file of eightFiles) {
-      const template = readFileSync(path.join(root, "templates/skills/process", file))
+    expect(entries(project, installedFolder)).toEqual([...eightFiles, ...shippedReviewers].sort())
+    for (const file of [...eightFiles, ...shippedReviewers]) {
+      const template = readFileSync(path.join(root, templateFolder, file))
       expect(readFileSync(path.join(project, installedFolder, file)).equals(template)).toBe(true)
     }
   })
@@ -76,7 +72,7 @@ describe("process-factory init from an installed copy", () => {
 describe("the copies that Claude Code loads in this repository", () => {
   it("has the eight files in .claude/skills/process, each byte-identical to its template", () => {
     for (const file of eightFiles) {
-      const template = path.join(root, "templates/skills/process", file)
+      const template = path.join(root, templateFolder, file)
       const copy = path.join(root, installedFolder, file)
       expect(existsSync(template)).toBe(true)
       expect(existsSync(copy)).toBe(true)
