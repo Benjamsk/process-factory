@@ -8,25 +8,25 @@ describe("the section The command line of the skill", () => {
     expect(text).toContain('run only `new "<title>" "<prompt>"`, `show`, `show <process-id>` and `org init`')
   })
 
-  it("names four exceptions to the rule that Claude writes no files, the fourth being the spec writer", () => {
+  it("names five exceptions to the rule that Claude writes no files, the fourth being the spec writer", () => {
     const text = section(skillTemplate, "The command line")
     expect(text).toContain("Only the command line writes the store.")
     expect(text).toContain("Do not create, change or delete files yourself, and do not start factory jobs.")
-    expect(text).toContain("There are four exceptions, and you write no other file.")
+    expect(text).toContain("There are five exceptions, and you write no other file.")
     expect(text).toContain(
       "In the step `Write the spec` the spec writer you start writes `spec.md` and at most one `questions-<n>.md` in the folder of the process, as `spec-writer.md` says.",
     )
   })
 
-  it("starts no agent except the questioner and the spec writer", () => {
+  it("starts no agent except the questioner, the spec writer and the case writer", () => {
     expect(section(skillTemplate, "The command line")).toContain(
-      "Start no agent, except the questioner in the step `Ask the questions` and the spec writer in the step `Write the spec`.",
+      "Start no agent, except the questioner in the step `Ask the questions`, the spec writer in the step `Write the spec` and the case writer in the step `Write the cases`.",
     )
   })
 })
 
 describe("the headings of the skill", () => {
-  it("has thirteen level 2 headings, ending with Collect the answers and Write the spec", () => {
+  it("has fourteen level 2 headings, ending with Write the spec and Write the cases", () => {
     expect(headings(skillTemplate, 2)).toEqual([
       "The command line",
       "The organisation context",
@@ -41,13 +41,14 @@ describe("the headings of the skill", () => {
       "Ask the questions",
       "Collect the answers",
       "Write the spec",
+      "Write the cases",
     ])
   })
 
-  it("has # Process Factory as its only line that starts with # and thirteen lines that start with ##", () => {
+  it("has # Process Factory as its only line that starts with # and fourteen lines that start with ##", () => {
     const lines = readFile(root, skillTemplate).split(/\r?\n/)
     expect(lines.filter((line) => line.startsWith("# "))).toEqual(["# Process Factory"])
-    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(13)
+    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(14)
   })
 })
 
@@ -57,7 +58,7 @@ describe("the section Run the stage of the skill", () => {
       "| `intake` | Ask the questions |",
       "| `clarify` | Collect the answers |",
       "| `spec` | Write the spec |",
-      "| `cases` | None yet |",
+      "| `cases` | Write the cases |",
       "| `draft` | None yet |",
       "| `review` | None yet |",
       "| `rework` | None yet |",
@@ -120,7 +121,7 @@ describe("the section Write the spec of the skill", () => {
     const lines = sectionLines(skillTemplate, "Write the spec")
     const text = lines.join("\n")
     expect(text).toContain("When the user says yes, run `accept-spec <process-id>`")
-    expect(text).toContain("the factory cannot run the stage `cases` yet")
+    expect(text).toContain("that `/process next <process-id>` writes the simulation cases")
     expect(text).toContain("When the user says anything else, run nothing and move nothing.")
     expect(text).toContain("the process stays in the stage `spec`")
     const movesToCases = lines.filter((line) => line.includes("accept-spec <process-id>"))
