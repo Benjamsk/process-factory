@@ -131,7 +131,7 @@ describe("process-factory org without exactly init", () => {
     ["org alone", ["org"]],
     ["the arguments org init extra", ["org", "init", "extra"]],
     ["the arguments org show", ["org", "show"]],
-  ])("prints the eight usage lines to standard error, exits with 1 and creates nothing with %s", (_name, args) => {
+  ])("prints the nine usage lines to standard error, exits with 1 and creates nothing with %s", (_name, args) => {
     const result = runCommand(project, args)
     expect(result.stderr).toBe(usage)
     expect(result.stdout).toBe("")

@@ -221,7 +221,7 @@ describe("the usage of process-factory", () => {
     ["no argument", []],
     ["accept-spec alone", ["accept-spec"]],
     ["the arguments accept-spec a b", ["accept-spec", "a", "b"]],
-  ])("has eight lines, with accept-spec after answer, and is printed with %s", (_name, args) => {
+  ])("has nine lines, with accept-spec after answer, and is printed with %s", (_name, args) => {
     const result = runCommand(project, args)
 
     expect(result.stderr).toBe(

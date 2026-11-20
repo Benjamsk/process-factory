@@ -16,8 +16,8 @@ import {
 } from "./rounds.ts"
 
 const timeForm = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
-const eightLines =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory org init\n'
+const nineLines =
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory org init\n       process-factory check\n'
 
 let project = ""
 
@@ -51,10 +51,10 @@ describe("the usage of process-factory", () => {
     ["no argument", []],
     ["round alone", ["round"]],
     ["the arguments round a b", ["round", "a", "b"]],
-  ])("has eight lines, with round after accept-spec, and is printed with %s", (_name, args) => {
+  ])("has nine lines, with round after accept-spec, and is printed with %s", (_name, args) => {
     const result = runCommand(project, args)
 
-    expect(result.stderr).toBe(eightLines)
+    expect(result.stderr).toBe(nineLines)
     expect(result.stderr).toBe(usage)
     expect(result.stdout).toBe("")
     expect(result.status).toBe(1)
