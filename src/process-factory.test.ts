@@ -7,10 +7,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 const repositoryRoot = path.resolve(import.meta.dirname, "..")
 const commandFile = path.join(repositoryRoot, "bin", "process-factory.mjs")
 const skillFolder = ".claude/skills/process"
-const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md", "draft-writer.md"]
+const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md", "draft-writer.md", "reviewer.md"]
 const boardPath = "processes/board.json"
 const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory org init\n       process-factory check\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory org init\n       process-factory check\n'
 const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.md", "authority.md"]
 const timeForm = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
 
@@ -68,7 +68,7 @@ function storedHistory(entry: Record<string, unknown> | undefined): Record<strin
 }
 
 describe("process-factory init", () => {
-  it("copies the six templates byte for byte into an empty folder and reports each one", () => {
+  it("copies the templates of the skill byte for byte into an empty folder and reports each one", () => {
     const result = runCommand(["init"])
     expect(result.stdout).toBe(skillFiles.map((file) => `Installed ${skillFolder}/${file}\n`).join(""))
     expect(result.stderr).toBe("")
@@ -77,7 +77,7 @@ describe("process-factory init", () => {
     expect(installedFilesEqualTheirTemplates()).toBe(true)
   })
 
-  it("replaces older copies of the six files of the skill", () => {
+  it("replaces older copies of the files of the skill", () => {
     for (const file of skillFiles) writeWorkingFile(`${skillFolder}/${file}`, "old\n")
     expect(runCommand(["init"]).status).toBe(0)
     expect(installedFilesEqualTheirTemplates()).toBe(true)
@@ -671,6 +671,191 @@ describe("process-factory accept-spec", () => {
   })
 })
 
+describe("process-factory round", () => {
+  const processFolder = "processes/001-handle-a-breach"
+  const cannotLine = "process-factory: cannot record a round of 001-handle-a-breach"
+  const staysLine = "process-factory: 001-handle-a-breach stays in review: /process next 001-handle-a-breach runs a new round"
+
+  function findingsText(name: string, verdict: string, tags: string[]): string {
+    const findings = tags.length === 0 ? "No findings.\n" : tags.map((tag) => `- [${tag}] Step 3: the deadline is missing.\n`).join("")
+    return `# ${name} review of draft-1.md\n\nVerdict: ${verdict}\n\n${findings}`
+  }
+
+  /** A process in `review` with these reviewers installed, `draft-1.md` and, for each round, the findings files it names. */
+  function prepareReview(reviewers: string[], rounds: Record<number, Record<string, string>>, more: Record<string, unknown> = {}): void {
+    writeBoardFile([
+      { id: "001-handle-a-breach", title: "Handle a breach", stage: "review", history: [{ at: "2026-11-18T17:02:11.123Z", stage: "review" }], ...more },
+    ])
+    writeWorkingFile(`${skillFolder}/reviewer.md`, "# Reviewer\n")
+    for (const reviewer of reviewers) writeWorkingFile(`${skillFolder}/${reviewer}-reviewer.md`, `# ${reviewer} reviewer\n`)
+    writeWorkingFile(`${processFolder}/drafts/draft-1.md`, "# Handle a breach\n")
+    for (const [round, files] of Object.entries(rounds)) {
+      for (const [file, content] of Object.entries(files)) writeWorkingFile(`${processFolder}/rounds/round-${round}/${file}`, content)
+    }
+  }
+
+  it("records the round with the draft and the verdicts, moves the process to rework and prints the findings per tag", () => {
+    prepareReview(["legal", "readability"], {
+      1: { "legal.md": findingsText("legal", "CHANGES", ["high", "medium"]), "readability.md": findingsText("readability", "PASS", ["low"]) },
+    })
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stdout).toBe(
+      `Recorded ${processFolder}/rounds/round-1 for draft-1.md\n  legal  CHANGES  1 high, 1 medium, 0 low\n  readability  PASS  0 high, 0 medium, 1 low\nrework\n`,
+    )
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    const entry = storedProcesses()[0]
+    const changes = storedHistory(entry)
+    expect(changes[1]?.stage).toBe("rework")
+    expect(changes[1]?.at).toMatch(timeForm)
+    expect(entry?.stage).toBe("rework")
+    expect(entry?.rounds).toEqual([
+      {
+        round: 1,
+        draft: "draft-1.md",
+        at: changes[1]?.at,
+        verdicts: [
+          { reviewer: "legal", verdict: "CHANGES" },
+          { reviewer: "readability", verdict: "PASS" },
+        ],
+      },
+    ])
+  })
+
+  it("moves the process to approval when every verdict is PASS", () => {
+    prepareReview(["legal"], { 1: { "legal.md": findingsText("legal", "PASS", []) } })
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stdout).toBe(`Recorded ${processFolder}/rounds/round-1 for draft-1.md\n  legal  PASS  0 high, 0 medium, 0 low\napproval\n`)
+    expect(result.status).toBe(0)
+    expect(storedProcesses()[0]?.stage).toBe("approval")
+  })
+
+  it("records the highest round folder after the rounds that are already there and keeps them", () => {
+    const first = { round: 1, draft: "draft-1.md", at: "2026-11-18T17:05:40.456Z", verdicts: [{ reviewer: "legal", verdict: "CHANGES" }] }
+    prepareReview(
+      ["legal"],
+      { 1: { "legal.md": findingsText("legal", "CHANGES", ["high"]) }, 2: { "legal.md": findingsText("legal", "PASS", []) } },
+      { rounds: [first] },
+    )
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stdout.split("\n")[0]).toBe(`Recorded ${processFolder}/rounds/round-2 for draft-1.md`)
+    expect(result.status).toBe(0)
+    expect(storedProcesses()[0]?.rounds).toEqual([
+      first,
+      { round: 2, draft: "draft-1.md", at: expect.stringMatching(timeForm), verdicts: [{ reviewer: "legal", verdict: "PASS" }] },
+    ])
+  })
+
+  it.each([
+    ["a file that is not there", "legal.md", "", "is missing"],
+    ["a file without a verdict line", "legal.md", "# legal review of draft-1.md\n\nNo findings.\n", "must have exactly one line Verdict: PASS or Verdict: CHANGES"],
+    ["a file with two verdict lines", "legal.md", "# legal review of draft-1.md\n\nVerdict: PASS\nVerdict: PASS\n", "must have exactly one line Verdict: PASS or Verdict: CHANGES"],
+    ["a file with the verdict OK", "legal.md", findingsText("legal", "OK", []), "must have exactly one line Verdict: PASS or Verdict: CHANGES"],
+    [
+      "a line that starts with - but is no finding",
+      "legal.md",
+      "# legal review of draft-1.md\n\nVerdict: CHANGES\n\n- [urgent] Step 3: the deadline is missing.\n- [high] Step 3: the deadline is missing.\n",
+      'line 5 starts with "- " but is not a finding tagged [high], [medium] or [low]',
+    ],
+    ["a PASS file with a medium finding", "legal.md", findingsText("legal", "PASS", ["medium"]), "the verdict is PASS but it has findings tagged high or medium"],
+    ["a CHANGES file with only low findings", "legal.md", findingsText("legal", "CHANGES", ["low"]), "the verdict is CHANGES but it has no finding tagged high or medium"],
+  ])("refuses %s, names it and leaves the board as it was", (_name, file, content, reason) => {
+    prepareReview(["legal"], { 1: content === "" ? { "notes.md": "nothing\n" } : { [file]: content } })
+    const before = readWorkingFile(boardPath)
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stderr).toBe(
+      `process-factory: cannot record round 1 of 001-handle-a-breach: these findings files in ${processFolder}/rounds/round-1 are missing or malformed\n  ${file}: ${reason}\n${staysLine}\n`,
+    )
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(readWorkingFile(boardPath)).toBe(before)
+  })
+
+  it("names every failing file in the order of the reviewers", () => {
+    prepareReview(["legal", "readability"], { 1: { "readability.md": findingsText("readability", "PASS", ["high"]) } })
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stderr).toBe(
+      `process-factory: cannot record round 1 of 001-handle-a-breach: these findings files in ${processFolder}/rounds/round-1 are missing or malformed\n  legal.md: is missing\n  readability.md: the verdict is PASS but it has findings tagged high or medium\n${staysLine}\n`,
+    )
+    expect(result.status).toBe(1)
+  })
+
+  it("says there is no process for an id that is not on the board", () => {
+    prepareReview(["legal"], { 1: { "legal.md": findingsText("legal", "PASS", []) } })
+
+    const result = runCommand(["round", "../../outside"])
+
+    expect(result.stderr).toBe("process-factory: there is no process ../../outside\n")
+    expect(result.status).toBe(1)
+  })
+
+  it("names the stage of a process that is not in review", () => {
+    prepareReview(["legal"], { 1: { "legal.md": findingsText("legal", "PASS", []) } })
+    writeBoardFile([{ id: "001-handle-a-breach", title: "Handle a breach", stage: "draft" }])
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stderr).toBe(`${cannotLine}: it is in the stage draft, not in review\n`)
+    expect(result.status).toBe(1)
+  })
+
+  it("says no reviewer is installed when only reviewer.md lies next to the skill", () => {
+    prepareReview([], { 1: { "legal.md": findingsText("legal", "PASS", []) } })
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stderr).toBe(`${cannotLine}: no reviewer is installed in ${skillFolder}\n`)
+    expect(result.status).toBe(1)
+  })
+
+  it("says there is no round folder and, for a round without a draft, that there is no draft", () => {
+    prepareReview(["legal"], {})
+
+    expect(runCommand(["round", "001-handle-a-breach"]).stderr).toBe(`${cannotLine}: there is no round folder in ${processFolder}/rounds\n`)
+
+    writeWorkingFile(`${processFolder}/rounds/round-1/legal.md`, findingsText("legal", "PASS", []))
+    rmSync(path.join(workingDirectory, processFolder, "drafts"), { recursive: true })
+
+    expect(runCommand(["round", "001-handle-a-breach"]).stderr).toBe(`${cannotLine}: there is no draft in ${processFolder}/drafts\n`)
+  })
+
+  it("says the newest round is already recorded", () => {
+    prepareReview(
+      ["legal"],
+      { 1: { "legal.md": findingsText("legal", "PASS", []) } },
+      { rounds: [{ round: 1, draft: "draft-1.md", at: "2026-11-18T17:05:40.456Z", verdicts: [{ reviewer: "legal", verdict: "PASS" }] }] },
+    )
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stderr).toBe(`${cannotLine}: round 1 is already recorded\n`)
+    expect(result.status).toBe(1)
+  })
+
+  it("prints Rounds: with one line per round between the Stage line and the History line, and only for a process with rounds", () => {
+    prepareReview(["legal", "readability"], {
+      1: { "legal.md": findingsText("legal", "CHANGES", ["high"]), "readability.md": findingsText("readability", "PASS", []) },
+    })
+    runCommand(["round", "001-handle-a-breach"])
+
+    const lines = runCommand(["show", "001-handle-a-breach"]).stdout.split("\n")
+
+    expect(lines.slice(2, 6)).toEqual(["Stage: rework", "Rounds:", "  1  draft-1.md  legal CHANGES, readability PASS", "History:"])
+    writeBoardFile([{ id: "002-handle-a-breach", title: "Handle a breach", stage: "review", rounds: [] }])
+    expect(runCommand(["show", "002-handle-a-breach"]).stdout).not.toContain("Rounds:")
+  })
+})
+
 describe("process-factory org init", () => {
   it("creates the five files in the fixed order, reports each one and copies the templates", () => {
     const result = runCommand(["org", "init"])
@@ -851,7 +1036,7 @@ describe("process-factory move to published and process-factory check", () => {
 })
 
 describe("process-factory with anything other than a command", () => {
-  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b", "c"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]], [["org"]], [["org", "init", "extra"]], [["answer"]], [["answer", "a"]], [["answer", "a", "b", "c"]], [["accept-spec"]], [["accept-spec", "a", "b"]], [["check", "extra"]], [["org", "check"]]])(
+  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b", "c"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]], [["org"]], [["org", "init", "extra"]], [["answer"]], [["answer", "a"]], [["answer", "a", "b", "c"]], [["accept-spec"]], [["accept-spec", "a", "b"]], [["round"]], [["round", "a", "b"]], [["check", "extra"]], [["org", "check"]]])(
     "prints the usage and writes nothing for %j",
     (commandArguments) => {
       const result = runCommand(commandArguments)
