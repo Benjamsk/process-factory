@@ -4,7 +4,7 @@ import path from "node:path"
 
 const skillFolder = ".claude/skills/process"
 /** The files of the skill, in the order `init` installs them. */
-const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md"]
+const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md"]
 const boardPath = "processes/board.json"
 const processFolders = ["cases", "drafts", "rounds", "versions", "feedback"]
 /** The files of the organisation context, in the order `org init` creates them. */
