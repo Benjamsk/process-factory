@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { binFile, emptyFolder, entries, installedFolder, root, runCommand, runNode } from "../010-clarifying-questions/clarify.ts"
 
 const specWriterTemplate = "templates/skills/process/spec-writer.md"
-const fiveFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md"]
-const installedLines = fiveFiles.map((file) => `Installed ${installedFolder}/${file}\n`).join("")
+const sixFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md", "draft-writer.md"]
+const installedLines = sixFiles.map((file) => `Installed ${installedFolder}/${file}\n`).join("")
 
 let project = ""
 
@@ -18,17 +18,17 @@ afterEach(() => {
 })
 
 describe("process-factory init in an empty working directory", () => {
-  it("prints the five Installed lines in order, with spec-writer.md as the fourth, nothing to standard error, and exits with 0", () => {
+  it("prints the six Installed lines in order, with spec-writer.md as the fourth, nothing to standard error, and exits with 0", () => {
     const result = runCommand(project, ["init"])
     expect(result.stderr).toBe("")
     expect(result.stdout).toBe(installedLines)
     expect(result.status).toBe(0)
   })
 
-  it("creates .claude/skills/process with exactly the five files, each byte-identical to its template", () => {
+  it("creates .claude/skills/process with exactly the six files, each byte-identical to its template", () => {
     expect(runCommand(project, ["init"]).status).toBe(0)
-    expect(entries(project, installedFolder)).toEqual([...fiveFiles].sort())
-    for (const file of fiveFiles) {
+    expect(entries(project, installedFolder)).toEqual([...sixFiles].sort())
+    for (const file of sixFiles) {
       const template = readFileSync(path.join(root, "templates/skills/process", file))
       expect(readFileSync(path.join(project, installedFolder, file)).equals(template)).toBe(true)
     }
@@ -57,8 +57,8 @@ describe("process-factory init from an installed copy", () => {
 })
 
 describe("the copies that Claude Code loads in this repository", () => {
-  it("has the five files in .claude/skills/process, each byte-identical to its template", () => {
-    for (const file of fiveFiles) {
+  it("has the six files in .claude/skills/process, each byte-identical to its template", () => {
+    for (const file of sixFiles) {
       const template = path.join(root, "templates/skills/process", file)
       const copy = path.join(root, installedFolder, file)
       expect(existsSync(template)).toBe(true)

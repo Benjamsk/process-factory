@@ -10,9 +10,9 @@ describe("the section The command line of the skill", () => {
     expect(text).not.toContain("move <process-id> cases")
   })
 
-  it("names five exceptions to the rule that Claude writes no files, the fifth being the case writer", () => {
+  it("names six exceptions to the rule that Claude writes no files, the fifth being the case writer", () => {
     const text = section(skillTemplate, "The command line")
-    expect(text).toContain("There are five exceptions, and you write no other file.")
+    expect(text).toContain("There are six exceptions, and you write no other file.")
     expect(text).toContain(
       "In the step `Write the cases` the case writer you start writes new files `case-<n>.md` in the folder `cases` of the process, as `case-writer.md` says.",
     )
@@ -21,15 +21,15 @@ describe("the section The command line of the skill", () => {
     )
   })
 
-  it("starts no agent except the questioner, the spec writer and the case writer", () => {
+  it("starts no agent except the questioner, the spec writer, the case writer and the draft writer", () => {
     expect(section(skillTemplate, "The command line")).toContain(
-      "Start no agent, except the questioner in the step `Ask the questions`, the spec writer in the step `Write the spec` and the case writer in the step `Write the cases`.",
+      "Start no agent, except the questioner in the step `Ask the questions`, the spec writer in the step `Write the spec`, the case writer in the step `Write the cases` and the draft writer in the step `Write the draft`.",
     )
   })
 })
 
 describe("the headings of the skill", () => {
-  it("has fourteen level 2 headings, ending with Write the spec and Write the cases", () => {
+  it("has fifteen level 2 headings, ending with Write the cases and Write the draft", () => {
     expect(headings(skillTemplate, 2)).toEqual([
       "The command line",
       "The organisation context",
@@ -45,13 +45,14 @@ describe("the headings of the skill", () => {
       "Collect the answers",
       "Write the spec",
       "Write the cases",
+      "Write the draft",
     ])
   })
 
-  it("has # Process Factory as its only line that starts with # and fourteen lines that start with ##", () => {
+  it("has # Process Factory as its only line that starts with # and fifteen lines that start with ##", () => {
     const lines = readFile(root, skillTemplate).split(/\r?\n/)
     expect(lines.filter((line) => line.startsWith("# "))).toEqual(["# Process Factory"])
-    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(14)
+    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(15)
   })
 })
 
@@ -62,7 +63,7 @@ describe("the section Run the stage of the skill", () => {
       "| `clarify` | Collect the answers |",
       "| `spec` | Write the spec |",
       "| `cases` | Write the cases |",
-      "| `draft` | None yet |",
+      "| `draft` | Write the draft |",
       "| `review` | None yet |",
       "| `rework` | None yet |",
       "| `approval` | None yet |",
@@ -111,7 +112,7 @@ describe("the section Write the cases of the skill", () => {
     expect(text).toContain("starts with `CASES WRITTEN`")
     expect(text).toContain("list every case with its number and its title")
     expect(text).toContain("run `move <process-id> draft`")
-    expect(text).toContain("the factory cannot run the stage `draft` yet")
+    expect(text).toContain("that `/process next <process-id>` writes the draft")
     expect(lines.filter((line) => line.includes("move <process-id> draft"))).toHaveLength(1)
   })
 

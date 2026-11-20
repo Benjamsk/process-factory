@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 const repositoryRoot = path.resolve(import.meta.dirname, "..")
 const commandFile = path.join(repositoryRoot, "bin", "process-factory.mjs")
 const skillFolder = ".claude/skills/process"
-const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md"]
+const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md", "draft-writer.md"]
 const boardPath = "processes/board.json"
 const usage =
   'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory org init\n'
@@ -68,7 +68,7 @@ function storedHistory(entry: Record<string, unknown> | undefined): Record<strin
 }
 
 describe("process-factory init", () => {
-  it("copies the five templates byte for byte into an empty folder and reports each one", () => {
+  it("copies the six templates byte for byte into an empty folder and reports each one", () => {
     const result = runCommand(["init"])
     expect(result.stdout).toBe(skillFiles.map((file) => `Installed ${skillFolder}/${file}\n`).join(""))
     expect(result.stderr).toBe("")
@@ -77,7 +77,7 @@ describe("process-factory init", () => {
     expect(installedFilesEqualTheirTemplates()).toBe(true)
   })
 
-  it("replaces older copies of the five files of the skill", () => {
+  it("replaces older copies of the six files of the skill", () => {
     for (const file of skillFiles) writeWorkingFile(`${skillFolder}/${file}`, "old\n")
     expect(runCommand(["init"]).status).toBe(0)
     expect(installedFilesEqualTheirTemplates()).toBe(true)
