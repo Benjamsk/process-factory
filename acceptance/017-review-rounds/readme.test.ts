@@ -19,8 +19,9 @@ describe("the Status section of README.md", () => {
     expect(text.indexOf(otherStages)).toBeGreaterThan(text.indexOf(rework))
   })
 
-  it("says no reviewer is part of the package yet", () => {
-    expect(readmeStatus()).toContain("No reviewer is part of the package yet")
+  it("no longer says that no reviewer is part of the package, and still says what next does without a reviewer", () => {
+    expect(readmeStatus()).not.toContain("No reviewer is part of the package yet")
+    expect(readmeStatus()).toContain("`next` on a process in `review` says so and moves nothing.")
   })
 
   it("says init also writes reviewer.md and one file for every reviewer the package ships", () => {
