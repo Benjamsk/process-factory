@@ -1,12 +1,19 @@
 import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { binFile, emptyFolder, entries, root, runCommand, runNode, writeFile } from "../010-clarifying-questions/clarify.ts"
+import { binFile, emptyFolder, entries, root, runCommand, runNode, skillFiles, writeFile } from "../010-clarifying-questions/clarify.ts"
 import { installedFolder, reviewerTemplate } from "./rounds.ts"
 
 const templateFolder = "templates/skills/process"
 const sevenFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md", "draft-writer.md", "reviewer.md"]
-const sevenLines = sevenFiles.map((file) => `Installed ${installedFolder}/${file}\n`).join("")
+const sevenLines = installedLines(sevenFiles)
+/** The reviewers the package ships, sorted by name: what `skillFiles` holds after the seven fixed files. */
+const shippedReviewers = skillFiles.slice(sevenFiles.length)
+
+/** The lines `init` prints for these files, in their order. */
+function installedLines(files: string[]): string {
+  return files.map((file) => `Installed ${installedFolder}/${file}\n`).join("")
+}
 
 let project = ""
 
@@ -29,22 +36,24 @@ function installedPackage(): string {
 }
 
 describe("process-factory init with the templates of this repository", () => {
-  it("ships reviewer.md and no <name>-reviewer.md", () => {
+  it("ships reviewer.md, which is one of the seven files and not a reviewer", () => {
     expect(existsSync(path.join(root, reviewerTemplate))).toBe(true)
-    expect(entries(root, templateFolder).filter((name) => name.endsWith("-reviewer.md"))).toEqual([])
+    expect(skillFiles.slice(0, sevenFiles.length)).toEqual(sevenFiles)
+    expect(shippedReviewers).toEqual(entries(root, templateFolder).filter((name) => name.endsWith("-reviewer.md")))
+    expect(shippedReviewers).not.toContain("reviewer.md")
   })
 
-  it("prints the seven Installed lines in order, ending with reviewer.md, nothing to standard error, and exits with 0", () => {
+  it("prints the seven Installed lines in order, ending with reviewer.md, then one line per shipped reviewer, nothing to standard error, and exits with 0", () => {
     const result = runCommand(project, ["init"])
     expect(result.stderr).toBe("")
-    expect(result.stdout).toBe(sevenLines)
+    expect(result.stdout).toBe(sevenLines + installedLines(shippedReviewers))
     expect(result.status).toBe(0)
   })
 
-  it("creates .claude/skills/process with exactly the seven files, each byte-identical to its template", () => {
+  it("creates .claude/skills/process with exactly the seven files and the shipped reviewers, each byte-identical to its template", () => {
     expect(runCommand(project, ["init"]).status).toBe(0)
-    expect(entries(project, installedFolder)).toEqual([...sevenFiles].sort())
-    for (const file of sevenFiles) {
+    expect(entries(project, installedFolder)).toEqual([...sevenFiles, ...shippedReviewers].sort())
+    for (const file of [...sevenFiles, ...shippedReviewers]) {
       const template = readFileSync(path.join(root, templateFolder, file))
       expect(readFileSync(path.join(project, installedFolder, file)).equals(template)).toBe(true)
     }
@@ -60,7 +69,7 @@ describe("process-factory init from an installed copy", () => {
     const result = runNode(project, path.join("node_modules", "process-factory", binFile), ["init"])
 
     expect(result.stderr).toBe("")
-    expect(result.stdout).toBe(sevenLines)
+    expect(result.stdout).toBe(sevenLines + installedLines(shippedReviewers))
     expect(result.status).toBe(0)
     const installed = readFileSync(path.join(project, installedFolder, "reviewer.md"))
     expect(installed.equals(readFileSync(path.join(packageFolder, reviewerTemplate)))).toBe(true)
@@ -77,9 +86,10 @@ describe("process-factory init from an installed copy", () => {
     const result = runNode(project, path.join("node_modules", "process-factory", binFile), ["init"])
 
     expect(result.stderr).toBe("")
-    expect(result.stdout).toBe(`${sevenLines}Installed ${installedFolder}/alpha-reviewer.md\nInstalled ${installedFolder}/zeta-reviewer.md\n`)
+    const reviewers = [...shippedReviewers, "alpha-reviewer.md", "zeta-reviewer.md"].sort()
+    expect(result.stdout).toBe(sevenLines + installedLines(reviewers))
     expect(result.status).toBe(0)
-    expect(entries(project, installedFolder)).toEqual([...sevenFiles, "alpha-reviewer.md", "zeta-reviewer.md"].sort())
+    expect(entries(project, installedFolder)).toEqual([...sevenFiles, ...reviewers].sort())
     expect(readFileSync(path.join(project, installedFolder, "alpha-reviewer.md"), "utf8")).toBe("# Alpha reviewer\n")
     expect(readFileSync(path.join(project, installedFolder, "zeta-reviewer.md"), "utf8")).toBe("# Zeta reviewer\n")
   })
