@@ -1,17 +1,10 @@
 import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { binFile, emptyFolder, entries, installedFolder, root, runCommand, runNode } from "../010-clarifying-questions/clarify.ts"
+import { binFile, emptyFolder, entries, installedFolder, root, runCommand, runNode, skillFiles } from "../010-clarifying-questions/clarify.ts"
 
 const draftWriterTemplate = "templates/skills/process/draft-writer.md"
-const sixFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md", "draft-writer.md"]
-const installedLines =
-  "Installed .claude/skills/process/SKILL.md\n" +
-  "Installed .claude/skills/process/interviewer.md\n" +
-  "Installed .claude/skills/process/questioner.md\n" +
-  "Installed .claude/skills/process/spec-writer.md\n" +
-  "Installed .claude/skills/process/case-writer.md\n" +
-  "Installed .claude/skills/process/draft-writer.md\n"
+const installedLines = skillFiles.map((file) => `Installed .claude/skills/process/${file}\n`).join("")
 
 let project = ""
 
@@ -24,24 +17,17 @@ afterEach(() => {
 })
 
 describe("process-factory init in an empty working directory", () => {
-  it("prints the six Installed lines in order, ending with draft-writer.md, nothing to standard error, and exits with 0", () => {
+  it("prints one Installed line per file of the skill in order, with draft-writer.md as the sixth, nothing to standard error, and exits with 0", () => {
     const result = runCommand(project, ["init"])
     expect(result.stderr).toBe("")
     expect(result.stdout).toBe(installedLines)
     expect(result.status).toBe(0)
   })
 
-  it("creates .claude/skills/process with exactly the six files, each byte-identical to its template", () => {
+  it("creates .claude/skills/process with exactly the files of the skill, each byte-identical to its template", () => {
     expect(runCommand(project, ["init"]).status).toBe(0)
-    expect(entries(project, installedFolder)).toEqual([
-      "SKILL.md",
-      "case-writer.md",
-      "draft-writer.md",
-      "interviewer.md",
-      "questioner.md",
-      "spec-writer.md",
-    ])
-    for (const file of sixFiles) {
+    expect(entries(project, installedFolder)).toEqual([...skillFiles].sort())
+    for (const file of skillFiles) {
       const template = readFileSync(path.join(root, "templates/skills/process", file))
       expect(readFileSync(path.join(project, installedFolder, file)).equals(template)).toBe(true)
     }
@@ -70,8 +56,8 @@ describe("process-factory init from an installed copy", () => {
 })
 
 describe("the copies that Claude Code loads in this repository", () => {
-  it("has the six files in .claude/skills/process, each byte-identical to its template", () => {
-    for (const file of sixFiles) {
+  it("has the files of the skill in .claude/skills/process, each byte-identical to its template", () => {
+    for (const file of skillFiles) {
       const template = path.join(root, "templates/skills/process", file)
       const copy = path.join(root, installedFolder, file)
       expect(existsSync(template)).toBe(true)

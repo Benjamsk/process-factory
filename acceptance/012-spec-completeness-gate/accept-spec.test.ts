@@ -221,11 +221,11 @@ describe("the usage of process-factory", () => {
     ["no argument", []],
     ["accept-spec alone", ["accept-spec"]],
     ["the arguments accept-spec a b", ["accept-spec", "a", "b"]],
-  ])("has eight lines, with accept-spec after answer, and is printed with %s", (_name, args) => {
+  ])("has nine lines, with accept-spec after answer, and is printed with %s", (_name, args) => {
     const result = runCommand(project, args)
 
     expect(result.stderr).toBe(
-      'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory org init\n       process-factory check\n',
+      'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory org init\n       process-factory check\n',
     )
     expect(result.stderr).toBe(usage)
     expect(result.stdout).toBe("")

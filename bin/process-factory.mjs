@@ -4,8 +4,8 @@ import { constants, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSy
 import path from "node:path"
 
 const skillFolder = ".claude/skills/process"
-/** The files of the skill, in the order `init` installs them. */
-const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md", "draft-writer.md"]
+/** The files of the skill, in the order `init` installs them, before the reviewers the package ships. */
+const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md", "draft-writer.md", "reviewer.md"]
 const boardPath = "processes/board.json"
 const processFolders = ["cases", "drafts", "rounds", "versions", "feedback"]
 /** The files of the organisation context, in the order `org init` creates them. */
@@ -14,6 +14,8 @@ const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.
 const specSections = ["Trigger", "Scope", "Roles", "Steps", "AI steps", "Deadlines", "Legal basis", "Duties to notify", "Escalation", "Records", "Dependencies"]
 /** The kinds of dependency the command line watches, each with the file of `organisation/` that describes them. */
 const dependencyFiles = { Role: "organisation/roles.md", System: "organisation/systems.md", Agreement: "organisation/processors.md", Policy: "organisation/policies.md" }
+/** The tags of a finding, in the order `round` counts them. */
+const findingTags = ["high", "medium", "low"]
 /** The ten stages, each with the stages a process may move to from it. */
 const allowedMoves = {
   intake: ["clarify", "spec"],
@@ -33,12 +35,24 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error)
 }
 
+/** The names of the files `<name>-reviewer.md` in a folder, sorted, empty when the folder cannot be read. */
+function reviewerFiles(folder) {
+  let names
+  try {
+    names = readdirSync(folder)
+  } catch {
+    return []
+  }
+  return names.filter((name) => /^[a-z0-9-]+-reviewer\.md$/.test(name)).sort()
+}
+
 function installSkill() {
-  for (const file of skillFiles) {
+  const templateFolder = path.join(packageFolder, "templates", "skills", "process")
+  for (const file of [...skillFiles, ...reviewerFiles(templateFolder)]) {
     const targetFile = path.join(process.cwd(), skillFolder, file)
     try {
       mkdirSync(path.dirname(targetFile), { recursive: true })
-      copyFileSync(path.join(packageFolder, "templates", "skills", "process", file), targetFile)
+      copyFileSync(path.join(templateFolder, file), targetFile)
     } catch (error) {
       process.stderr.write(`process-factory: cannot write ${skillFolder}/${file}: ${errorMessage(error)}\n`)
       return 1
@@ -153,8 +167,8 @@ function moveProcess(id, stage) {
   return 0
 }
 
-/** The highest number among the files `questions-<n>.md` in the folder, or null when there is none. */
-function newestQuestionsNumber(folder) {
+/** The highest number among the names of a folder that match the pattern, or null when there is none. */
+function newestNumber(folder, pattern) {
   let names
   try {
     names = readdirSync(folder)
@@ -162,7 +176,7 @@ function newestQuestionsNumber(folder) {
     return null
   }
   const numbers = names.flatMap((name) => {
-    const match = /^questions-(\d+)\.md$/.exec(name)
+    const match = pattern.exec(name)
     return match === null ? [] : [Number(match[1])]
   })
   return numbers.length === 0 ? null : Math.max(...numbers)
@@ -182,7 +196,7 @@ function answerProcess(id, file) {
     return 1
   }
   const folder = `processes/${id}`
-  const number = newestQuestionsNumber(path.join(process.cwd(), folder))
+  const number = newestNumber(path.join(process.cwd(), folder), /^questions-(\d+)\.md$/)
   if (number === null) {
     process.stderr.write(`process-factory: cannot answer ${id}: there is no questions file in ${folder}\n`)
     return 1
@@ -275,7 +289,7 @@ function acceptSpec(id) {
   if (open.length > 0) {
     process.stderr.write(`process-factory: cannot accept the spec of ${id}: these sections of ${folder}/spec.md are open\n`)
     for (const name of open) process.stderr.write(`  ${name}\n`)
-    const number = newestQuestionsNumber(path.join(process.cwd(), folder))
+    const number = newestNumber(path.join(process.cwd(), folder), /^questions-(\d+)\.md$/)
     if (number !== null && !existsSync(path.join(process.cwd(), folder, `answers-${number}.md`))) {
       process.stderr.write(`process-factory: ${folder}/questions-${number}.md has no answers yet: ${id} moves to clarify\n`)
       moveProcess(id, "clarify")
@@ -293,6 +307,81 @@ function acceptSpec(id) {
   return 0
 }
 
+/** The verdict and the findings per tag of a findings file, or the reason why it is refused. */
+function readFindingsFile(file) {
+  const lines = fileLines(file)
+  if (lines === null) return { reason: "is missing" }
+  const verdictLines = lines.filter((line) => line.startsWith("Verdict:"))
+  if (verdictLines.length !== 1 || !["Verdict: PASS", "Verdict: CHANGES"].includes(verdictLines[0])) {
+    return { reason: "must have exactly one line Verdict: PASS or Verdict: CHANGES" }
+  }
+  const wrongLine = lines.findIndex((line) => line.startsWith("- ") && !/^- \[(high|medium|low)\] \S/.test(line))
+  if (wrongLine !== -1) {
+    return { reason: `line ${wrongLine + 1} starts with "- " but is not a finding tagged [high], [medium] or [low]` }
+  }
+  const verdict = verdictLines[0].replace("Verdict: ", "")
+  const counts = findingTags.map((tag) => lines.filter((line) => line.startsWith(`- [${tag}] `)).length)
+  const asksForChanges = counts[0] + counts[1] > 0
+  if (verdict === "PASS" && asksForChanges) return { reason: "the verdict is PASS but it has findings tagged high or medium" }
+  if (verdict === "CHANGES" && !asksForChanges) return { reason: "the verdict is CHANGES but it has no finding tagged high or medium" }
+  return { verdict, counts }
+}
+
+function recordRound(id) {
+  const processes = readProcessesOrPrintReason()
+  if (processes === null) return 1
+  if (!/^[a-z0-9-]+$/.test(id)) {
+    process.stderr.write(`process-factory: there is no process ${id}\n`)
+    return 1
+  }
+  const entry = findProcessOrPrintReason(processes, id)
+  if (entry === undefined) return 1
+  const cannot = `process-factory: cannot record a round of ${id}`
+  if (entry.stage !== "review") {
+    process.stderr.write(`${cannot}: it is in the stage ${entry.stage}, not in review\n`)
+    return 1
+  }
+  const reviewers = reviewerFiles(path.join(process.cwd(), skillFolder)).map((file) => file.replace("-reviewer.md", ""))
+  if (reviewers.length === 0) {
+    process.stderr.write(`${cannot}: no reviewer is installed in ${skillFolder}\n`)
+    return 1
+  }
+  const folder = `processes/${id}`
+  const round = newestNumber(path.join(process.cwd(), folder, "rounds"), /^round-(\d+)$/)
+  if (round === null) {
+    process.stderr.write(`${cannot}: there is no round folder in ${folder}/rounds\n`)
+    return 1
+  }
+  const recorded = entry.rounds ?? []
+  if (recorded.some((entered) => entered.round === round)) {
+    process.stderr.write(`${cannot}: round ${round} is already recorded\n`)
+    return 1
+  }
+  const draftNumber = newestNumber(path.join(process.cwd(), folder, "drafts"), /^draft-(\d+)\.md$/)
+  if (draftNumber === null) {
+    process.stderr.write(`${cannot}: there is no draft in ${folder}/drafts\n`)
+    return 1
+  }
+  const roundFolder = `${folder}/rounds/round-${round}`
+  const read = reviewers.map((reviewer) => ({ reviewer, ...readFindingsFile(path.join(process.cwd(), roundFolder, `${reviewer}.md`)) }))
+  const refused = read.filter((file) => file.reason !== undefined)
+  if (refused.length > 0) {
+    process.stderr.write(`process-factory: cannot record round ${round} of ${id}: these findings files in ${roundFolder} are missing or malformed\n`)
+    for (const file of refused) process.stderr.write(`  ${file.reviewer}.md: ${file.reason}\n`)
+    process.stderr.write(`process-factory: ${id} stays in review: /process next ${id} runs a new round\n`)
+    return 1
+  }
+  const at = new Date().toISOString()
+  const draft = `draft-${draftNumber}.md`
+  entry.stage = read.some((file) => file.verdict === "CHANGES") ? "rework" : "approval"
+  entry.history = [...(entry.history ?? []), { at, stage: entry.stage }]
+  entry.rounds = [...recorded, { round, draft, at, verdicts: read.map(({ reviewer, verdict }) => ({ reviewer, verdict })) }]
+  writeBoard(processes)
+  const verdicts = read.map((file) => `  ${file.reviewer}  ${file.verdict}  ${file.counts.map((count, index) => `${count} ${findingTags[index]}`).join(", ")}`)
+  process.stdout.write(`${[`Recorded ${roundFolder} for ${draft}`, ...verdicts, entry.stage].join("\n")}\n`)
+  return 0
+}
+
 function showProcesses(id) {
   const processes = readProcessesOrPrintReason()
   if (processes === null) return 1
@@ -305,6 +394,10 @@ function showProcesses(id) {
   if (entry === undefined) return 1
   const lines = [entry.id, `Title: ${entry.title}`, `Stage: ${entry.stage}`]
   if (entry.specAcceptedAt !== undefined) lines.push(`Spec accepted: ${entry.specAcceptedAt}`)
+  if ((entry.rounds ?? []).length > 0) {
+    lines.push("Rounds:")
+    for (const round of entry.rounds) lines.push(`  ${round.round}  ${round.draft}  ${round.verdicts.map((given) => `${given.reviewer} ${given.verdict}`).join(", ")}`)
+  }
   lines.push("History:")
   for (const change of entry.history ?? []) lines.push(`  ${change.at}  ${change.stage}`)
   process.stdout.write(`${lines.join("\n")}\n`)
@@ -361,7 +454,7 @@ function checkDependencies() {
 
 function printUsage() {
   process.stderr.write(
-    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory org init\n       process-factory check\n',
+    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory org init\n       process-factory check\n',
   )
   return 1
 }
@@ -372,6 +465,7 @@ else if ((commandArguments.length === 2 || commandArguments.length === 3) && com
 else if (commandArguments.length === 3 && commandArguments[0] === "move") process.exitCode = moveProcess(commandArguments[1], commandArguments[2])
 else if (commandArguments.length === 3 && commandArguments[0] === "answer") process.exitCode = answerProcess(commandArguments[1], commandArguments[2])
 else if (commandArguments.length === 2 && commandArguments[0] === "accept-spec") process.exitCode = acceptSpec(commandArguments[1])
+else if (commandArguments.length === 2 && commandArguments[0] === "round") process.exitCode = recordRound(commandArguments[1])
 else if (commandArguments.length <= 2 && commandArguments[0] === "show") process.exitCode = showProcesses(commandArguments[1])
 else if (commandArguments.length === 2 && commandArguments[0] === "org" && commandArguments[1] === "init") process.exitCode = initialiseOrganisation()
 else if (commandArguments.length === 1 && commandArguments[0] === "check") process.exitCode = checkDependencies()
