@@ -113,7 +113,7 @@ describe("process-factory accept-spec with an open section and no questions file
     expect(readFile(project, boardFile)).toBe(before)
   })
 
-  it("names the open sections in the order of the ten, whatever their order in the file", () => {
+  it("names the open sections in the order of the eleven, whatever their order in the file", () => {
     const reversed = [...sections].reverse()
     writeProcess(project, "spec", `# Specification: Handle a lost laptop\n\n${reversed.map((name) => sectionText(name, !["Records", "Scope"].includes(name))).join("\n")}`)
 
@@ -123,7 +123,7 @@ describe("process-factory accept-spec with an open section and no questions file
     expect(result.status).toBe(1)
   })
 
-  it("names all ten sections, in order, for a process without a spec.md", () => {
+  it("names all eleven sections, in order, for a process without a spec.md", () => {
     writeProcess(project, "spec")
     const before = readFile(project, boardFile)
 
@@ -221,11 +221,11 @@ describe("the usage of process-factory", () => {
     ["no argument", []],
     ["accept-spec alone", ["accept-spec"]],
     ["the arguments accept-spec a b", ["accept-spec", "a", "b"]],
-  ])("has seven lines, with accept-spec after answer, and is printed with %s", (_name, args) => {
+  ])("has eight lines, with accept-spec after answer, and is printed with %s", (_name, args) => {
     const result = runCommand(project, args)
 
     expect(result.stderr).toBe(
-      'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory org init\n',
+      'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory org init\n       process-factory check\n',
     )
     expect(result.stderr).toBe(usage)
     expect(result.stdout).toBe("")

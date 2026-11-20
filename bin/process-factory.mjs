@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createHash } from "node:crypto"
 import { constants, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
@@ -9,8 +10,10 @@ const boardPath = "processes/board.json"
 const processFolders = ["cases", "drafts", "rounds", "versions", "feedback"]
 /** The files of the organisation context, in the order `org init` creates them. */
 const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.md", "authority.md"]
-/** The ten sections of a specification, in the order of `spec-writer.md`. */
-const specSections = ["Trigger", "Scope", "Roles", "Steps", "AI steps", "Deadlines", "Legal basis", "Duties to notify", "Escalation", "Records"]
+/** The eleven sections of a specification, in the order of `spec-writer.md`. */
+const specSections = ["Trigger", "Scope", "Roles", "Steps", "AI steps", "Deadlines", "Legal basis", "Duties to notify", "Escalation", "Records", "Dependencies"]
+/** The kinds of dependency the command line watches, each with the file of `organisation/` that describes them. */
+const dependencyFiles = { Role: "organisation/roles.md", System: "organisation/systems.md", Agreement: "organisation/processors.md", Policy: "organisation/policies.md" }
 /** The ten stages, each with the stages a process may move to from it. */
 const allowedMoves = {
   intake: ["clarify", "spec"],
@@ -139,6 +142,12 @@ function moveProcess(id, stage) {
   }
   entry.stage = stage
   entry.history = [...(entry.history ?? []), { at: new Date().toISOString(), stage }]
+  if (stage === "published") {
+    entry.dependencies = specDependencies(path.join(process.cwd(), "processes", id)).map((dependency) => ({
+      ...dependency,
+      hash: dependencyHash(dependency.kind, dependency.name),
+    }))
+  }
   writeBoard(processes)
   process.stdout.write(`${stage}\n`)
   return 0
@@ -200,23 +209,52 @@ function answerProcess(id, file) {
   return moveProcess(id, "spec")
 }
 
-/** The sections of a `spec.md` that are not marked decided, in the order of the ten. */
-function openSpecSections(folder) {
-  let lines
+/** The lines of a file, each without the whitespace at its end, or null when it cannot be read. */
+function fileLines(file) {
   try {
-    lines = readFileSync(path.join(folder, "spec.md"), "utf8")
+    return readFileSync(file, "utf8")
       .split(/\r?\n/)
       .map((line) => line.trimEnd())
   } catch {
-    return specSections
+    return null
   }
+}
+
+/** The lines after `## <heading>` up to the next line that starts with `## `, or null when there is no such heading. */
+function sectionLines(lines, heading) {
+  const start = lines.indexOf(`## ${heading}`)
+  if (start === -1) return null
+  const body = lines.slice(start + 1)
+  const end = body.findIndex((line) => line.startsWith("## "))
+  return end === -1 ? body : body.slice(0, end)
+}
+
+/** The sections of a `spec.md` that are not marked decided, in the order of the eleven. */
+function openSpecSections(folder) {
+  const lines = fileLines(path.join(folder, "spec.md"))
+  if (lines === null) return specSections
   return specSections.filter((name) => {
-    const heading = lines.indexOf(`## ${name}`)
-    if (heading === -1) return true
-    const body = lines.slice(heading + 1)
-    const end = body.findIndex((line) => line.startsWith("## "))
-    return (end === -1 ? body : body.slice(0, end)).find((line) => line !== "") !== "Status: decided"
+    const body = sectionLines(lines, name)
+    return body === null || body.find((line) => line !== "") !== "Status: decided"
   })
+}
+
+/** The `Role`, `System`, `Agreement` and `Policy` lines of the section `Dependencies` of a `spec.md`, in their order. */
+function specDependencies(folder) {
+  const lines = fileLines(path.join(folder, "spec.md"))
+  const body = lines === null ? null : sectionLines(lines, "Dependencies")
+  if (body === null) return []
+  return body.flatMap((line) => {
+    const dependency = /^- (Role|System|Agreement|Policy): (.+)$/.exec(line)
+    return dependency === null ? [] : [{ kind: dependency[1], name: dependency[2] }]
+  })
+}
+
+/** The hash of the section `## <name>` in the file of this kind, or null when the file or the section is missing. */
+function dependencyHash(kind, name) {
+  const lines = fileLines(path.join(process.cwd(), dependencyFiles[kind]))
+  const body = lines === null ? null : sectionLines(lines, name)
+  return body === null ? null : createHash("sha256").update(body.join("\n").trim()).digest("hex")
 }
 
 function acceptSpec(id) {
@@ -300,9 +338,30 @@ function initialiseOrganisation() {
   return 0
 }
 
+/** Lists every published process of which a recorded dependency changed in `organisation/` or is gone. */
+function checkDependencies() {
+  const processes = readProcessesOrPrintReason()
+  if (processes === null) return 1
+  const listed = []
+  for (const entry of processes) {
+    if (entry.stage !== "published") continue
+    const changed = (entry.dependencies ?? []).flatMap((dependency) => {
+      const hash = dependencyHash(dependency.kind, dependency.name)
+      if (hash === dependency.hash) return []
+      const file = dependencyFiles[dependency.kind]
+      const what = hash === null ? `removed from ${file}` : `changed in ${file}`
+      return [`  ${dependency.kind}: ${dependency.name}  ${what}`]
+    })
+    if (changed.length > 0) listed.push(`${entry.id}  ${entry.title}`, ...changed)
+  }
+  if (listed.length === 0) process.stdout.write("No published process has a changed dependency.\n")
+  else process.stdout.write(`Work waiting for the owner:\n${listed.join("\n")}\n`)
+  return 0
+}
+
 function printUsage() {
   process.stderr.write(
-    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory org init\n',
+    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory org init\n       process-factory check\n',
   )
   return 1
 }
@@ -315,4 +374,5 @@ else if (commandArguments.length === 3 && commandArguments[0] === "answer") proc
 else if (commandArguments.length === 2 && commandArguments[0] === "accept-spec") process.exitCode = acceptSpec(commandArguments[1])
 else if (commandArguments.length <= 2 && commandArguments[0] === "show") process.exitCode = showProcesses(commandArguments[1])
 else if (commandArguments.length === 2 && commandArguments[0] === "org" && commandArguments[1] === "init") process.exitCode = initialiseOrganisation()
+else if (commandArguments.length === 1 && commandArguments[0] === "check") process.exitCode = checkDependencies()
 else process.exitCode = printUsage()

@@ -138,7 +138,7 @@ The step of the stage `clarify`. You do it yourself, in this conversation: start
 
 ## Write the spec
 
-The step of the stage `spec`. A spec writer, an agent you start, writes `processes/<process-id>/spec.md`, the specification of the process, in ten sections that are each decided or open. Every run of this step writes the specification anew.
+The step of the stage `spec`. A spec writer, an agent you start, writes `processes/<process-id>/spec.md`, the specification of the process, in eleven sections that are each decided or open. Every run of this step writes the specification anew.
 
 1. Check that the file `spec-writer.md` lies next to this skill file, in `.claude/skills/process/`. When it is missing, tell the user that `process-factory init` installs it, and stop.
 2. Start one general-purpose agent and wait for it. Give it exactly this task, with the id of the process filled in: `Read the file .claude/skills/process/spec-writer.md and do what it says for the process <process-id>.`

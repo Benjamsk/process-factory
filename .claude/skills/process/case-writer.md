@@ -21,7 +21,7 @@ Read no other file of the process.
 
 ## Before you write
 
-The ten sections of a specification are `Trigger`, `Scope`, `Roles`, `Steps`, `AI steps`, `Deadlines`, `Legal basis`, `Duties to notify`, `Escalation` and `Records`. When `spec.md` is missing, or one of the ten has no heading or does not have `Status: decided` as the first line under its heading, write nothing and reply as `Your reply` says.
+The eleven sections of a specification are `Trigger`, `Scope`, `Roles`, `Steps`, `AI steps`, `Deadlines`, `Legal basis`, `Duties to notify`, `Escalation`, `Records` and `Dependencies`. When `spec.md` is missing, or one of the eleven has no heading or does not have `Status: decided` as the first line under its heading, write nothing and reply as `Your reply` says.
 
 ## The kinds of cases
 

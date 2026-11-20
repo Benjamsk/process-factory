@@ -9,13 +9,14 @@ describe("the form of templates/skills/process/spec-writer.md", () => {
     expect(headings(specWriter, 1)).toEqual(["Spec writer"])
   })
 
-  it("has the seven level 2 headings of the spec, in order", () => {
+  it("has the eight level 2 headings of the spec, in order", () => {
     expect(headings(specWriter, 2)).toEqual([
       "Rules",
       "What you read",
-      "The ten sections",
+      "The eleven sections",
       "Decided or open",
       "The specification",
+      "The dependencies",
       "The questions file",
       "Your reply",
     ])
@@ -68,9 +69,9 @@ describe("the section What you read of the spec writer file", () => {
   })
 })
 
-describe("the section The ten sections of the spec writer file", () => {
-  it("has a table with the ten sections of a specification, in order", () => {
-    const firstCells = tableRows(specWriter, "The ten sections").map((row) => row.split("|")[1]?.trim())
+describe("the section The eleven sections of the spec writer file", () => {
+  it("has a table with the eleven sections of a specification, in order", () => {
+    const firstCells = tableRows(specWriter, "The eleven sections").map((row) => row.split("|")[1]?.trim())
     expect(firstCells).toEqual([
       "Trigger",
       "Scope",
@@ -82,6 +83,7 @@ describe("the section The ten sections of the spec writer file", () => {
       "Duties to notify",
       "Escalation",
       "Records",
+      "Dependencies",
     ])
   })
 })
@@ -116,7 +118,7 @@ describe("the section The specification of the spec writer file", () => {
     expect(lines).toContain("Status: open")
   })
 
-  it("fixes the ten headings and the Status line under each", () => {
+  it("fixes the eleven headings and the Status line under each", () => {
     const text = section(specWriter, "The specification")
     expect(text).toContain("The first line under each heading is `Status: decided` or `Status: open`.")
     expect(text).toContain("there is no other level 2 heading")
