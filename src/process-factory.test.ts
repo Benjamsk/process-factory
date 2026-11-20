@@ -7,7 +7,18 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 const repositoryRoot = path.resolve(import.meta.dirname, "..")
 const commandFile = path.join(repositoryRoot, "bin", "process-factory.mjs")
 const skillFolder = ".claude/skills/process"
-const skillFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md", "draft-writer.md", "reviewer.md"]
+const skillFiles = [
+  "SKILL.md",
+  "interviewer.md",
+  "questioner.md",
+  "spec-writer.md",
+  "case-writer.md",
+  "draft-writer.md",
+  "reviewer.md",
+  ...readdirSync(path.join(repositoryRoot, "templates", "skills", "process"))
+    .filter((name) => /^[a-z0-9-]+-reviewer\.md$/.test(name))
+    .sort(),
+]
 const boardPath = "processes/board.json"
 const usage =
   'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory org init\n       process-factory check\n'
