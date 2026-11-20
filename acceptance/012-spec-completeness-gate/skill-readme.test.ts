@@ -19,7 +19,7 @@ describe("the section Write the spec of the skill", () => {
     const text = section(skillTemplate, "Write the spec")
     expect(text).toContain("When the user says yes, run `accept-spec <process-id>`")
     expect(text).toContain("records that the user accepted the specification")
-    expect(text).toContain("the factory cannot run the stage `cases` yet")
+    expect(text).toContain("that `/process next <process-id>` writes the simulation cases")
     expect(text).toContain("When it fails, show the user everything it printed, unchanged, and stop.")
   })
 
@@ -34,9 +34,9 @@ describe("the section Write the spec of the skill", () => {
 })
 
 describe("the skill as a whole", () => {
-  it("names move <process-id> cases nowhere and keeps its thirteen level 2 headings", () => {
+  it("names move <process-id> cases nowhere and has fourteen level 2 headings", () => {
     expect(readFile(root, skillTemplate)).not.toContain("move <process-id> cases")
-    expect(headings(skillTemplate, 2)).toHaveLength(13)
+    expect(headings(skillTemplate, 2)).toHaveLength(14)
   })
 })
 
