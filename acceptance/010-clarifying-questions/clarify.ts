@@ -9,7 +9,7 @@ export const boardFile = "processes/board.json"
 export const skillTemplate = "templates/skills/process/SKILL.md"
 export const questionerTemplate = "templates/skills/process/questioner.md"
 export const installedFolder = ".claude/skills/process"
-/** The files of the skill, in the order `init` installs them: the seven fixed files, then every reviewer the package ships, sorted by name. */
+/** The files of the skill, in the order `init` installs them: the eight fixed files, then every reviewer the package ships, sorted by name. */
 export const skillFiles = [
   "SKILL.md",
   "interviewer.md",
@@ -17,6 +17,7 @@ export const skillFiles = [
   "spec-writer.md",
   "case-writer.md",
   "draft-writer.md",
+  "incident.md",
   "reviewer.md",
   ...readdirSync(path.join(root, "templates/skills/process"))
     .filter((name) => /^[a-z0-9-]+-reviewer\.md$/.test(name))

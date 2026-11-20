@@ -16,9 +16,9 @@ describe("the section The command line of the skill", () => {
     expect(text).not.toContain("move <process-id> cases")
   })
 
-  it("names eight exceptions to the rule that Claude writes no files, the last two being the reviewers and the rework", () => {
+  it("names nine exceptions to the rule that Claude writes no files, the seventh and the eighth being the reviewers and the rework", () => {
     const text = section(skillTemplate, "The command line")
-    expect(text).toContain("There are eight exceptions, and you write no other file.")
+    expect(text).toContain("There are nine exceptions, and you write no other file.")
     expect(text).toContain(
       "In the step `Review the draft` every reviewer you start writes one findings file `<name>.md` in the folder `rounds/round-<n>` of the process, as `reviewer.md` says.",
     )
@@ -29,7 +29,7 @@ describe("the section The command line of the skill", () => {
 
   it("keeps the six exceptions it named before", () => {
     const text = section(skillTemplate, "The command line")
-    expect(text).toContain("There are eight exceptions")
+    expect(text).toContain("There are nine exceptions")
     expect(text).toContain("In the interview of `/process org` you write the files in `organisation/` as `interviewer.md` says.")
     expect(text).toContain("In the step `Ask the questions` the questioner you start writes one `questions-<n>.md` in the folder of the process, as `questioner.md` says.")
     expect(text).toContain("In the step `Collect the answers` you write `.process-answers.md` in the project's folder.")
@@ -52,7 +52,7 @@ describe("the section The command line of the skill", () => {
 })
 
 describe("the headings of the skill", () => {
-  it("has seventeen level 2 headings, ending with Write the draft, Review the draft and Rework the draft", () => {
+  it("has eighteen level 2 headings, ending with Write the draft, Review the draft and Rework the draft", () => {
     expect(headings(skillTemplate, 2)).toEqual([
       "The command line",
       "The organisation context",
@@ -61,6 +61,7 @@ describe("the headings of the skill", () => {
       "Create a process",
       "Create the organisation context",
       "Interview the user",
+      "Record an incident",
       "Show the board",
       "Show one process",
       "Run the stage",
@@ -74,10 +75,10 @@ describe("the headings of the skill", () => {
     ])
   })
 
-  it("has # Process Factory as its only line that starts with # and seventeen lines that start with ##", () => {
+  it("has # Process Factory as its only line that starts with # and eighteen lines that start with ##", () => {
     const lines = readFile(root, skillTemplate).split(/\r?\n/)
     expect(lines.filter((line) => line.startsWith("# "))).toEqual(["# Process Factory"])
-    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(17)
+    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(18)
   })
 })
 

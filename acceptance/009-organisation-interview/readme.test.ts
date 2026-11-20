@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest"
 import { readmeStatus } from "./interview.ts"
 
 describe("the Status section of README.md", () => {
-  it("says init writes the skill, and interviewer.md, questioner.md, spec-writer.md, case-writer.md and draft-writer.md next to it", () => {
+  it("says init writes the skill, and interviewer.md, questioner.md, spec-writer.md, case-writer.md, draft-writer.md and incident.md next to it", () => {
     expect(readmeStatus()).toContain(
-      "That writes `.claude/skills/process/SKILL.md`, and `interviewer.md`, `questioner.md`, `spec-writer.md`, `case-writer.md` and `draft-writer.md` next to it",
+      "That writes `.claude/skills/process/SKILL.md`, and `interviewer.md`, `questioner.md`, `spec-writer.md`, `case-writer.md`, `draft-writer.md` and `incident.md` next to it",
     )
     expect(readmeStatus()).toContain("pnpm exec process-factory init")
   })

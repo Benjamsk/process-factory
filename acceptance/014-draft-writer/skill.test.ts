@@ -11,9 +11,9 @@ describe("the section The command line of the skill", () => {
     expect(text).not.toContain("move <process-id> cases")
   })
 
-  it("names eight exceptions to the rule that Claude writes no files, the sixth being the draft writer", () => {
+  it("names nine exceptions to the rule that Claude writes no files, the sixth being the draft writer", () => {
     const text = section(skillTemplate, "The command line")
-    expect(text).toContain("There are eight exceptions, and you write no other file.")
+    expect(text).toContain("There are nine exceptions, and you write no other file.")
     expect(text).toContain(
       "In the step `Write the draft` the draft writer you start writes one new file `draft-<n>.md` in the folder `drafts` of the process, as `draft-writer.md` says.",
     )
@@ -30,7 +30,7 @@ describe("the section The command line of the skill", () => {
 })
 
 describe("the headings of the skill", () => {
-  it("has seventeen level 2 headings, ending with Review the draft and Rework the draft", () => {
+  it("has eighteen level 2 headings, ending with Review the draft and Rework the draft", () => {
     expect(headings(skillTemplate, 2)).toEqual([
       "The command line",
       "The organisation context",
@@ -39,6 +39,7 @@ describe("the headings of the skill", () => {
       "Create a process",
       "Create the organisation context",
       "Interview the user",
+      "Record an incident",
       "Show the board",
       "Show one process",
       "Run the stage",
@@ -52,10 +53,10 @@ describe("the headings of the skill", () => {
     ])
   })
 
-  it("has # Process Factory as its only line that starts with # and seventeen lines that start with ##", () => {
+  it("has # Process Factory as its only line that starts with # and eighteen lines that start with ##", () => {
     const lines = readFile(root, skillTemplate).split(/\r?\n/)
     expect(lines.filter((line) => line.startsWith("# "))).toEqual(["# Process Factory"])
-    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(17)
+    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(18)
   })
 })
 
