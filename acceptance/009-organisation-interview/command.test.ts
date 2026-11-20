@@ -14,7 +14,7 @@ import {
   writeFile,
 } from "./interview.ts"
 
-const installedLines = `Installed ${installedFolder}/SKILL.md\nInstalled ${installedFolder}/interviewer.md\nInstalled ${installedFolder}/questioner.md\nInstalled ${installedFolder}/spec-writer.md\nInstalled ${installedFolder}/case-writer.md\n`
+const installedLines = `Installed ${installedFolder}/SKILL.md\nInstalled ${installedFolder}/interviewer.md\nInstalled ${installedFolder}/questioner.md\nInstalled ${installedFolder}/spec-writer.md\nInstalled ${installedFolder}/case-writer.md\nInstalled ${installedFolder}/draft-writer.md\n`
 
 let project = ""
 
@@ -31,20 +31,20 @@ function installed(file: string): Buffer {
 }
 
 describe("process-factory init in an empty working directory", () => {
-  it("prints the five Installed lines in order, nothing to standard error, and exits with 0", () => {
+  it("prints the six Installed lines in order, nothing to standard error, and exits with 0", () => {
     const result = runCommand(project, ["init"])
     expect(result.stderr).toBe("")
     expect(result.stdout).toBe(installedLines)
     expect(result.status).toBe(0)
   })
 
-  it("creates .claude/skills/process with exactly SKILL.md, case-writer.md, interviewer.md, questioner.md and spec-writer.md, each byte-identical to its template", () => {
+  it("creates .claude/skills/process with exactly SKILL.md, case-writer.md, draft-writer.md, interviewer.md, questioner.md and spec-writer.md, each byte-identical to its template", () => {
     expect(existsSync(path.join(root, interviewerTemplate))).toBe(true)
     expect(runCommand(project, ["init"]).status).toBe(0)
     expect(entries(project)).toEqual([".claude"])
     expect(entries(project, ".claude")).toEqual(["skills"])
     expect(entries(project, ".claude/skills")).toEqual(["process"])
-    expect(entries(project, installedFolder)).toEqual(["SKILL.md", "case-writer.md", "interviewer.md", "questioner.md", "spec-writer.md"])
+    expect(entries(project, installedFolder)).toEqual(["SKILL.md", "case-writer.md", "draft-writer.md", "interviewer.md", "questioner.md", "spec-writer.md"])
     expect(installed("SKILL.md").equals(readFileSync(path.join(root, skillTemplate)))).toBe(true)
     expect(installed("interviewer.md").equals(readFileSync(path.join(root, interviewerTemplate)))).toBe(true)
   })
