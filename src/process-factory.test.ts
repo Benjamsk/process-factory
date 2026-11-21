@@ -1432,6 +1432,160 @@ describe("process-factory owner and process-factory approve", () => {
   })
 })
 
+describe("the version that process-factory move to published writes", () => {
+  const processId = "001-handle-a-lost-laptop"
+  const owner = "Kari Nordmann"
+  const processFolder = `processes/${processId}`
+  const draftText = "# Handle a lost laptop\n\nDraft 2.\n"
+  const specText = "# Specification: Handle a lost laptop\n\n## Dependencies\n\nStatus: decided\n"
+
+  /** Writes a board with the process in approval, the drafts 1 and 2 and the approval of `draft-2.md`, with further keys of the entry in `more`. */
+  function prepareApproval(more: Record<string, unknown> = {}): void {
+    writeBoardFile([
+      { id: processId, title: "Handle a lost laptop", stage: "approval", history: [{ at: "2026-11-20T17:00:00.000Z", stage: "approval" }], owner, ...more },
+    ])
+    writeWorkingFile(`${processFolder}/drafts/draft-1.md`, "# Handle a lost laptop\n\nDraft 1.\n")
+    writeWorkingFile(`${processFolder}/drafts/draft-2.md`, draftText)
+    writeWorkingFile(`${processFolder}/versions/approval-draft-2.md`, `# Approval of draft-2.md\n\nApproved by: ${owner}\nApproved at: 2026-11-21T10:00:00.000Z\n`)
+  }
+
+  function writeSpecAndCases(): void {
+    writeWorkingFile(`${processFolder}/spec.md`, specText)
+    writeWorkingFile(`${processFolder}/cases/case-1.md`, "# Case 1: The laptop is lost on a train\n")
+    writeWorkingFile(`${processFolder}/cases/case-2.md`, "# Case 2: The laptop is stolen\n")
+  }
+
+  function publish() {
+    return runCommand(["move", processId, "published"])
+  }
+
+  /** The names in a folder of the working directory, sorted. */
+  function names(folder: string): string[] {
+    return readdirSync(path.join(workingDirectory, folder)).sort()
+  }
+
+  /** The list under `versions` of the entry of the process, or an empty list when it has none. */
+  function storedVersions(): Record<string, unknown>[] {
+    const list: unknown = storedProcesses()[0]?.versions
+    return Array.isArray(list) ? list.filter(isRecord) : []
+  }
+
+  it("copies the newest draft, the spec, the cases and the approval into versions/1 and leaves the originals where they were", () => {
+    prepareApproval()
+    writeSpecAndCases()
+    writeWorkingFile(`${processFolder}/cases/notes.md`, "Notes.\n")
+    const approval = readWorkingFile(`${processFolder}/versions/approval-draft-2.md`)
+
+    const result = publish()
+
+    expect(result.stdout).toBe("published\n")
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    expect(names(`${processFolder}/versions/1`)).toEqual(["approval.md", "cases", "process.md", "spec.md"])
+    expect(names(`${processFolder}/versions/1/cases`)).toEqual(["case-1.md", "case-2.md"])
+    expect(readWorkingFile(`${processFolder}/versions/1/process.md`)).toBe(draftText)
+    expect(readWorkingFile(`${processFolder}/versions/1/spec.md`)).toBe(specText)
+    expect(readWorkingFile(`${processFolder}/versions/1/cases/case-1.md`)).toBe("# Case 1: The laptop is lost on a train\n")
+    expect(readWorkingFile(`${processFolder}/versions/1/approval.md`)).toBe(approval)
+    expect(names(`${processFolder}/drafts`)).toEqual(["draft-1.md", "draft-2.md"])
+    expect(readWorkingFile(`${processFolder}/spec.md`)).toBe(specText)
+    expect(readWorkingFile(`${processFolder}/versions/approval-draft-2.md`)).toBe(approval)
+  })
+
+  it("writes a version with an empty folder cases and no spec.md for a process that has neither", () => {
+    prepareApproval()
+
+    expect(publish().status).toBe(0)
+
+    expect(names(`${processFolder}/versions/1`)).toEqual(["approval.md", "cases", "process.md"])
+    expect(names(`${processFolder}/versions/1/cases`)).toEqual([])
+  })
+
+  it("writes versions/2 for a second publication with the spec as it is then and leaves versions/1 as it was", () => {
+    prepareApproval()
+    writeSpecAndCases()
+    expect(publish().status).toBe(0)
+    for (const stage of ["regenerate", "review", "approval"]) expect(runCommand(["move", processId, stage]).status).toBe(0)
+    const changedSpec = `${specText}\n- Role: Head of IT\n`
+    writeWorkingFile(`${processFolder}/spec.md`, changedSpec)
+
+    expect(publish().status).toBe(0)
+
+    expect(readWorkingFile(`${processFolder}/versions/2/spec.md`)).toBe(changedSpec)
+    expect(readWorkingFile(`${processFolder}/versions/1/spec.md`)).toBe(specText)
+    expect(storedVersions().map((stored) => stored.version)).toEqual([1, 2])
+  })
+
+  it("takes the number above a version folder that is already there, which it leaves as it was, and above the versions on the board", () => {
+    prepareApproval()
+    writeWorkingFile(`${processFolder}/versions/1/kept.md`, "Kept.\n")
+
+    expect(publish().status).toBe(0)
+
+    expect(names(`${processFolder}/versions/1`)).toEqual(["kept.md"])
+    expect(names(`${processFolder}/versions/2`)).toEqual(["approval.md", "cases", "process.md"])
+    expect(storedVersions().map((stored) => stored.version)).toEqual([2])
+
+    prepareApproval({ versions: [{ version: 7, draft: "draft-1.md", at: "2026-11-20T18:00:00.000Z" }] })
+
+    expect(publish().status).toBe(0)
+
+    expect(names(`${processFolder}/versions/8`)).toEqual(["approval.md", "cases", "process.md"])
+    expect(storedVersions().map((stored) => stored.version)).toEqual([7, 8])
+  })
+
+  it("stores the version with its draft, who approved it and the time of the history entry", () => {
+    prepareApproval()
+
+    expect(publish().status).toBe(0)
+
+    const published = storedHistory(storedProcesses()[0]).at(-1)
+    expect(published?.stage).toBe("published")
+    expect(storedVersions()).toEqual([{ version: 1, draft: "draft-2.md", approvedBy: owner, at: published?.at }])
+    expect(String(published?.at)).toMatch(timeForm)
+  })
+
+  it("leaves approvedBy out when the approval file has no line that starts with Approved by:", () => {
+    prepareApproval()
+    writeWorkingFile(`${processFolder}/versions/approval-draft-2.md`, "# Approval of draft-2.md\n")
+
+    expect(publish().status).toBe(0)
+
+    const versions = storedVersions()
+    expect(Object.keys(versions[0] ?? {}).sort()).toEqual(["at", "draft", "version"])
+    expect(versions[0]).toMatchObject({ version: 1, draft: "draft-2.md" })
+  })
+
+  it("prints Versions: with one line per version between the lines of Rounds: and the line History:, and only for a process with versions", () => {
+    writeBoardFile([
+      {
+        id: processId,
+        title: "Handle a lost laptop",
+        stage: "published",
+        history: [{ at: "2026-11-20T17:00:00.000Z", stage: "published" }],
+        rounds: [{ round: 1, draft: "draft-2.md", at: "2026-11-20T16:00:00.000Z", verdicts: [{ reviewer: "legal", verdict: "PASS" }] }],
+        versions: [
+          { version: 1, draft: "draft-2.md", approvedBy: owner, at: "2026-11-21T10:05:00.000Z" },
+          { version: 2, draft: "draft-3.md", at: "2026-11-22T09:00:00.000Z" },
+        ],
+      },
+    ])
+
+    const lines = runCommand(["show", processId]).stdout.split("\n")
+
+    expect(lines.slice(3, 9)).toEqual([
+      "Rounds:",
+      "  1  draft-2.md  legal PASS",
+      "Versions:",
+      "  1  draft-2.md  Kari Nordmann  2026-11-21T10:05:00.000Z",
+      "  2  draft-3.md  2026-11-22T09:00:00.000Z",
+      "History:",
+    ])
+    writeBoardFile([{ id: processId, title: "Handle a lost laptop", stage: "published", versions: [] }])
+    expect(runCommand(["show", processId]).stdout).not.toContain("Versions:")
+  })
+})
+
 describe("process-factory with anything other than a command", () => {
   it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b", "c"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]], [["org"]], [["org", "init", "extra"]], [["answer"]], [["answer", "a"]], [["answer", "a", "b", "c"]], [["accept-spec"]], [["accept-spec", "a", "b"]], [["round"]], [["round", "a", "b"]], [["owner", "a"]], [["owner", "a", "b", "c"]], [["approve", "a"]], [["approve", "a", "b"]], [["approve", "a", "--as", "b"]], [["approve", "a", "--by", "b", "c"]], [["check", "extra"]], [["org", "check"]]])(
     "prints the usage and writes nothing for %j",
