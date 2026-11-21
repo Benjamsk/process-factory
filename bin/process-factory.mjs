@@ -169,19 +169,25 @@ function moveProcess(id, stage) {
   return 0
 }
 
-/** The highest number among the names of a folder that match the pattern, or null when there is none. */
-function newestNumber(folder, pattern) {
+/** The numbers in the names of a folder that match the pattern, in ascending order, empty when the folder cannot be read. */
+function folderNumbers(folder, pattern) {
   let names
   try {
     names = readdirSync(folder)
   } catch {
-    return null
+    return []
   }
-  const numbers = names.flatMap((name) => {
-    const match = pattern.exec(name)
-    return match === null ? [] : [Number(match[1])]
-  })
-  return numbers.length === 0 ? null : Math.max(...numbers)
+  return names
+    .flatMap((name) => {
+      const match = pattern.exec(name)
+      return match === null ? [] : [Number(match[1])]
+    })
+    .sort((first, second) => first - second)
+}
+
+/** The highest number among the names of a folder that match the pattern, or null when there is none. */
+function newestNumber(folder, pattern) {
+  return folderNumbers(folder, pattern).at(-1) ?? null
 }
 
 function answerProcess(id, file) {
@@ -329,6 +335,46 @@ function readFindingsFile(file) {
   return { verdict, counts }
 }
 
+/** The result `PASS`, `FAIL` or null of the first section `## Case <n>:` of a `simulation.md` per case number. */
+function caseResults(lines) {
+  const results = new Map()
+  for (const line of lines) {
+    const heading = /^## Case (\d+):/.exec(line)
+    if (heading === null) continue
+    const number = Number(heading[1])
+    if (results.has(number)) continue
+    const resultLine = (sectionLines(lines, line.slice(3)) ?? []).find((other) => other.startsWith("Result:")) ?? ""
+    results.set(number, resultLine === "Result: PASS" ? "PASS" : /^Result: FAIL at .+/.test(resultLine) ? "FAIL" : null)
+  }
+  return results
+}
+
+/** The result of every case stored in `cases/` of a process, in ascending order of the numbers, null for a case without one. */
+function storedCaseResults(folder, roundFolder) {
+  const results = caseResults(fileLines(path.join(roundFolder, "simulation.md")) ?? [])
+  return folderNumbers(path.join(folder, "cases"), /^case-(\d+)\.md$/).map((number) => ({ case: number, result: results.get(number) ?? null }))
+}
+
+/** The reason to refuse a `simulation.md` whose results do not fit the stored cases and the verdict, or undefined. */
+function caseReason(cases, verdict) {
+  const named = (listed) => listed.map((stored) => `case ${stored.case}`).join(", ")
+  const without = cases.filter((stored) => stored.result === null)
+  if (without.length > 0) return `has no Result: line for ${named(without)}`
+  const failing = cases.filter((stored) => stored.result === "FAIL")
+  if (verdict === "PASS" && failing.length > 0) return `the verdict is PASS but these cases have the result FAIL: ${named(failing)}`
+  return undefined
+}
+
+/** One line per case that fails now and passed in an earlier recorded round, naming the draft it last passed in. */
+function regressedLines(cases, recorded) {
+  return cases
+    .filter((stored) => stored.result === "FAIL")
+    .flatMap((stored) => {
+      const passed = recorded.filter((entered) => (entered.cases ?? []).some((other) => other.case === stored.case && other.result === "PASS")).at(-1)
+      return passed === undefined ? [] : [`Regressed: case ${stored.case} last passed in ${passed.draft}`]
+    })
+}
+
 function recordRound(id) {
   const processes = readProcessesOrPrintReason()
   if (processes === null) return 1
@@ -366,6 +412,12 @@ function recordRound(id) {
   }
   const roundFolder = `${folder}/rounds/round-${round}`
   const read = reviewers.map((reviewer) => ({ reviewer, ...readFindingsFile(path.join(process.cwd(), roundFolder, `${reviewer}.md`)) }))
+  const simulationFile = read.find((file) => file.reviewer === "simulation")
+  let cases = null
+  if (simulationFile !== undefined && simulationFile.reason === undefined) {
+    cases = storedCaseResults(path.join(process.cwd(), folder), path.join(process.cwd(), roundFolder))
+    simulationFile.reason = caseReason(cases, simulationFile.verdict)
+  }
   const refused = read.filter((file) => file.reason !== undefined)
   if (refused.length > 0) {
     process.stderr.write(`process-factory: cannot record round ${round} of ${id}: these findings files in ${roundFolder} are missing or malformed\n`)
@@ -376,18 +428,20 @@ function recordRound(id) {
   const at = new Date().toISOString()
   const draft = `draft-${draftNumber}.md`
   const asking = read.filter((file) => file.verdict === "CHANGES").map((file) => file.reviewer)
+  const regressed = regressedLines(cases ?? [], recorded)
+  // A case with the result FAIL comes with the verdict CHANGES, so dropping the stop leaves a regressed round in rework.
   const stopped =
-    asking.length > 0 && recorded.length + 1 >= roundLimit
+    regressed.length === 0 && asking.length > 0 && recorded.length + 1 >= roundLimit
       ? `the limit of ${roundLimit} rounds is reached and these reviewers still ask for changes: ${asking.join(", ")}`
       : undefined
   entry.stage = stopped === undefined && asking.length > 0 ? "rework" : "approval"
   entry.history = [...(entry.history ?? []), { at, stage: entry.stage }]
   const verdicts = read.map(({ reviewer, verdict }) => ({ reviewer, verdict }))
-  entry.rounds = [...recorded, { round, draft, at, verdicts, ...(stopped === undefined ? {} : { stopped }) }]
+  entry.rounds = [...recorded, { round, draft, at, verdicts, ...(cases === null ? {} : { cases }), ...(stopped === undefined ? {} : { stopped }) }]
   writeBoard(processes)
   const counted = read.map((file) => `  ${file.reviewer}  ${file.verdict}  ${file.counts.map((count, index) => `${count} ${findingTags[index]}`).join(", ")}`)
   const stoppedLine = stopped === undefined ? [] : [`Stopped: ${stopped}`]
-  process.stdout.write(`${[`Recorded ${roundFolder} for ${draft}`, ...counted, ...stoppedLine, entry.stage].join("\n")}\n`)
+  process.stdout.write(`${[`Recorded ${roundFolder} for ${draft}`, ...counted, ...regressed, ...stoppedLine, entry.stage].join("\n")}\n`)
   return 0
 }
 

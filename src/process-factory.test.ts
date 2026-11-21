@@ -934,6 +934,133 @@ describe("process-factory round", () => {
     writeBoardFile([{ id: "002-handle-a-breach", title: "Handle a breach", stage: "review", rounds: [] }])
     expect(runCommand(["show", "002-handle-a-breach"]).stdout).not.toContain("Rounds:")
   })
+
+  /** A `simulation.md` with this verdict and one section per case number, with the line of its result or none for `""`. */
+  function simulationText(verdict: string, sections: [number, string][]): string {
+    const finding = verdict === "CHANGES" ? "- [high] Step 2: it does not say who locks the laptop. (case 3)\n" : "No findings.\n"
+    const written = sections
+      .map(([number, line]) => `## Case ${String(number)}: The IT manager is away\n\nGets wrong: nothing\n${line === "" ? "" : `${line}\n`}`)
+      .join("\n")
+    return `# simulation review of draft-1.md\n\nVerdict: ${verdict}\n\n${finding}\n${written}`
+  }
+
+  /** Writes the files `case-<n>.md` with these numbers in the folder `cases` of the process. */
+  function writeCases(numbers: number[]): void {
+    for (const number of numbers) writeWorkingFile(`${processFolder}/cases/case-${String(number)}.md`, `# Case ${String(number)}: The IT manager is away\n`)
+  }
+
+  /** The entries of one round per result of case 3, numbered from 1, each with the draft of its number and its result under `cases`. */
+  function recordedCaseRounds(results: string[]): Record<string, unknown>[] {
+    return results.map((result, index) => ({
+      round: index + 1,
+      draft: `draft-${String(index + 1)}.md`,
+      at: "2026-11-18T17:05:40.456Z",
+      verdicts: [{ reviewer: "simulation", verdict: result === "FAIL" ? "CHANGES" : "PASS" }],
+      cases: [{ case: 3, result }],
+    }))
+  }
+
+  it("stores the result of every stored case under cases, after the verdicts and in ascending order of the numbers", () => {
+    prepareReview(["simulation"], { 1: { "simulation.md": simulationText("CHANGES", [[10, "Result: FAIL at step 2"], [2, "Result: PASS"]]) } })
+    writeCases([2, 10])
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    expect(Object.keys(storedRounds()[0] ?? {})).toEqual(["round", "draft", "at", "verdicts", "cases"])
+    expect(storedRounds()[0]?.cases).toEqual([
+      { case: 2, result: "PASS" },
+      { case: 10, result: "FAIL" },
+    ])
+  })
+
+  it("refuses a simulation.md that has no result for a stored case and names the cases", () => {
+    prepareReview(["simulation"], { 1: { "simulation.md": simulationText("PASS", [[1, "Result: PASS"], [2, "Result: FAIL"], [5, ""]]) } })
+    writeCases([1, 2, 5])
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stderr).toBe(
+      `process-factory: cannot record round 1 of 001-handle-a-breach: these findings files in ${processFolder}/rounds/round-1 are missing or malformed\n  simulation.md: has no Result: line for case 2, case 5\n${staysLine}\n`,
+    )
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(storedProcesses()[0]?.stage).toBe("review")
+  })
+
+  it("refuses a simulation.md with the verdict PASS in which a stored case has the result FAIL", () => {
+    prepareReview(["simulation"], { 1: { "simulation.md": simulationText("PASS", [[1, "Result: PASS"], [3, "Result: FAIL at step 2"]]) } })
+    writeCases([1, 3])
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stderr).toBe(
+      `process-factory: cannot record round 1 of 001-handle-a-breach: these findings files in ${processFolder}/rounds/round-1 are missing or malformed\n  simulation.md: the verdict is PASS but these cases have the result FAIL: case 3\n${staysLine}\n`,
+    )
+    expect(result.status).toBe(1)
+    expect(storedProcesses()[0]?.rounds).toBeUndefined()
+  })
+
+  it("prints Regressed: with the draft the case last passed in and moves a second round to rework", () => {
+    prepareReview(["simulation"], { 2: { "simulation.md": simulationText("CHANGES", [[3, "Result: FAIL at step 2"]]) } }, { rounds: recordedCaseRounds(["PASS"]) })
+    writeCases([3])
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stdout).toBe(
+      `Recorded ${processFolder}/rounds/round-2 for draft-1.md\n  simulation  CHANGES  1 high, 0 medium, 0 low\nRegressed: case 3 last passed in draft-1.md\nrework\n`,
+    )
+    expect(result.status).toBe(0)
+    expect(storedProcesses()[0]?.stage).toBe("rework")
+  })
+
+  it("moves a fifth round with a regressed case to rework without a stop", () => {
+    prepareReview(
+      ["simulation"],
+      { 5: { "simulation.md": simulationText("CHANGES", [[3, "Result: FAIL at step 2"]]) } },
+      { rounds: recordedCaseRounds(["FAIL", "PASS", "FAIL", "FAIL"]) },
+    )
+    writeCases([3])
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stdout).toBe(
+      `Recorded ${processFolder}/rounds/round-5 for draft-1.md\n  simulation  CHANGES  1 high, 0 medium, 0 low\nRegressed: case 3 last passed in draft-2.md\nrework\n`,
+    )
+    const entry = storedProcesses()[0]
+    expect(entry?.stage).toBe("rework")
+    expect(storedHistory(entry).at(-1)?.stage).toBe("rework")
+    expect(storedRounds()[4]).not.toHaveProperty("stopped")
+  })
+
+  it("stops a fifth round in which a case fails that passed in no earlier round", () => {
+    prepareReview(
+      ["simulation"],
+      { 5: { "simulation.md": simulationText("CHANGES", [[3, "Result: FAIL at step 2"]]) } },
+      { rounds: recordedCaseRounds(["FAIL", "FAIL", "FAIL", "FAIL"]) },
+    )
+    writeCases([3])
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    const reason = "the limit of 5 rounds is reached and these reviewers still ask for changes: simulation"
+    expect(result.stdout).toBe(
+      `Recorded ${processFolder}/rounds/round-5 for draft-1.md\n  simulation  CHANGES  1 high, 0 medium, 0 low\nStopped: ${reason}\napproval\n`,
+    )
+    expect(storedProcesses()[0]?.stage).toBe("approval")
+    expect(Object.keys(storedRounds()[4] ?? {})).toEqual(["round", "draft", "at", "verdicts", "cases", "stopped"])
+  })
+
+  it("stores no cases and prints no Regressed: line without the simulation reviewer", () => {
+    prepareReview(["legal"], { 2: { "legal.md": findingsText("legal", "CHANGES", ["high"]) } }, { rounds: recordedCaseRounds(["PASS"]) })
+    writeCases([3])
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stdout).toBe(`Recorded ${processFolder}/rounds/round-2 for draft-1.md\n  legal  CHANGES  1 high, 0 medium, 0 low\nrework\n`)
+    expect(Object.keys(storedRounds()[1] ?? {})).toEqual(["round", "draft", "at", "verdicts"])
+  })
 })
 
 describe("process-factory org init", () => {
