@@ -22,7 +22,7 @@ const skillFiles = [
 ]
 const boardPath = "processes/board.json"
 const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory org init\n       process-factory check\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory org init\n       process-factory check\n'
 const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.md", "authority.md"]
 const timeForm = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
 
@@ -1135,10 +1135,12 @@ describe("process-factory move to published and process-factory check", () => {
     return `# Specification: Handle a breach\n\n## Roles\n\n- Role: Head of IT\n\n## Dependencies\n\nStatus: decided\n\n${lines.join("\n")}\n\n## Notes\n\n- System: Payroll system\n`
   }
 
-  /** Writes a board with the process in `approval` and its `spec.md`, and moves it to `published`. */
+  /** Writes a board with the process in `approval`, its `spec.md` and the approval of its newest draft, and moves it to `published`. */
   function publish(lines: string[] = dependencyLines, spec = true) {
     writeBoardFile([{ id: processId, title: "Handle a breach", stage: "approval" }])
     if (spec) writeWorkingFile(`processes/${processId}/spec.md`, specText(lines))
+    writeWorkingFile(`processes/${processId}/drafts/draft-1.md`, "# Handle a breach\n")
+    writeWorkingFile(`processes/${processId}/versions/approval-draft-1.md`, "# Approval of draft-1.md\n")
     return runCommand(["move", processId, "published"])
   }
 
@@ -1242,8 +1244,196 @@ describe("process-factory move to published and process-factory check", () => {
   })
 })
 
+describe("process-factory owner and process-factory approve", () => {
+  const processId = "001-handle-a-lost-laptop"
+  const owner = "Kari Nordmann"
+  const rolesText =
+    "# Roles\n\n## Data protection officer\n\nKari Nordmann is the data protection officer.\n\n## Example: Head of IT\n\nPer Olsen is the head of IT.\n"
+  const approvalFile = `processes/${processId}/versions/approval-draft-2.md`
+
+  /** Writes `organisation/roles.md` and a board with the process in `stage`, with further keys in `more`. */
+  function writeProcess(stage: string, more: Record<string, unknown> = {}): void {
+    writeWorkingFile("organisation/roles.md", rolesText)
+    writeBoardFile([{ id: processId, title: "Handle a lost laptop", stage, history: [{ at: "2026-11-20T17:00:00.000Z", stage }], ...more }])
+  }
+
+  function writeDrafts(): void {
+    for (const number of [1, 2]) writeWorkingFile(`processes/${processId}/drafts/draft-${String(number)}.md`, `# Draft ${String(number)}\n`)
+  }
+
+  it("prints Owner: with the name it stored on the entry, and changes nothing else", () => {
+    writeProcess("intake")
+
+    const result = runCommand(["owner", processId, `  ${owner}  `])
+
+    expect(result.stdout).toBe("Owner: Kari Nordmann\n")
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    expect(storedProcesses()[0]).toEqual({
+      id: processId,
+      title: "Handle a lost laptop",
+      stage: "intake",
+      history: [{ at: "2026-11-20T17:00:00.000Z", stage: "intake" }],
+      owner,
+    })
+  })
+
+  it.each([
+    ["only stands in an example section", "Per Olsen"],
+    ["ends in the middle of a word", "Kari Nord"],
+    ["has other capitals", "kari nordmann"],
+  ])("refuses an owner that %s and leaves the board as it was", (_name, person) => {
+    writeProcess("approval")
+    const before = readWorkingFile(boardPath)
+
+    const result = runCommand(["owner", processId, person])
+
+    expect(result.stderr).toBe(`process-factory: cannot set the owner of ${processId}: ${person} is not named in organisation/roles.md\n`)
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(readWorkingFile(boardPath)).toBe(before)
+  })
+
+  it("says the owner must be one line with at least one letter for a name with a line break", () => {
+    writeProcess("approval")
+
+    const result = runCommand(["owner", processId, "Kari\nNordmann"])
+
+    expect(result.stderr).toBe("process-factory: the owner must be one line with at least one letter\n")
+    expect(result.status).toBe(1)
+  })
+
+  it("prints the line Owner: of show directly after the stage, and no such line without an owner", () => {
+    writeProcess("review")
+    expect(runCommand(["show", processId]).stdout).toBe(
+      `${processId}\nTitle: Handle a lost laptop\nStage: review\nHistory:\n  2026-11-20T17:00:00.000Z  review\n`,
+    )
+
+    expect(runCommand(["owner", processId, owner]).status).toBe(0)
+
+    expect(runCommand(["show", processId]).stdout).toBe(
+      `${processId}\nTitle: Handle a lost laptop\nStage: review\nOwner: Kari Nordmann\nHistory:\n  2026-11-20T17:00:00.000Z  review\n`,
+    )
+  })
+
+  it("writes who approved the newest draft and when, and leaves the board as it was", () => {
+    writeProcess("approval", { owner })
+    writeDrafts()
+    const before = readWorkingFile(boardPath)
+
+    const result = runCommand(["approve", processId, "--by", `  ${owner}  `])
+
+    expect(result.stdout).toBe(`Stored ${approvalFile}\n`)
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    const lines = readWorkingFile(approvalFile).split("\n")
+    expect(lines.slice(0, 5)).toEqual(["# Approval of draft-2.md", "", `Process: ${processId}`, "Draft: draft-2.md", `Approved by: ${owner}`])
+    expect(lines[5]?.replace("Approved at: ", "")).toMatch(timeForm)
+    expect(lines.slice(6)).toEqual([""])
+    expect(readWorkingFile(boardPath)).toBe(before)
+  })
+
+  it.each([
+    {
+      name: "a process that is not in approval",
+      prepare: () => {
+        writeProcess("review", { owner })
+        writeDrafts()
+      },
+      by: owner,
+      reason: "it is in the stage review, not in approval",
+    },
+    {
+      name: "a process without an owner",
+      prepare: () => {
+        writeProcess("approval")
+        writeDrafts()
+      },
+      by: owner,
+      reason: `it has no owner: owner ${processId} "<person>" names one`,
+    },
+    {
+      name: "a name that is not the owner",
+      prepare: () => {
+        writeProcess("approval", { owner })
+        writeDrafts()
+      },
+      by: "Ola Hansen",
+      reason: "--by does not name its owner",
+    },
+    {
+      name: "an owner who is not named in organisation/roles.md",
+      prepare: () => {
+        writeProcess("approval", { owner: "Nina Berg" })
+        writeDrafts()
+      },
+      by: "Nina Berg",
+      reason: "its owner Nina Berg is not named in organisation/roles.md",
+    },
+    {
+      name: "a process without a draft",
+      prepare: () => {
+        writeProcess("approval", { owner })
+      },
+      by: owner,
+      reason: `there is no draft in processes/${processId}/drafts`,
+    },
+    {
+      name: "a draft that is already approved",
+      prepare: () => {
+        writeProcess("approval", { owner })
+        writeDrafts()
+        runCommand(["approve", processId, "--by", owner])
+      },
+      by: owner,
+      reason: "draft-2.md is already approved",
+    },
+  ])("refuses to approve $name", ({ prepare, by, reason }) => {
+    prepare()
+    const before = readWorkingFile(boardPath)
+
+    const result = runCommand(["approve", processId, "--by", by])
+
+    expect(result.stderr).toBe(`process-factory: cannot approve ${processId}: ${reason}\n`)
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(readWorkingFile(boardPath)).toBe(before)
+  })
+
+  it("refuses a move to published until the newest draft has its approval file", () => {
+    writeProcess("approval", { owner })
+    writeDrafts()
+    const before = readWorkingFile(boardPath)
+
+    const refused = runCommand(["move", processId, "published"])
+
+    expect(refused.stderr).toBe(
+      `process-factory: cannot move ${processId} from approval to published: the newest draft has no approval: only approve ${processId} --by "<person>" records one\n`,
+    )
+    expect(refused.stdout).toBe("")
+    expect(refused.status).toBe(1)
+    expect(readWorkingFile(boardPath)).toBe(before)
+
+    expect(runCommand(["approve", processId, "--by", owner]).status).toBe(0)
+
+    const result = runCommand(["move", processId, "published"])
+
+    expect(result.stdout).toBe("published\n")
+    expect(result.status).toBe(0)
+    expect(storedProcesses()[0]?.stage).toBe("published")
+  })
+
+  it("moves a process from approval to rework without an approval", () => {
+    writeProcess("approval", { owner })
+    writeDrafts()
+
+    expect(runCommand(["move", processId, "rework"]).stdout).toBe("rework\n")
+    expect(storedProcesses()[0]?.stage).toBe("rework")
+  })
+})
+
 describe("process-factory with anything other than a command", () => {
-  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b", "c"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]], [["org"]], [["org", "init", "extra"]], [["answer"]], [["answer", "a"]], [["answer", "a", "b", "c"]], [["accept-spec"]], [["accept-spec", "a", "b"]], [["round"]], [["round", "a", "b"]], [["check", "extra"]], [["org", "check"]]])(
+  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b", "c"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]], [["org"]], [["org", "init", "extra"]], [["answer"]], [["answer", "a"]], [["answer", "a", "b", "c"]], [["accept-spec"]], [["accept-spec", "a", "b"]], [["round"]], [["round", "a", "b"]], [["owner", "a"]], [["owner", "a", "b", "c"]], [["approve", "a"]], [["approve", "a", "b"]], [["approve", "a", "--as", "b"]], [["approve", "a", "--by", "b", "c"]], [["check", "extra"]], [["org", "check"]]])(
     "prints the usage and writes nothing for %j",
     (commandArguments) => {
       const result = runCommand(commandArguments)
