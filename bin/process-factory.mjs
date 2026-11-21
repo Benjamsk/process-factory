@@ -139,6 +139,38 @@ function createProcess(argument, promptArgument) {
   return 0
 }
 
+/** The name after `Approved by: ` in the first such line of an approval file, or undefined when it has none. */
+function approvedBy(file) {
+  const line = (fileLines(file) ?? []).find((text) => text.startsWith("Approved by: "))
+  return line === undefined ? undefined : line.replace("Approved by: ", "")
+}
+
+/** Copies the approved draft, the spec, the cases and the approval of a process into a new version folder, and returns the version for the board, or null after printing why it cannot be written. */
+function writeVersion(id, entry, draftNumber, at) {
+  const processFolder = path.join(process.cwd(), "processes", id)
+  const listed = (entry.versions ?? []).map((stored) => stored.version)
+  const number = Math.max(0, ...folderNumbers(path.join(processFolder, "versions"), /^(\d+)$/), ...listed) + 1
+  const folder = `processes/${id}/versions/${number}`
+  const versionFolder = path.join(process.cwd(), folder)
+  const approvalFile = path.join(processFolder, "versions", `approval-draft-${draftNumber}.md`)
+  try {
+    mkdirSync(versionFolder)
+    copyFileSync(path.join(processFolder, "drafts", `draft-${draftNumber}.md`), path.join(versionFolder, "process.md"))
+    if (existsSync(path.join(processFolder, "spec.md"))) copyFileSync(path.join(processFolder, "spec.md"), path.join(versionFolder, "spec.md"))
+    mkdirSync(path.join(versionFolder, "cases"))
+    for (const caseNumber of folderNumbers(path.join(processFolder, "cases"), /^case-(\d+)\.md$/)) {
+      const name = `case-${caseNumber}.md`
+      copyFileSync(path.join(processFolder, "cases", name), path.join(versionFolder, "cases", name))
+    }
+    copyFileSync(approvalFile, path.join(versionFolder, "approval.md"))
+  } catch (error) {
+    process.stderr.write(`process-factory: cannot write ${folder}: ${errorMessage(error)}\n`)
+    return null
+  }
+  const approved = approvedBy(approvalFile)
+  return { version: number, draft: `draft-${draftNumber}.md`, ...(approved === undefined ? {} : { approvedBy: approved }), at }
+}
+
 function moveProcess(id, stage) {
   const processes = readProcessesOrPrintReason()
   if (processes === null) return 1
@@ -156,6 +188,8 @@ function moveProcess(id, stage) {
     )
     return 1
   }
+  const at = new Date().toISOString()
+  let version
   if (stage === "published") {
     const folder = `processes/${id}`
     const draftNumber = newestDraftNumber(path.join(process.cwd(), folder))
@@ -165,14 +199,17 @@ function moveProcess(id, stage) {
       )
       return 1
     }
+    version = writeVersion(id, entry, draftNumber, at)
+    if (version === null) return 1
   }
   entry.stage = stage
-  entry.history = [...(entry.history ?? []), { at: new Date().toISOString(), stage }]
+  entry.history = [...(entry.history ?? []), { at, stage }]
   if (stage === "published") {
     entry.dependencies = specDependencies(path.join(process.cwd(), "processes", id)).map((dependency) => ({
       ...dependency,
       hash: dependencyHash(dependency.kind, dependency.name),
     }))
+    entry.versions = [...(entry.versions ?? []), version]
   }
   writeBoard(processes)
   process.stdout.write(`${stage}\n`)
@@ -574,6 +611,13 @@ function showProcesses(id) {
   if (rounds.length > 0) {
     lines.push("Rounds:")
     for (const round of rounds) lines.push(`  ${round.round}  ${round.draft}  ${round.verdicts.map((given) => `${given.reviewer} ${given.verdict}`).join(", ")}`)
+  }
+  const versions = entry.versions ?? []
+  if (versions.length > 0) {
+    lines.push("Versions:")
+    for (const version of versions) {
+      lines.push(`  ${[version.version, version.draft, ...(version.approvedBy === undefined ? [] : [version.approvedBy]), version.at].join("  ")}`)
+    }
   }
   lines.push("History:")
   for (const change of entry.history ?? []) lines.push(`  ${change.at}  ${change.stage}`)
