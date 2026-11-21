@@ -37,7 +37,7 @@ describe("the section The command line of the skill", () => {
       ),
     ).toBe(true)
     expect(text).toContain(
-      "In the step `Rework the draft` the draft writer you start writes one new file `draft-<n>.md` in the folder `drafts` of the process, as `draft-writer.md` says. In the interview of `/process incident <process-id>` you write new files `case-<n>.md` in the folder `cases` of the process, as `incident.md` says.",
+      "In the step `Rework the draft` the draft writer you start writes one new file `draft-<n>.md` in the folder `drafts` of the process, as `draft-writer.md` says. There it also writes at most one file `conflicts.md` in the folder `rounds/round-<r>` of the process, as `draft-writer.md` says. In the interview of `/process incident <process-id>` you write new files `case-<n>.md` in the folder `cases` of the process, as `incident.md` says.",
     )
     expect(text).toContain(
       "In the step `Write the draft` the draft writer you start writes one new file `draft-<n>.md` in the folder `drafts` of the process, as `draft-writer.md` says.",
