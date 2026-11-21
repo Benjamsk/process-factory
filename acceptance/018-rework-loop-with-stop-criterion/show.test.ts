@@ -80,7 +80,7 @@ describe("process-factory show <process-id> and a stopped round", () => {
 
     const lines = runCommand(project, ["show", processId]).stdout.split("\n")
 
-    expect(lines.slice(2, 5)).toEqual(["Stage: approval", `Stopped: ${reason}`, "Rounds:"])
+    expect(lines.slice(2, 6)).toEqual(["Stage: approval", "Owner: Ola", `Stopped: ${reason}`, "Rounds:"])
     expect(lines[lines.indexOf("History:") - 1]).toBe("  5  draft-5.md  gdpr CHANGES, readability CHANGES")
   })
 })

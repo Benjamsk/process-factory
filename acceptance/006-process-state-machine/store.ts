@@ -6,7 +6,7 @@ import path from "node:path"
 export const root = path.resolve(import.meta.dirname, "../..")
 export const boardFile = "processes/board.json"
 export const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory org init\n       process-factory check\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory org init\n       process-factory check\n'
 
 /** The ten stages, each with the stages a process may move to from it, in the order of the spec's table. */
 export const moves: [string, string[]][] = [
@@ -54,6 +54,19 @@ export function entries(folder: string, subfolder = "."): string[] {
 /** Writes a board with these entries, in the layout the command line writes. */
 export function writeBoard(folder: string, processes: Record<string, unknown>[]): void {
   writeFile(folder, boardFile, `${JSON.stringify({ processes }, null, 2)}\n`)
+}
+
+/**
+ * Gives the process `id`, which is on the board in `approval`, the draft `draft-1.md`, the owner `Kari Nordmann`
+ * and her approval of that draft. Writes an `organisation/roles.md` that names her when there is none.
+ */
+export function approveDraft(folder: string, id: string): void {
+  if (!existsSync(path.join(folder, "organisation/roles.md"))) {
+    writeFile(folder, "organisation/roles.md", "# Roles\n\n## Data protection officer\n\nKari Nordmann is the data protection officer.\n")
+  }
+  writeFile(folder, `processes/${id}/drafts/draft-1.md`, "# Draft 1\n")
+  runCommand(folder, ["owner", id, "Kari Nordmann"])
+  runCommand(folder, ["approve", id, "--by", "Kari Nordmann"])
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

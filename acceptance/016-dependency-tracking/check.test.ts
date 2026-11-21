@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs"
 import path from "node:path"
 import { beforeEach, describe, expect, it } from "vitest"
-import { boardFile, emptyFolder, entries, processes, readFile, runCommand, writeBoard, writeFile } from "../006-process-state-machine/store.ts"
+import { approveDraft, boardFile, emptyFolder, entries, processes, readFile, runCommand, writeBoard, writeFile } from "../006-process-state-machine/store.ts"
 import {
   boardEntry,
   breachId,
@@ -26,7 +26,7 @@ import {
 } from "./dependencies.ts"
 
 const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory org init\n       process-factory check\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory org init\n       process-factory check\n'
 const newOfficer = "## Data protection officer\n\nOla Hansen is the data protection officer. Kari Nordmann steps in when he is away.\n"
 
 /** Runs `check` and expects it to succeed with nothing on standard error; gives what it printed. */
@@ -154,6 +154,7 @@ describe("process-factory check with a changed dependency", () => {
     writeFile(project, `processes/${laptopId}/spec.md`, specWith(laptopTitle, ["- System: Payroll system", "- Role: Head of IT", "- Policy: Information security policy"]))
     writeFile(project, "processes/003-pay-salaries/spec.md", specWith("Pay salaries", ["- Agreement: Example Payroll AS", "- System: Payroll system"]))
     for (const id of [breachId, laptopId, "003-pay-salaries"]) {
+      approveDraft(project, id)
       expect(runCommand(project, ["move", id, "published"]).status).toBe(0)
     }
     writeFile(project, policiesFile, policiesText.replace("15 January 2025", "3 February 2026"))
@@ -226,7 +227,7 @@ describe("the usage of process-factory", () => {
     ["no argument", []],
     ["an unknown command", ["publish"]],
     ["org check", ["org", "check"]],
-  ])("has nine lines, with check as the last, and is printed with %s", (_name, args) => {
+  ])("has eleven lines, with check as the last, and is printed with %s", (_name, args) => {
     const result = runCommand(project, args)
 
     expect(result.stderr).toBe(usage)

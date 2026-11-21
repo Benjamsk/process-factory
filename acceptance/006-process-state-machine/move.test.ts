@@ -1,6 +1,6 @@
 import { rmSync } from "node:fs"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { boardFile, entries, emptyFolder, history, historyStages, moves, processes, readFile, runCommand, writeBoard, writeFile } from "./store.ts"
+import { approveDraft, boardFile, entries, emptyFolder, history, historyStages, moves, processes, readFile, runCommand, writeBoard, writeFile } from "./store.ts"
 
 const breachId = "001-handle-a-personal-data-breach"
 const breachTitle = "Handle a personal data breach"
@@ -82,6 +82,9 @@ describe("process-factory move with a move the machine allows", () => {
     (from, allowed) => {
       for (const to of allowed) {
         writeBoard(project, [{ id: "001-handle-a-breach", title: "Handle a breach", stage: from, history: [{ at: "2026-11-18T17:02:11.123Z", stage: from }] }])
+        if (to === "published") {
+          approveDraft(project, "001-handle-a-breach")
+        }
         const result = runCommand(project, ["move", "001-handle-a-breach", to])
         expect(result.stdout).toBe(`${to}\n`)
         expect(result.stderr).toBe("")
@@ -101,6 +104,9 @@ describe("process-factory move with a move the machine allows", () => {
     writeFile(project, `processes/${breachId}/spec.md`, `# Specification: ${breachTitle}\n\n${sections.map((name) => `## ${name}\n\nStatus: decided\n\nSettled.\n`).join("\n")}`)
     for (const stage of loop) {
       const accepts = stage === "cases"
+      if (stage === "published") {
+        approveDraft(project, breachId)
+      }
       const result = runCommand(project, accepts ? ["accept-spec", breachId] : ["move", breachId, stage])
       expect(result.stdout).toBe(accepts ? `Accepted processes/${breachId}/spec.md\ncases\n` : `${stage}\n`)
       expect(result.status).toBe(0)

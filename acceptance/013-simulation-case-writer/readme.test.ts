@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest"
 import { readmeStatus } from "../010-clarifying-questions/clarify.ts"
 
 describe("the Status section of README.md", () => {
-  it("says seven stages have a step and what the case writer does in cases, between the spec stage and every other stage", () => {
+  it("says eight stages have a step and what the case writer does in cases, between the spec stage and every other stage", () => {
     const text = readmeStatus()
     const cases =
       "In `cases` a case writer agent writes simulation cases from `spec.md` alone, never from a draft, one file `case-<n>.md` per case in the folder `cases` of the process"
-    expect(text).toContain("Seven stages have a step.")
+    expect(text).toContain("Eight stages have a step.")
     expect(text).not.toContain("Three stages have a step.")
     expect(text).toContain(cases)
     expect(text).toContain("and the process moves to `draft`.")

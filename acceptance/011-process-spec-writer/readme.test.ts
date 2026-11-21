@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest"
 import { readmeStatus } from "../010-clarifying-questions/clarify.ts"
 
 describe("the Status section of README.md", () => {
-  it("says seven stages have a step and what the spec writer does in spec", () => {
+  it("says eight stages have a step and what the spec writer does in spec", () => {
     const text = readmeStatus()
-    expect(text).toContain("Seven stages have a step.")
+    expect(text).toContain("Eight stages have a step.")
     expect(text).toContain(
       "In `spec` a spec writer agent writes `spec.md` in the folder of the process, with eleven sections that are each marked decided or open.",
     )

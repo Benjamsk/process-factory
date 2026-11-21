@@ -84,7 +84,7 @@ describe("process-factory show <process-id> and the recorded rounds", () => {
     runCommand(project, ["round", processId])
 
     const lines = runCommand(project, ["show", processId]).stdout.split("\n")
-    expect(lines.slice(2, 6)).toEqual(["Stage: rework", "Rounds:", "  1  draft-1.md  legal CHANGES, readability PASS", "History:"])
+    expect(lines.slice(2, 7)).toEqual(["Stage: rework", "Owner: Ola", "Rounds:", "  1  draft-1.md  legal CHANGES, readability PASS", "History:"])
     writeBoard(project, [{ id: processId, title: "Handle a lost laptop", stage: "review", rounds: [] }])
     expect(runCommand(project, ["show", processId]).stdout).toBe(`${processId}\nTitle: Handle a lost laptop\nStage: review\nHistory:\n`)
   })

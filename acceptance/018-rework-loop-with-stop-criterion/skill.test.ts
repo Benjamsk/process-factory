@@ -11,7 +11,7 @@ describe("the section The command line of the skill", () => {
     const text = section(skillTemplate, "The command line")
     expect(text).toContain("There are nine exceptions, and you write no other file.")
     expect(text).toContain(`${reworkException} ${conflictsException} In the interview of \`/process incident <process-id>\``)
-    expect(headings(skillTemplate, 2)).toHaveLength(18)
+    expect(headings(skillTemplate, 2)).toHaveLength(19)
   })
 })
 
@@ -24,7 +24,7 @@ describe("the section Review the draft of the skill", () => {
     expect(step).toContain("the person who approves decides about the open findings")
     expect(step).toContain("the files `conflicts.md` of the rounds")
     expect(step).toContain("sends the draft back to the draft writer with every finding")
-    expect(step.endsWith("and that the factory cannot run the stage `approval` yet.")).toBe(true)
+    expect(step.endsWith("and that `/process next <process-id>` asks the owner of the process to approve the draft.")).toBe(true)
   })
 
   it("names the stop without asking the user to accept anything and without a move", () => {

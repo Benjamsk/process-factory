@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest"
 import { readmeStatus } from "../010-clarifying-questions/clarify.ts"
 
 describe("the Status section of README.md", () => {
-  it("says seven stages have a step and what happens in review and in rework, between the draft stage and every other stage", () => {
+  it("says eight stages have a step and what happens in review and in rework, between the draft stage and every other stage", () => {
     const text = readmeStatus()
     const review = "In `review` every reviewer that is installed reads the newest draft at the same time"
     const rework = "In `rework` the draft writer reads the reviewed draft and every finding of the round"
     const otherStages = "For every other stage `next` reports the stage and moves nothing."
-    expect(text).toContain("Seven stages have a step.")
+    expect(text).toContain("Eight stages have a step.")
     expect(text).not.toContain("Five stages have a step.")
     expect(text).toContain(review)
     expect(text).toContain("with a verdict of `PASS` or `CHANGES` and findings tagged `high`, `medium` or `low`")

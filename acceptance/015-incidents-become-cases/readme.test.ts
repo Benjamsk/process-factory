@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { readmeStatus } from "../010-clarifying-questions/clarify.ts"
 
 describe("the Status section of README.md", () => {
-  it("says what /process incident does, after the sentence about every other stage, and still says seven stages have a step", () => {
+  it("says what /process incident does, after the sentence about every other stage, and says eight stages have a step", () => {
     const text = readmeStatus()
     const incident =
       "`/process incident <process-id>` interviews the user about a real event the process was used in, what the process did not cover and what people actually did"
@@ -14,7 +14,7 @@ describe("the Status section of README.md", () => {
     expect(text).toContain("as a case every later version of the process must pass.")
     expect(text).toContain(otherStages)
     expect(text.indexOf(incident)).toBeGreaterThan(text.indexOf(otherStages))
-    expect(text).toContain("Seven stages have a step.")
+    expect(text).toContain("Eight stages have a step.")
   })
 
   it("says init writes the skill, and interviewer.md, questioner.md, spec-writer.md, case-writer.md, draft-writer.md and incident.md next to it", () => {

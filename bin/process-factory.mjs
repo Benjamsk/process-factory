@@ -156,6 +156,16 @@ function moveProcess(id, stage) {
     )
     return 1
   }
+  if (stage === "published") {
+    const folder = `processes/${id}`
+    const draftNumber = newestDraftNumber(path.join(process.cwd(), folder))
+    if (draftNumber === null || !existsSync(path.join(process.cwd(), folder, "versions", `approval-draft-${draftNumber}.md`))) {
+      process.stderr.write(
+        `process-factory: cannot move ${id} from ${entry.stage} to published: the newest draft has no approval: only approve ${id} --by "<person>" records one\n`,
+      )
+      return 1
+    }
+  }
   entry.stage = stage
   entry.history = [...(entry.history ?? []), { at: new Date().toISOString(), stage }]
   if (stage === "published") {
@@ -188,6 +198,11 @@ function folderNumbers(folder, pattern) {
 /** The highest number among the names of a folder that match the pattern, or null when there is none. */
 function newestNumber(folder, pattern) {
   return folderNumbers(folder, pattern).at(-1) ?? null
+}
+
+/** The number of the newest `draft-<n>.md` in the folder `drafts` of a process, or null when there is none. */
+function newestDraftNumber(processFolder) {
+  return newestNumber(path.join(processFolder, "drafts"), /^draft-(\d+)\.md$/)
 }
 
 function answerProcess(id, file) {
@@ -405,7 +420,7 @@ function recordRound(id) {
     process.stderr.write(`${cannot}: round ${round} is already recorded\n`)
     return 1
   }
-  const draftNumber = newestNumber(path.join(process.cwd(), folder, "drafts"), /^draft-(\d+)\.md$/)
+  const draftNumber = newestDraftNumber(path.join(process.cwd(), folder))
   if (draftNumber === null) {
     process.stderr.write(`${cannot}: there is no draft in ${folder}/drafts\n`)
     return 1
@@ -445,6 +460,101 @@ function recordRound(id) {
   return 0
 }
 
+/** The lines of `organisation/roles.md` outside the sections whose heading starts with `## Example:`. */
+function rolesLines() {
+  let inExample = false
+  return (fileLines(path.join(process.cwd(), "organisation", "roles.md")) ?? []).filter((line) => {
+    if (line.startsWith("## ")) inExample = line.startsWith("## Example:")
+    return !inExample
+  })
+}
+
+/** Whether a name stands in a line, letter for letter, with no letter and no digit directly before or after it. */
+function standsInLine(line, name) {
+  const bounds = (character) => !/[\p{L}\p{N}]/u.test(character)
+  for (let at = line.indexOf(name); at !== -1; at = line.indexOf(name, at + 1)) {
+    if (bounds(line.slice(at - 1, at)) && bounds(line.slice(at + name.length, at + name.length + 1))) return true
+  }
+  return false
+}
+
+/** Whether a name stands in `organisation/roles.md`, outside the example sections. */
+function isNamedInRoles(name) {
+  return rolesLines().some((line) => standsInLine(line, name))
+}
+
+function setOwner(id, personArgument) {
+  const person = personArgument.trim()
+  if (/[\r\n]/.test(person) || !/\p{L}/u.test(person)) {
+    process.stderr.write("process-factory: the owner must be one line with at least one letter\n")
+    return 1
+  }
+  const processes = readProcessesOrPrintReason()
+  if (processes === null) return 1
+  const entry = findProcessOrPrintReason(processes, id)
+  if (entry === undefined) return 1
+  if (!isNamedInRoles(person)) {
+    process.stderr.write(`process-factory: cannot set the owner of ${id}: ${person} is not named in organisation/roles.md\n`)
+    return 1
+  }
+  entry.owner = person
+  writeBoard(processes)
+  process.stdout.write(`Owner: ${person}\n`)
+  return 0
+}
+
+function approveDraft(id, byArgument) {
+  const processes = readProcessesOrPrintReason()
+  if (processes === null) return 1
+  if (!/^[a-z0-9-]+$/.test(id)) {
+    process.stderr.write(`process-factory: there is no process ${id}\n`)
+    return 1
+  }
+  const entry = findProcessOrPrintReason(processes, id)
+  if (entry === undefined) return 1
+  const cannot = `process-factory: cannot approve ${id}`
+  if (entry.stage !== "approval") {
+    process.stderr.write(`${cannot}: it is in the stage ${entry.stage}, not in approval\n`)
+    return 1
+  }
+  if (entry.owner === undefined) {
+    process.stderr.write(`${cannot}: it has no owner: owner ${id} "<person>" names one\n`)
+    return 1
+  }
+  if (byArgument.trim() !== entry.owner) {
+    process.stderr.write(`${cannot}: --by does not name its owner\n`)
+    return 1
+  }
+  if (!isNamedInRoles(entry.owner)) {
+    process.stderr.write(`${cannot}: its owner ${entry.owner} is not named in organisation/roles.md\n`)
+    return 1
+  }
+  const folder = `processes/${id}`
+  const draftNumber = newestDraftNumber(path.join(process.cwd(), folder))
+  if (draftNumber === null) {
+    process.stderr.write(`${cannot}: there is no draft in ${folder}/drafts\n`)
+    return 1
+  }
+  const draft = `draft-${draftNumber}.md`
+  const approvalFile = `${folder}/versions/approval-draft-${draftNumber}.md`
+  if (existsSync(path.join(process.cwd(), approvalFile))) {
+    process.stderr.write(`${cannot}: ${draft} is already approved\n`)
+    return 1
+  }
+  try {
+    mkdirSync(path.join(process.cwd(), folder, "versions"), { recursive: true })
+    writeFileSync(
+      path.join(process.cwd(), approvalFile),
+      `# Approval of ${draft}\n\nProcess: ${id}\nDraft: ${draft}\nApproved by: ${entry.owner}\nApproved at: ${new Date().toISOString()}\n`,
+    )
+  } catch (error) {
+    process.stderr.write(`process-factory: cannot write ${approvalFile}: ${errorMessage(error)}\n`)
+    return 1
+  }
+  process.stdout.write(`Stored ${approvalFile}\n`)
+  return 0
+}
+
 function showProcesses(id) {
   const processes = readProcessesOrPrintReason()
   if (processes === null) return 1
@@ -456,6 +566,7 @@ function showProcesses(id) {
   const entry = findProcessOrPrintReason(processes, id)
   if (entry === undefined) return 1
   const lines = [entry.id, `Title: ${entry.title}`, `Stage: ${entry.stage}`]
+  if (entry.owner !== undefined) lines.push(`Owner: ${entry.owner}`)
   if (entry.specAcceptedAt !== undefined) lines.push(`Spec accepted: ${entry.specAcceptedAt}`)
   const rounds = entry.rounds ?? []
   const stopped = rounds.at(-1)?.stopped
@@ -520,7 +631,7 @@ function checkDependencies() {
 
 function printUsage() {
   process.stderr.write(
-    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory org init\n       process-factory check\n',
+    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory org init\n       process-factory check\n',
   )
   return 1
 }
@@ -532,6 +643,8 @@ else if (commandArguments.length === 3 && commandArguments[0] === "move") proces
 else if (commandArguments.length === 3 && commandArguments[0] === "answer") process.exitCode = answerProcess(commandArguments[1], commandArguments[2])
 else if (commandArguments.length === 2 && commandArguments[0] === "accept-spec") process.exitCode = acceptSpec(commandArguments[1])
 else if (commandArguments.length === 2 && commandArguments[0] === "round") process.exitCode = recordRound(commandArguments[1])
+else if (commandArguments.length === 3 && commandArguments[0] === "owner") process.exitCode = setOwner(commandArguments[1], commandArguments[2])
+else if (commandArguments.length === 4 && commandArguments[0] === "approve" && commandArguments[2] === "--by") process.exitCode = approveDraft(commandArguments[1], commandArguments[3])
 else if (commandArguments.length <= 2 && commandArguments[0] === "show") process.exitCode = showProcesses(commandArguments[1])
 else if (commandArguments.length === 2 && commandArguments[0] === "org" && commandArguments[1] === "init") process.exitCode = initialiseOrganisation()
 else if (commandArguments.length === 1 && commandArguments[0] === "check") process.exitCode = checkDependencies()
