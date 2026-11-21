@@ -854,6 +854,74 @@ describe("process-factory round", () => {
     expect(result.status).toBe(1)
   })
 
+  /** The entries of `count` rounds that are already on the board, numbered from 1, each with legal asking for changes. */
+  function recordedRounds(count: number): Record<string, unknown>[] {
+    return Array.from({ length: count }, (_unused, index) => ({
+      round: index + 1,
+      draft: "draft-1.md",
+      at: "2026-11-18T17:05:40.456Z",
+      verdicts: [{ reviewer: "legal", verdict: "CHANGES" }],
+    }))
+  }
+
+  /** The round entries of the one process on the board. */
+  function storedRounds(): Record<string, unknown>[] {
+    const list: unknown = storedProcesses()[0]?.rounds
+    return Array.isArray(list) ? list.filter(isRecord) : []
+  }
+
+  it("stops the fifth round that asks for changes, moves it to approval and records the reason after the verdicts", () => {
+    prepareReview(
+      ["legal", "readability"],
+      { 5: { "legal.md": findingsText("legal", "PASS", []), "readability.md": findingsText("readability", "CHANGES", ["medium"]) } },
+      { rounds: recordedRounds(4) },
+    )
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    const reason = "the limit of 5 rounds is reached and these reviewers still ask for changes: readability"
+    expect(result.stdout).toBe(
+      `Recorded ${processFolder}/rounds/round-5 for draft-1.md\n  legal  PASS  0 high, 0 medium, 0 low\n  readability  CHANGES  0 high, 1 medium, 0 low\nStopped: ${reason}\napproval\n`,
+    )
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    const entry = storedProcesses()[0]
+    expect(entry?.stage).toBe("approval")
+    expect(storedHistory(entry).at(-1)?.stage).toBe("approval")
+    expect(Object.keys(storedRounds()[4] ?? {})).toEqual(["round", "draft", "at", "verdicts", "stopped"])
+    expect(storedRounds()[4]?.stopped).toBe(reason)
+  })
+
+  it("leaves a fourth round that asks for changes in rework without a reason", () => {
+    prepareReview(["legal"], { 4: { "legal.md": findingsText("legal", "CHANGES", ["high"]) } }, { rounds: recordedRounds(3) })
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stdout).toBe(`Recorded ${processFolder}/rounds/round-4 for draft-1.md\n  legal  CHANGES  1 high, 0 medium, 0 low\nrework\n`)
+    expect(storedProcesses()[0]?.stage).toBe("rework")
+    expect(storedRounds()[3]).not.toHaveProperty("stopped")
+  })
+
+  it("does not stop a fifth round in which every verdict is PASS", () => {
+    prepareReview(["legal"], { 5: { "legal.md": findingsText("legal", "PASS", []) } }, { rounds: recordedRounds(4) })
+
+    const result = runCommand(["round", "001-handle-a-breach"])
+
+    expect(result.stdout).toBe(`Recorded ${processFolder}/rounds/round-5 for draft-1.md\n  legal  PASS  0 high, 0 medium, 0 low\napproval\n`)
+    expect(storedProcesses()[0]?.stage).toBe("approval")
+    expect(storedRounds()[4]).not.toHaveProperty("stopped")
+  })
+
+  it("prints Stopped: with the reason of the newest round between the Stage line and the line Rounds:", () => {
+    prepareReview(["legal"], { 5: { "legal.md": findingsText("legal", "CHANGES", ["high"]) } }, { rounds: recordedRounds(4) })
+    runCommand(["round", "001-handle-a-breach"])
+
+    const lines = runCommand(["show", "001-handle-a-breach"]).stdout.split("\n")
+
+    expect(lines.slice(2, 4)).toEqual(["Stage: approval", "Stopped: the limit of 5 rounds is reached and these reviewers still ask for changes: legal"])
+    expect(lines[4]).toBe("Rounds:")
+  })
+
   it("prints Rounds: with one line per round between the Stage line and the History line, and only for a process with rounds", () => {
     prepareReview(["legal", "readability"], {
       1: { "legal.md": findingsText("legal", "CHANGES", ["high"]), "readability.md": findingsText("readability", "PASS", []) },
