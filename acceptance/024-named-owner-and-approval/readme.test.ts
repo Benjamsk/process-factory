@@ -3,7 +3,7 @@ import { readmeStatus } from "../010-clarifying-questions/clarify.ts"
 
 const withoutReviewer = "Without a reviewer `next` on a process in `review` says so and moves nothing."
 const approval =
-  "In `approval` Claude asks who the owner of the process is when it has none, shows the newest draft, the verdict of every reviewer and the reason of a stop, and asks the user for their full name and whether they approve; the command line records the approval only when that name is the owner of the process, and the process stays in `approval`."
+  "In `approval` Claude asks who the owner of the process is when it has none, shows the newest draft, the verdict of every reviewer and the reason of a stop, and asks the user for their full name and whether they approve; the command line records the approval only when that name is the owner of the process, and Claude then publishes the approved draft as a numbered version, which moves the process to `published`."
 const otherStages = "For every other stage `next` reports the stage and moves nothing."
 const regressed = "so the loop ends only when no case regresses."
 const owner =
