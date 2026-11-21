@@ -50,6 +50,7 @@ Result: <`PASS`, or `FAIL at` and the step of the draft that failed>
 - Each of the four lines is one line. `Would do:`, `Stops at:`, `Gets wrong:`, `Result:`, `PASS` and `FAIL at` stay in English; what follows them is in the language of the draft.
 - The line of the result is `Result: PASS`, or it starts with `Result: FAIL at ` and then names the step by its number or its heading in the draft, such as `Result: FAIL at step 2`.
 - Start no line of a section with `- ` or with `Verdict:`. The command line reads every line that starts with `- ` as a finding and refuses the file when one of them has no tag.
+- The command line reads the heading and the line of the result of every section. It refuses the file when a case in `cases/` has no section with such a line, or when the verdict is `PASS` while a section says `FAIL`, and it sends the draft back to rework while a case fails that passed in an earlier round.
 
 ## The findings file
 
