@@ -380,10 +380,10 @@ function recordRound(id) {
     asking.length > 0 && recorded.length + 1 >= roundLimit
       ? `the limit of ${roundLimit} rounds is reached and these reviewers still ask for changes: ${asking.join(", ")}`
       : undefined
-  entry.stage = asking.length > 0 && stopped === undefined ? "rework" : "approval"
+  entry.stage = stopped === undefined && asking.length > 0 ? "rework" : "approval"
   entry.history = [...(entry.history ?? []), { at, stage: entry.stage }]
   const verdicts = read.map(({ reviewer, verdict }) => ({ reviewer, verdict }))
-  entry.rounds = [...recorded, stopped === undefined ? { round, draft, at, verdicts } : { round, draft, at, verdicts, stopped }]
+  entry.rounds = [...recorded, { round, draft, at, verdicts, ...(stopped === undefined ? {} : { stopped }) }]
   writeBoard(processes)
   const counted = read.map((file) => `  ${file.reviewer}  ${file.verdict}  ${file.counts.map((count, index) => `${count} ${findingTags[index]}`).join(", ")}`)
   const stoppedLine = stopped === undefined ? [] : [`Stopped: ${stopped}`]
