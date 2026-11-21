@@ -29,7 +29,7 @@ describe("the section The command line of the skill", () => {
 })
 
 describe("the headings of the skill", () => {
-  it("has eighteen level 2 headings, ending with Review the draft and Rework the draft", () => {
+  it("has nineteen level 2 headings, ending with Rework the draft and Approve the draft", () => {
     expect(headings(skillTemplate, 2)).toEqual([
       "The command line",
       "The organisation context",
@@ -49,13 +49,14 @@ describe("the headings of the skill", () => {
       "Write the draft",
       "Review the draft",
       "Rework the draft",
+      "Approve the draft",
     ])
   })
 
-  it("has # Process Factory as its only line that starts with # and eighteen lines that start with ##", () => {
+  it("has # Process Factory as its only line that starts with # and nineteen lines that start with ##", () => {
     const lines = readFile(root, skillTemplate).split(/\r?\n/)
     expect(lines.filter((line) => line.startsWith("# "))).toEqual(["# Process Factory"])
-    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(18)
+    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(19)
   })
 })
 
@@ -69,7 +70,7 @@ describe("the section Run the stage of the skill", () => {
       "| `draft` | Write the draft |",
       "| `review` | Review the draft |",
       "| `rework` | Rework the draft |",
-      "| `approval` | None yet |",
+      "| `approval` | Approve the draft |",
       "| `published` | None yet |",
       "| `regenerate` | None yet |",
     ])

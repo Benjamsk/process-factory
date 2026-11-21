@@ -52,7 +52,7 @@ describe("the section The command line of the skill", () => {
 })
 
 describe("the headings of the skill", () => {
-  it("has eighteen level 2 headings, ending with Write the draft, Review the draft and Rework the draft", () => {
+  it("has nineteen level 2 headings, ending with Review the draft, Rework the draft and Approve the draft", () => {
     expect(headings(skillTemplate, 2)).toEqual([
       "The command line",
       "The organisation context",
@@ -72,18 +72,19 @@ describe("the headings of the skill", () => {
       "Write the draft",
       "Review the draft",
       "Rework the draft",
+      "Approve the draft",
     ])
   })
 
-  it("has # Process Factory as its only line that starts with # and eighteen lines that start with ##", () => {
+  it("has # Process Factory as its only line that starts with # and nineteen lines that start with ##", () => {
     const lines = readFile(root, skillTemplate).split(/\r?\n/)
     expect(lines.filter((line) => line.startsWith("# "))).toEqual(["# Process Factory"])
-    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(18)
+    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(19)
   })
 })
 
 describe("the section Run the stage of the skill", () => {
-  it("has a table with the ten stages, in which review and rework have a step and the last three have none yet", () => {
+  it("has a table with the ten stages, in which review and rework have a step and the last two have none yet", () => {
     expect(tableRows(skillTemplate, "Run the stage")).toEqual([
       "| `intake` | Ask the questions |",
       "| `clarify` | Collect the answers |",
@@ -92,7 +93,7 @@ describe("the section Run the stage of the skill", () => {
       "| `draft` | Write the draft |",
       "| `review` | Review the draft |",
       "| `rework` | Rework the draft |",
-      "| `approval` | None yet |",
+      "| `approval` | Approve the draft |",
       "| `published` | None yet |",
       "| `regenerate` | None yet |",
     ])
@@ -148,7 +149,7 @@ describe("the section Review the draft of the skill", () => {
   it("says what /process next does after rework and after approval, and relays everything round printed when it fails", () => {
     const text = section(skillTemplate, "Review the draft")
     expect(text).toContain("sends the draft back to the draft writer with every finding")
-    expect(text).toContain("the factory cannot run the stage `approval` yet")
+    expect(text).toContain("`/process next <process-id>` asks the owner of the process to approve the draft")
     expect(text).toContain("show the user everything it printed, unchanged, and stop")
   })
 

@@ -65,7 +65,7 @@ describe("the section What the input means of the skill", () => {
 })
 
 describe("the level 2 headings of the skill", () => {
-  it("are the eighteen of the spec, with Interview the user after Create the organisation context", () => {
+  it("are the nineteen of the spec, with Interview the user after Create the organisation context", () => {
     expect(headings(skillTemplate, 2)).toEqual([
       "The command line",
       "The organisation context",
@@ -85,6 +85,7 @@ describe("the level 2 headings of the skill", () => {
       "Write the draft",
       "Review the draft",
       "Rework the draft",
+      "Approve the draft",
     ])
   })
 })

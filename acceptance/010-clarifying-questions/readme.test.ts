@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest"
 import { readmeStatus } from "./clarify.ts"
 
 describe("the Status section of README.md", () => {
-  it("says the prompt is stored and that intake, clarify, spec, cases, draft, review and rework have a step", () => {
+  it("says the prompt is stored and that intake, clarify, spec, cases, draft, review, rework and approval have a step", () => {
     const text = readmeStatus()
     expect(text).toContain("stores the prompt with it")
-    expect(text).toContain("Seven stages have a step.")
+    expect(text).toContain("Eight stages have a step.")
     expect(text).toContain("a questioner agent reads the request and the organisation context")
     expect(text).toContain("In `clarify` Claude asks the user those questions one at a time")
     expect(text).toContain("For every other stage `next` reports the stage and moves nothing.")

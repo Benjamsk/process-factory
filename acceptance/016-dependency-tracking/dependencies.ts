@@ -1,4 +1,4 @@
-import { processes, runCommand, writeBoard, writeFile } from "../006-process-state-machine/store.ts"
+import { approveDraft, processes, runCommand, writeBoard, writeFile } from "../006-process-state-machine/store.ts"
 
 export const breachId = "001-handle-a-personal-data-breach"
 export const breachTitle = "Handle a personal data breach"
@@ -61,9 +61,10 @@ export function boardEntry(id: string, title: string, stage: string): Record<str
   return { id, title, stage, history: [{ at: "2026-11-20T15:02:11.123Z", stage }] }
 }
 
-/** Writes a board with the breach process in `approval` and its `spec.md` when one is given. */
+/** Writes a board with the breach process in `approval`, with a draft its owner approved, and its `spec.md` when one is given. */
 export function writeApproved(folder: string, spec?: string): void {
   writeBoard(folder, [boardEntry(breachId, breachTitle, "approval")])
+  approveDraft(folder, breachId)
   if (spec !== undefined) {
     writeFile(folder, `processes/${breachId}/spec.md`, spec)
   }

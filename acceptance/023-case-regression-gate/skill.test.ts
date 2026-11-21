@@ -5,7 +5,7 @@ import { simulationTemplate } from "./gate.ts"
 const rework = "When it printed the stage `rework`, tell the user that `/process next <process-id>` sends the draft back to the draft writer with every finding."
 const regressed =
   "When it printed lines that start with `Regressed: `, tell the user also that every case such a line names passed with the draft the line names and fails with this draft, and that the process goes back to `rework` for it, also past the limit of five rounds, until no such case fails."
-const approval = "When it printed the stage `approval` and no line that starts with `Stopped: `, tell the user that every reviewer passed the draft and that the factory cannot run the stage `approval` yet."
+const approval = "When it printed the stage `approval` and no line that starts with `Stopped: `, tell the user that every reviewer passed the draft and that `/process next <process-id>` asks the owner of the process to approve the draft."
 const bullet =
   "- The command line reads the heading and the line of the result of every section. It refuses the file when a case in `cases/` has no section with such a line, or when the verdict is `PASS` while a section says `FAIL`, and it sends the draft back to rework while a case fails that passed in an earlier round."
 
@@ -15,7 +15,7 @@ describe("the section Review the draft of the skill", () => {
     expect(step).toContain(`7. ${rework} ${regressed} ${approval} When it printed a line that starts with \`Stopped: \``)
     expect(step).toContain("the limit of five rounds while reviewers still ask for changes")
     expect(step).toContain("the files `conflicts.md` of the rounds")
-    expect(step.endsWith("and that the factory cannot run the stage `approval` yet.")).toBe(true)
+    expect(step.endsWith("and that `/process next <process-id>` asks the owner of the process to approve the draft.")).toBe(true)
   })
 
   it("names the regressed cases without asking the user to accept anything and without a move", () => {
