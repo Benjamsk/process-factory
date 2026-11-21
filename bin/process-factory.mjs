@@ -16,6 +16,8 @@ const specSections = ["Trigger", "Scope", "Roles", "Steps", "AI steps", "Deadlin
 const dependencyFiles = { Role: "organisation/roles.md", System: "organisation/systems.md", Agreement: "organisation/processors.md", Policy: "organisation/policies.md" }
 /** The tags of a finding, in the order `round` counts them. */
 const findingTags = ["high", "medium", "low"]
+/** The number of review rounds after which `round` stops the loop and moves the process to `approval`. */
+const roundLimit = 5
 /** The ten stages, each with the stages a process may move to from it. */
 const allowedMoves = {
   intake: ["clarify", "spec"],
@@ -373,12 +375,19 @@ function recordRound(id) {
   }
   const at = new Date().toISOString()
   const draft = `draft-${draftNumber}.md`
-  entry.stage = read.some((file) => file.verdict === "CHANGES") ? "rework" : "approval"
+  const asking = read.filter((file) => file.verdict === "CHANGES").map((file) => file.reviewer)
+  const stopped =
+    asking.length > 0 && recorded.length + 1 >= roundLimit
+      ? `the limit of ${roundLimit} rounds is reached and these reviewers still ask for changes: ${asking.join(", ")}`
+      : undefined
+  entry.stage = stopped === undefined && asking.length > 0 ? "rework" : "approval"
   entry.history = [...(entry.history ?? []), { at, stage: entry.stage }]
-  entry.rounds = [...recorded, { round, draft, at, verdicts: read.map(({ reviewer, verdict }) => ({ reviewer, verdict })) }]
+  const verdicts = read.map(({ reviewer, verdict }) => ({ reviewer, verdict }))
+  entry.rounds = [...recorded, { round, draft, at, verdicts, ...(stopped === undefined ? {} : { stopped }) }]
   writeBoard(processes)
-  const verdicts = read.map((file) => `  ${file.reviewer}  ${file.verdict}  ${file.counts.map((count, index) => `${count} ${findingTags[index]}`).join(", ")}`)
-  process.stdout.write(`${[`Recorded ${roundFolder} for ${draft}`, ...verdicts, entry.stage].join("\n")}\n`)
+  const counted = read.map((file) => `  ${file.reviewer}  ${file.verdict}  ${file.counts.map((count, index) => `${count} ${findingTags[index]}`).join(", ")}`)
+  const stoppedLine = stopped === undefined ? [] : [`Stopped: ${stopped}`]
+  process.stdout.write(`${[`Recorded ${roundFolder} for ${draft}`, ...counted, ...stoppedLine, entry.stage].join("\n")}\n`)
   return 0
 }
 
@@ -394,9 +403,12 @@ function showProcesses(id) {
   if (entry === undefined) return 1
   const lines = [entry.id, `Title: ${entry.title}`, `Stage: ${entry.stage}`]
   if (entry.specAcceptedAt !== undefined) lines.push(`Spec accepted: ${entry.specAcceptedAt}`)
-  if ((entry.rounds ?? []).length > 0) {
+  const rounds = entry.rounds ?? []
+  const stopped = rounds.at(-1)?.stopped
+  if (stopped !== undefined) lines.push(`Stopped: ${stopped}`)
+  if (rounds.length > 0) {
     lines.push("Rounds:")
-    for (const round of entry.rounds) lines.push(`  ${round.round}  ${round.draft}  ${round.verdicts.map((given) => `${given.reviewer} ${given.verdict}`).join(", ")}`)
+    for (const round of rounds) lines.push(`  ${round.round}  ${round.draft}  ${round.verdicts.map((given) => `${given.reviewer} ${given.verdict}`).join(", ")}`)
   }
   lines.push("History:")
   for (const change of entry.history ?? []) lines.push(`  ${change.at}  ${change.stage}`)
