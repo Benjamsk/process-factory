@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process"
+import { spawn, spawnSync, type ChildProcess } from "node:child_process"
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -22,7 +22,7 @@ const skillFiles = [
 ]
 const boardPath = "processes/board.json"
 const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory org init\n       process-factory check\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n'
 const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.md", "authority.md"]
 const timeForm = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
 
@@ -1586,8 +1586,266 @@ describe("the version that process-factory move to published writes", () => {
   })
 })
 
+describe("the reading view of process-factory serve", () => {
+  const processId = "001-handle-a-lost-laptop"
+  const owner = "Kari Nordmann"
+  const firstDocument = "# Handle a lost laptop\n\n1. IT manager (Ola Hansen): Call the police first.\n"
+  const secondDocument = "# Handle a lost laptop\n\n1. IT manager (Ola Hansen): Block the laptop in Intune.\n"
+  const views: ChildProcess[] = []
+
+  afterEach(async () => {
+    await Promise.all(
+      views.splice(0).map(
+        (child) =>
+          new Promise<void>((resolve) => {
+            if (child.exitCode !== null || child.signalCode !== null) {
+              resolve()
+              return
+            }
+            child.once("exit", () => {
+              resolve()
+            })
+            child.kill()
+          }),
+      ),
+    )
+  })
+
+  /** Starts the view on a free port of the working directory and gives the address it printed. */
+  async function openView(): Promise<string> {
+    const child = spawn(process.execPath, [commandFile, "serve", "--port", "0"], { cwd: workingDirectory, stdio: ["ignore", "pipe", "pipe"] })
+    views.push(child)
+    child.stdout.setEncoding("utf8")
+    let printed = ""
+    await new Promise<void>((resolve) => {
+      child.stdout.on("data", (chunk: string) => {
+        printed += chunk
+        if (printed.includes("\n")) resolve()
+      })
+      child.once("close", resolve)
+    })
+    expect(printed).toMatch(/^Reading view on http:\/\/127\.0\.0\.1:[1-9]\d*\n$/)
+    return printed.trim().replace("Reading view on ", "")
+  }
+
+  async function requestPage(address: string, pathname: string, method = "GET") {
+    const response = await fetch(`${address}${pathname}`, { method })
+    return { status: response.status, headers: response.headers, body: await response.text() }
+  }
+
+  /** The text between `<li>` and `</li>` of every such item of a page, in order. */
+  function items(body: string): string[] {
+    return [...body.matchAll(/<li>(.*?)<\/li>/gs)].map((match) => (match[1] ?? "").trim())
+  }
+
+  /** What stands inside `<main>`, without the whitespace between the elements. */
+  function documentOf(body: string): string {
+    return (/<main>(.*)<\/main>/s.exec(body)?.[1] ?? "").replace(/>\s+</g, "><").trim()
+  }
+
+  function writeVersionFolder(number: number, document: string, approval: string | undefined): void {
+    writeWorkingFile(`processes/${processId}/versions/${String(number)}/process.md`, document)
+    if (approval !== undefined) writeWorkingFile(`processes/${processId}/versions/${String(number)}/approval.md`, approval)
+  }
+
+  function approvalText(by: string, at: string): string {
+    return `# Approval of a draft\n\nApproved by: ${by}\nApproved at: ${at}\n`
+  }
+
+  /** Writes a process that was never published and the laptop process with the published versions 1 and 2. */
+  function writeView(more: Record<string, unknown> = {}, newestDocument = secondDocument): void {
+    writeBoardFile([
+      { id: "000-older-process", title: "Older process", stage: "draft", owner },
+      {
+        id: processId,
+        title: "Handle a lost laptop",
+        stage: "published",
+        owner,
+        versions: [
+          { version: 1, draft: "draft-1.md", approvedBy: owner, at: "2026-10-03T08:00:00.000Z" },
+          { version: 2, draft: "draft-2.md", approvedBy: owner, at: "2026-11-22T08:00:00.000Z" },
+        ],
+        ...more,
+      },
+    ])
+    writeVersionFolder(1, firstDocument, approvalText(owner, "2026-10-02T09:00:00.000Z"))
+    writeVersionFolder(2, newestDocument, approvalText(owner, "2026-11-21T10:05:00.000Z"))
+  }
+
+  it("says that no process is published yet in a folder without processes, and creates nothing there", async () => {
+    const address = await openView()
+
+    const front = await requestPage(address, "/")
+
+    expect(front.status).toBe(200)
+    expect(front.headers.get("content-type")).toBe("text/html; charset=utf-8")
+    expect(front.headers.get("cache-control")).toBe("no-store")
+    expect(front.headers.get("x-content-type-options")).toBe("nosniff")
+    expect(front.headers.get("content-security-policy")).toBe("default-src 'none'; style-src 'unsafe-inline'")
+    expect(front.body).toContain("<title>Published processes</title>")
+    expect(front.body).toContain("<h1>Published processes</h1>")
+    expect(front.body).toContain("<p>No process is published yet.</p>")
+    expect(front.body).not.toContain("<li")
+    expect(front.body).not.toContain("<script")
+    expect(readdirSync(workingDirectory)).toEqual([])
+  })
+
+  it("lists only the processes with a published version, with the owner, the current version and its approval date", async () => {
+    writeView()
+    const address = await openView()
+
+    const front = await requestPage(address, "/")
+
+    expect(items(front.body)).toEqual([`<a href="/${processId}">Handle a lost laptop</a> Owner: Kari Nordmann. Version 2. Approved on: 2026-11-21.`])
+    expect(front.body).not.toContain("Older process")
+  })
+
+  it("shows the current version with its facts, its document and the version history, and no notice", async () => {
+    writeView()
+    const address = await openView()
+
+    const page = await requestPage(address, `/${processId}`)
+
+    expect(page.status).toBe(200)
+    expect(page.body).toContain("<title>Handle a lost laptop, version 2</title>")
+    expect(page.body).toContain('<p><a href="/">All processes</a></p>')
+    expect(page.body.replace(/>\s+</g, "><")).toContain(
+      "<dl><dt>Owner</dt><dd>Kari Nordmann</dd><dt>Version</dt><dd>2</dd><dt>Approved by</dt><dd>Kari Nordmann</dd><dt>Approved on</dt><dd>2026-11-21</dd></dl>",
+    )
+    expect(documentOf(page.body)).toBe('<h1>Handle a lost laptop</h1><ol><li value="1">IT manager (Ola Hansen): Block the laptop in Intune.</li></ol>')
+    expect(page.body).toContain("<h2>Version history</h2>")
+    expect(items(page.body)).toEqual([
+      `<a href="/${processId}/2">Version 2</a> Approved by: Kari Nordmann. Approved on: 2026-11-21. (this version)`,
+      `<a href="/${processId}/1">Version 1</a> Approved by: Kari Nordmann. Approved on: 2026-10-02.`,
+    ])
+    expect(page.body).not.toContain("not the current version")
+    expect(page.body).toBe((await requestPage(address, `/${processId}/2`)).body)
+  })
+
+  it("shows an earlier version with the notice that links to the current one, and marks it in the history", async () => {
+    writeView()
+    const address = await openView()
+
+    const page = await requestPage(address, `/${processId}/1`)
+
+    expect(page.status).toBe(200)
+    expect(page.body).toContain("<title>Handle a lost laptop, version 1</title>")
+    expect(page.body).toContain(
+      `<p class="notice">This is version 1, not the current version. <a href="/${processId}">Read the current version, version 2.</a></p>`,
+    )
+    expect(page.body.indexOf('<p class="notice">')).toBeLessThan(page.body.indexOf("<dl>"))
+    expect(documentOf(page.body)).toBe('<h1>Handle a lost laptop</h1><ol><li value="1">IT manager (Ola Hansen): Call the police first.</li></ol>')
+    expect(items(page.body).at(-1)).toBe(`<a href="/${processId}/1">Version 1</a> Approved by: Kari Nordmann. Approved on: 2026-10-02. (this version)`)
+  })
+
+  it("keeps showing the newest published version of a process in regenerate, and nothing of its stage or its new draft", async () => {
+    writeView({ stage: "regenerate" })
+    writeWorkingFile(`processes/${processId}/drafts/draft-9.md`, "# Handle a lost laptop\n\nUnapproved ninth draft.\n")
+    const address = await openView()
+
+    const page = await requestPage(address, `/${processId}`)
+
+    expect(page.status).toBe(200)
+    expect(page.body).toContain("<title>Handle a lost laptop, version 2</title>")
+    expect(page.body).not.toContain("Unapproved ninth draft.")
+    expect(page.body).not.toContain("regenerate")
+  })
+
+  it.each([
+    ["a process without a published version", "/000-older-process"],
+    ["a version folder the board does not list", `/${processId}/3`],
+    ["a path that tries to leave the store", "/..%2f..%2fpackage.json"],
+    ["a draft of a process", `/${processId}/drafts/draft-1.md`],
+    ["a slash at the end", `/${processId}/`],
+  ])("answers 404 with the page Not found for %s", async (_name, pathname) => {
+    writeView()
+    writeVersionFolder(3, "# Handle a lost laptop\n\nLeft by a failed publication.\n", undefined)
+    const address = await openView()
+
+    const page = await requestPage(address, pathname)
+
+    expect(page.status).toBe(404)
+    expect(page.body).toContain("<title>Not found</title>")
+    expect(page.body).toContain("<h1>Not found</h1>")
+    expect(page.body).toContain("<p>There is no published process at this address.</p>")
+    expect(page.body).toContain('<p><a href="/">All processes</a></p>')
+    expect(page.body).not.toContain(pathname)
+    expect(page.body).not.toContain("Left by a failed publication.")
+  })
+
+  it("escapes the title, the owner and the document, and interprets no inline Markdown", async () => {
+    writeView({ title: "Laptops & <phones>", owner: `Kari "K" O'Hara` }, "# Laptops & <phones>\n\nUse **bold** and `code`.\n\n- <script>alert(1)</script>\n")
+    const address = await openView()
+
+    const front = await requestPage(address, "/")
+    const page = await requestPage(address, `/${processId}`)
+
+    expect(items(front.body)).toEqual([`<a href="/${processId}">Laptops &amp; &lt;phones&gt;</a> Owner: Kari &quot;K&quot; O&#39;Hara. Version 2. Approved on: 2026-11-21.`])
+    expect(page.body).toContain("<title>Laptops &amp; &lt;phones&gt;, version 2</title>")
+    expect(documentOf(page.body)).toBe(
+      "<h1>Laptops &amp; &lt;phones&gt;</h1><p>Use **bold** and `code`.</p><ul><li>&lt;script&gt;alert(1)&lt;/script&gt;</li></ul>",
+    )
+    expect(page.body).not.toContain("<script")
+    expect(page.body).not.toContain("<strong>")
+  })
+
+  it("says not recorded for the owner, the approver and the date that the store does not give", async () => {
+    writeBoardFile([{ id: processId, title: "Handle a lost laptop", stage: "published", versions: [{ version: 1, draft: "draft-1.md", at: "2026-11-02T08:00:00.000Z" }] }])
+    writeVersionFolder(1, firstDocument, undefined)
+    const address = await openView()
+
+    const front = await requestPage(address, "/")
+    const page = await requestPage(address, `/${processId}`)
+
+    expect(items(front.body)).toEqual([`<a href="/${processId}">Handle a lost laptop</a> Owner: not recorded. Version 1. Approved on: not recorded.`])
+    expect(page.body.replace(/>\s+</g, "><")).toContain("<dt>Owner</dt><dd>not recorded</dd>")
+    expect(page.body).toContain("Approved by: not recorded. Approved on: not recorded.")
+    expect(page.body).not.toContain("2026-11-02")
+  })
+
+  it("answers a method other than GET or HEAD with 405 and Allow: GET, HEAD, and HEAD with 200", async () => {
+    writeView()
+    const address = await openView()
+
+    const refused = await requestPage(address, "/", "POST")
+
+    expect(refused.status).toBe(405)
+    expect(refused.headers.get("allow")).toBe("GET, HEAD")
+    expect(refused.body).toBe("")
+    expect((await requestPage(address, "/", "HEAD")).status).toBe(200)
+  })
+
+  it("answers 500 without the reason while the board cannot be read, and 200 again after it is repaired", async () => {
+    writeView()
+    const board = readWorkingFile(boardPath)
+    const address = await openView()
+    writeWorkingFile(boardPath, "{ not json")
+
+    const broken = await requestPage(address, "/")
+
+    expect(broken.status).toBe(500)
+    expect(broken.body).toContain("<title>Error</title>")
+    expect(broken.body).toContain("<h1>Error</h1>")
+    expect(broken.body).toContain("<p>The reading view cannot read the processes.</p>")
+    expect(broken.body).not.toContain(boardPath)
+    expect(broken.body).not.toContain("JSON")
+
+    writeWorkingFile(boardPath, board)
+
+    expect((await requestPage(address, "/")).status).toBe(200)
+  })
+
+  it.each([["abc"], ["70000"], ["-1"], ["4173x"]])("refuses the port %s with one line, starts no server and exits with 1", (port) => {
+    const result = runCommand(["serve", "--port", port])
+
+    expect(result.stderr).toBe("process-factory: the port must be a number from 0 to 65535\n")
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+  })
+})
+
 describe("process-factory with anything other than a command", () => {
-  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b", "c"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]], [["org"]], [["org", "init", "extra"]], [["answer"]], [["answer", "a"]], [["answer", "a", "b", "c"]], [["accept-spec"]], [["accept-spec", "a", "b"]], [["round"]], [["round", "a", "b"]], [["owner", "a"]], [["owner", "a", "b", "c"]], [["approve", "a"]], [["approve", "a", "b"]], [["approve", "a", "--as", "b"]], [["approve", "a", "--by", "b", "c"]], [["check", "extra"]], [["org", "check"]]])(
+  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b", "c"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]], [["org"]], [["org", "init", "extra"]], [["answer"]], [["answer", "a"]], [["answer", "a", "b", "c"]], [["accept-spec"]], [["accept-spec", "a", "b"]], [["round"]], [["round", "a", "b"]], [["owner", "a"]], [["owner", "a", "b", "c"]], [["approve", "a"]], [["approve", "a", "b"]], [["approve", "a", "--as", "b"]], [["approve", "a", "--by", "b", "c"]], [["check", "extra"]], [["org", "check"]], [["serve", "extra"]], [["serve", "--port"]], [["serve", "--host", "0.0.0.0"]], [["serve", "--port", "0", "extra"]]])(
     "prints the usage and writes nothing for %j",
     (commandArguments) => {
       const result = runCommand(commandArguments)

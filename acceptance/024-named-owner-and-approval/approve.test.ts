@@ -192,7 +192,7 @@ describe("process-factory approve in another form or for another id", () => {
     ["as owner without a name", ["owner", processId]],
     ["as owner with an argument after the name", ["owner", processId, kari, "extra"]],
     ["with no argument", []],
-  ])("prints the eleven usage lines, with owner and approve after round, and writes nothing %s", (_name, args) => {
+  ])("prints the twelve usage lines, with owner and approve after round, and writes nothing %s", (_name, args) => {
     prepareApproval(project)
     const before = readFile(project, boardFile)
 
