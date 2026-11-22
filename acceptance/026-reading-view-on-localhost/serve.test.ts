@@ -95,11 +95,11 @@ describe("the usage of process-factory", () => {
     ["serve --port", ["--port"]],
     ["serve --host 0.0.0.0", ["--host", "0.0.0.0"]],
     ["serve --port 0 extra", ["--port", "0", "extra"]],
-  ])("has twelve lines, with serve as the last, and is printed with %s", (_name, args) => {
+  ])("has thirteen lines, with serve as the last, and is printed with %s", (_name, args) => {
     const result = runServe(project, args)
 
     expect(result.stderr).toBe(usage)
-    expect(result.stderr.trimEnd().split("\n")).toHaveLength(12)
+    expect(result.stderr.trimEnd().split("\n")).toHaveLength(13)
     expect(result.stderr.endsWith("       process-factory check\n       process-factory serve [--port <number>]\n")).toBe(true)
     expect(result.stdout).toBe("")
     expect(result.status).toBe(1)

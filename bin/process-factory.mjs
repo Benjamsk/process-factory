@@ -501,10 +501,12 @@ function recordRound(id) {
   const at = new Date().toISOString()
   const draft = `draft-${draftNumber}.md`
   const asking = read.filter((file) => file.verdict === "CHANGES").map((file) => file.reviewer)
-  const regressed = regressedLines(cases ?? [], recorded)
+  const sentBackAt = (entry.respecs ?? []).at(-1)?.round ?? 0
+  const counting = recorded.filter((entered) => entered.round > sentBackAt)
+  const regressed = regressedLines(cases ?? [], counting)
   // A case with the result FAIL comes with the verdict CHANGES, so dropping the stop leaves a regressed round in rework.
   const stopped =
-    regressed.length === 0 && asking.length > 0 && recorded.length + 1 >= roundLimit
+    regressed.length === 0 && asking.length > 0 && counting.length + 1 >= roundLimit
       ? `the limit of ${roundLimit} rounds is reached and these reviewers still ask for changes: ${asking.join(", ")}`
       : undefined
   entry.stage = stopped === undefined && asking.length > 0 ? "rework" : "approval"
@@ -610,6 +612,70 @@ function approveDraft(id, byArgument) {
     return 1
   }
   process.stdout.write(`Stored ${approvalFile}\n`)
+  return 0
+}
+
+/** The findings of a reviewer's file of a round, each line as it is in the file, or null when the file cannot be read. */
+function roundFindings(roundFolder, reviewer) {
+  if (!/^[a-z0-9-]+$/.test(reviewer)) return null
+  const lines = fileLines(path.join(process.cwd(), roundFolder, `${reviewer}.md`))
+  return lines === null ? null : lines.filter((line) => findingTags.some((tag) => line.startsWith(`- [${tag}] `)))
+}
+
+function respecProcess(id) {
+  const processes = readProcessesOrPrintReason()
+  if (processes === null) return 1
+  if (!/^[a-z0-9-]+$/.test(id)) {
+    process.stderr.write(`process-factory: there is no process ${id}\n`)
+    return 1
+  }
+  const entry = findProcessOrPrintReason(processes, id)
+  if (entry === undefined) return 1
+  const cannot = `process-factory: cannot send ${id} back to spec`
+  if (entry.stage !== "rework" && entry.stage !== "approval") {
+    process.stderr.write(`${cannot}: it is in the stage ${entry.stage}, not in rework or approval\n`)
+    return 1
+  }
+  const newest = (entry.rounds ?? []).at(-1)
+  const round = newest?.round
+  if (!Number.isInteger(round) || round < 1) {
+    process.stderr.write(`${cannot}: no round is recorded for it\n`)
+    return 1
+  }
+  const folder = `processes/${id}`
+  const roundFolder = `${folder}/rounds/round-${round}`
+  const sections = []
+  for (const given of newest.verdicts ?? []) {
+    const found = roundFindings(roundFolder, given.reviewer)
+    if (found === null) {
+      process.stderr.write(`${cannot}: ${roundFolder}/${given.reviewer}.md is missing\n`)
+      return 1
+    }
+    sections.push({ reviewer: given.reviewer, verdict: given.verdict, found })
+  }
+  if (sections.every((section) => section.found.length === 0)) {
+    process.stderr.write(`${cannot}: round ${round} has no finding\n`)
+    return 1
+  }
+  const at = new Date().toISOString()
+  const head = [`# Findings of round ${round}`, "", `Process: ${id}`, `Round: ${round}`, `Draft: ${newest.draft}`, `Sent back at: ${at}`].join("\n")
+  const written = sections.map(
+    ({ reviewer, verdict, found }) => `## ${reviewer}\n\nVerdict: ${verdict}\n\n${found.length === 0 ? "No findings." : found.join("\n")}`,
+  )
+  const findingsFile = `${folder}/feedback/findings-round-${round}.md`
+  try {
+    mkdirSync(path.join(process.cwd(), folder, "feedback"), { recursive: true })
+    writeFileSync(path.join(process.cwd(), findingsFile), `${[head, ...written].join("\n\n")}\n`, { flag: "wx" })
+  } catch (error) {
+    process.stderr.write(`process-factory: cannot write ${findingsFile}: ${errorMessage(error)}\n`)
+    return 1
+  }
+  entry.stage = "spec"
+  entry.history = [...(entry.history ?? []), { at, stage: "spec" }]
+  entry.respecs = [...(entry.respecs ?? []), { round, at }]
+  delete entry.specAcceptedAt
+  writeBoard(processes)
+  process.stdout.write(`Stored ${findingsFile}\nspec\n`)
   return 0
 }
 
@@ -874,7 +940,7 @@ function serveReadingView(portArgument) {
 
 function printUsage() {
   process.stderr.write(
-    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n',
+    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n',
   )
   return 1
 }
@@ -888,6 +954,7 @@ else if (commandArguments.length === 2 && commandArguments[0] === "accept-spec")
 else if (commandArguments.length === 2 && commandArguments[0] === "round") process.exitCode = recordRound(commandArguments[1])
 else if (commandArguments.length === 3 && commandArguments[0] === "owner") process.exitCode = setOwner(commandArguments[1], commandArguments[2])
 else if (commandArguments.length === 4 && commandArguments[0] === "approve" && commandArguments[2] === "--by") process.exitCode = approveDraft(commandArguments[1], commandArguments[3])
+else if (commandArguments.length === 2 && commandArguments[0] === "respec") process.exitCode = respecProcess(commandArguments[1])
 else if (commandArguments.length <= 2 && commandArguments[0] === "show") process.exitCode = showProcesses(commandArguments[1])
 else if (commandArguments.length === 2 && commandArguments[0] === "org" && commandArguments[1] === "init") process.exitCode = initialiseOrganisation()
 else if (commandArguments.length === 1 && commandArguments[0] === "check") process.exitCode = checkDependencies()

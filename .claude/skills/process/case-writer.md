@@ -44,6 +44,7 @@ A reader of the specification thinks of the ordinary path themselves. The cases 
 - At most two cases in the folder are of the kind `Ordinary path`. Every other case is of one of the other seven kinds.
 - Write at least one case of each of the seven kinds the specification has something for. Leave out a kind it has nothing for, such as `AI failure` when no step is done by an AI, and write more cases of the other kinds instead.
 - When `cases/` already holds cases, keep them as they are and add only cases for situations they do not cover yet, so that the folder then holds at least eight cases and the two rules above are met. Write at most twelve cases in one run, and none when nothing is missing.
+- A specification that was written anew can state a step, a deadline, a duty to notify or an escalation that no case in the folder tries out. Write a case for each of those, also when the folder already holds eight cases or more. A case that is already there stays as it is, also when the specification now says something else.
 
 ## A case
 

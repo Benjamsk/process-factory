@@ -17,7 +17,7 @@ function step(number: number): string {
 }
 
 describe("the headings and the table of the skill", () => {
-  it("has nineteen level 2 headings, the eighteen it had in their order and Approve the draft as the last", () => {
+  it("has twenty level 2 headings, the nineteen it had in their order and Approve the draft as the last", () => {
     expect(headings(skillTemplate, 2)).toEqual([
       "The command line",
       "The organisation context",
@@ -29,6 +29,7 @@ describe("the headings and the table of the skill", () => {
       "Record an incident",
       "Show the board",
       "Show one process",
+      "Send a process back to spec",
       "Run the stage",
       "Ask the questions",
       "Collect the answers",

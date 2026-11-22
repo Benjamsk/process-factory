@@ -50,13 +50,14 @@ describe("the section The organisation context of the skill", () => {
 })
 
 describe("the section What the input means of the skill", () => {
-  it("has a table with the eight forms of input, in order, in which org interviews the user", () => {
+  it("has a table with the nine forms of input, in order, in which org interviews the user", () => {
     expect(tableRows(skillTemplate, "What the input means")).toEqual([
-      "| nothing, or only `next` or `incident` | Greet the user |",
+      "| nothing, or only `next`, `incident` or `respec` | Greet the user |",
       "| `show` | Show the board |",
       "| `show <process-id>` | Show one process |",
       "| `next <process-id>` | Run the stage |",
       "| `incident <process-id>` | Record an incident |",
+      "| `respec <process-id>` | Send a process back to spec |",
       "| `org init` | Create the organisation context |",
       "| `org` | Interview the user |",
       "| anything else | Create a process |",
@@ -65,7 +66,7 @@ describe("the section What the input means of the skill", () => {
 })
 
 describe("the level 2 headings of the skill", () => {
-  it("are the nineteen of the spec, with Interview the user after Create the organisation context", () => {
+  it("are the twenty of the spec, with Interview the user after Create the organisation context", () => {
     expect(headings(skillTemplate, 2)).toEqual([
       "The command line",
       "The organisation context",
@@ -77,6 +78,7 @@ describe("the level 2 headings of the skill", () => {
       "Record an incident",
       "Show the board",
       "Show one process",
+      "Send a process back to spec",
       "Run the stage",
       "Ask the questions",
       "Collect the answers",
@@ -91,9 +93,9 @@ describe("the level 2 headings of the skill", () => {
 })
 
 describe("the section Greet the user of the skill", () => {
-  it("lists six forms, the fifth being /process org", () => {
+  it("lists seven forms, the fifth being /process org", () => {
     const text = section(skillTemplate, "Greet the user")
-    expect(text).toContain("list the six forms")
+    expect(text).toContain("list the seven forms")
     expect(text).toContain("`/process org` interviews the user about the organisation")
   })
 })

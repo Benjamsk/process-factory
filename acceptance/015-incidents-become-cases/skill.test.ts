@@ -75,17 +75,18 @@ describe("the section The command line of the skill", () => {
 describe("the section What the input means of the skill", () => {
   it("makes input that starts with incident but does not fit its row a prompt", () => {
     expect(section(skillTemplate, "What the input means")).toContain(
-      "Input that starts with `show`, `next`, `org` or `incident` but does not fit its row exactly is a prompt.",
+      "Input that starts with `show`, `next`, `org`, `incident` or `respec` but does not fit its row exactly is a prompt.",
     )
   })
 
-  it("has a table with the eight forms of input, in order, in which incident <process-id> records an incident and incident alone greets", () => {
+  it("has a table with the nine forms of input, in order, in which incident <process-id> records an incident and incident alone greets", () => {
     expect(tableRows(skillTemplate, "What the input means")).toEqual([
-      "| nothing, or only `next` or `incident` | Greet the user |",
+      "| nothing, or only `next`, `incident` or `respec` | Greet the user |",
       "| `show` | Show the board |",
       "| `show <process-id>` | Show one process |",
       "| `next <process-id>` | Run the stage |",
       "| `incident <process-id>` | Record an incident |",
+      "| `respec <process-id>` | Send a process back to spec |",
       "| `org init` | Create the organisation context |",
       "| `org` | Interview the user |",
       "| anything else | Create a process |",
@@ -94,16 +95,16 @@ describe("the section What the input means of the skill", () => {
 })
 
 describe("the section Greet the user of the skill", () => {
-  it("lists six forms, the sixth being /process incident <process-id>", () => {
+  it("lists seven forms, the sixth being /process incident <process-id>", () => {
     const text = section(skillTemplate, "Greet the user")
-    expect(text).toContain("list the six forms")
+    expect(text).toContain("list the seven forms")
     expect(text).toContain("`/process incident <process-id>` turns a real event the process was used in into new cases")
     expect(text).toContain("Run no command and create nothing.")
   })
 })
 
 describe("the headings of the skill", () => {
-  it("has nineteen level 2 headings, with Record an incident between Interview the user and Show the board", () => {
+  it("has twenty level 2 headings, with Record an incident between Interview the user and Show the board", () => {
     expect(headings(skillTemplate, 2)).toEqual([
       "The command line",
       "The organisation context",
@@ -115,6 +116,7 @@ describe("the headings of the skill", () => {
       "Record an incident",
       "Show the board",
       "Show one process",
+      "Send a process back to spec",
       "Run the stage",
       "Ask the questions",
       "Collect the answers",
@@ -127,10 +129,10 @@ describe("the headings of the skill", () => {
     ])
   })
 
-  it("has # Process Factory as its only line that starts with # and nineteen lines that start with ##", () => {
+  it("has # Process Factory as its only line that starts with # and twenty lines that start with ##", () => {
     const lines = readFile(root, skillTemplate).split(/\r?\n/)
     expect(lines.filter((line) => line.startsWith("# "))).toEqual(["# Process Factory"])
-    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(19)
+    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(20)
   })
 })
 
