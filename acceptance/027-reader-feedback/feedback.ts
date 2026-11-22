@@ -1,5 +1,6 @@
-import { request as httpRequest, type IncomingHttpHeaders } from "node:http"
+import { request as httpRequest } from "node:http"
 import { laptopId } from "../026-reading-view-on-localhost/view.ts"
+import type { Answer } from "./Answer.ts"
 
 export const laptopPath = `/${laptopId}`
 /** The address a reader of version 2 posts feedback to. */
@@ -7,12 +8,6 @@ export const feedbackPath = `${laptopPath}/2/feedback`
 export const feedbackFolder = `processes/${laptopId}/feedback`
 /** The post of the acceptance criteria. */
 export const fields = { kind: "document", step: "1", text: "I did not understand step one.", name: "Ola Hansen" }
-
-export interface Answer {
-  status: number
-  headers: IncomingHttpHeaders
-  body: string
-}
 
 /** Sends a request with a body to the view, on a connection of its own. An answer that arrived counts, also when the server closes the connection early. */
 export function send(address: string, pathname: string, body: string, more: { method?: string; headers?: Record<string, string> } = {}): Promise<Answer> {
