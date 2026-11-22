@@ -3,6 +3,8 @@ import { defineConfig } from "vitest/config"
 export default defineConfig({
   test: {
     passWithNoTests: true,
+    // More workers starve vitest's reporter RPC: the run exits 1 with no failing test.
+    maxWorkers: 4,
     projects: [
       {
         test: {
