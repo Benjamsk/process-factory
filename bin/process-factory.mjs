@@ -31,11 +31,20 @@ const pageHeaders = {
 /** The readable defaults of every page of the reading view. */
 const pageStyle = `body { margin: 0 auto; max-width: 40rem; padding: 2rem 1rem; background: #fff; color: #1b1b1b; font-family: system-ui, sans-serif; line-height: 1.5; }
 a { color: #11467b; }
-a:focus { outline: 2px solid #11467b; outline-offset: 2px; }
 dt { font-weight: 700; }
-dd { margin: 0 0 0.5rem 0; }`
+dd { margin: 0 0 0.5rem 0; }
+legend { font-weight: 700; }
+fieldset label { display: block; }
+textarea, #name { box-sizing: border-box; width: 100%; font: inherit; }
+:focus { outline: 2px solid #11467b; outline-offset: 2px; }`
 /** What the reading view shows for an owner, an approver or a date the store does not record. */
 const notRecorded = "not recorded"
+/** The number of bytes of a post of feedback the reading view reads at most. */
+const feedbackBodyLimit = 32768
+/** The number of characters the cleaned text of a feedback may have. */
+const feedbackTextLimit = 2000
+/** The number of characters the cleaned name of a reader may have. */
+const feedbackNameLimit = 100
 /** The five characters of a text from the store that could add markup to a page. */
 const htmlEscapes = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }
 /** The ten stages, each with the stages a process may move to from it. */
@@ -159,8 +168,8 @@ function createProcess(argument, promptArgument) {
   return 0
 }
 
-/** The text after `<label>: ` in the first such line of an approval file, or undefined when it has none. */
-function approvalValue(file, label) {
+/** The text after `<label>: ` in the first such line of a file, or undefined when it has none. */
+function labelledValue(file, label) {
   const prefix = `${label}: `
   const line = (fileLines(file) ?? []).find((text) => text.startsWith(prefix))
   return line === undefined ? undefined : line.slice(prefix.length)
@@ -188,7 +197,7 @@ function writeVersion(id, entry, draftNumber, at) {
     process.stderr.write(`process-factory: cannot write ${folder}: ${errorMessage(error)}\n`)
     return null
   }
-  const approved = approvalValue(approvalFile, "Approved by")
+  const approved = labelledValue(approvalFile, "Approved by")
   return { version: number, draft: `draft-${draftNumber}.md`, ...(approved === undefined ? {} : { approvedBy: approved }), at }
 }
 
@@ -679,12 +688,46 @@ function respecProcess(id) {
   return 0
 }
 
+/** A text as one line: every control character as a space, every run of whitespace as one space, without the whitespace at its ends. */
+function oneLine(text) {
+  return text.replace(/\p{Cc}/gu, " ").replace(/\s+/g, " ").trim()
+}
+
+/** The files `feedback-<k>.md` of a process whose first line `Status: ` says open, each with its number, in ascending order of `<k>`. */
+function openFeedbackFiles(id) {
+  if (typeof id !== "string" || !/^[a-z0-9-]+$/.test(id)) return []
+  const folder = path.join(process.cwd(), "processes", id, "feedback")
+  return folderNumbers(folder, /^feedback-(\d+)\.md$/)
+    .map((number) => ({ number, file: path.join(folder, `feedback-${number}.md`) }))
+    .filter((feedback) => labelledValue(feedback.file, "Status") === "open")
+}
+
+/** The text of a feedback file on one line: every line after its first line `## Text`. */
+function feedbackTextLine(file) {
+  const lines = fileLines(file) ?? []
+  const start = lines.indexOf("## Text")
+  return start === -1 ? "" : oneLine(lines.slice(start + 1).join("\n"))
+}
+
+/** The line of one open feedback: its number, its version, the step it is about, its kind and its text. */
+function feedbackLine({ number, file }) {
+  const step = labelledValue(file, "Step")
+  const about = step === "whole document" ? "whole document" : `step ${step ?? notRecorded}`
+  const parts = [number, `version ${labelledValue(file, "Version") ?? notRecorded}`, about, labelledValue(file, "Kind") ?? notRecorded, feedbackTextLine(file)]
+  return `  ${parts.join("  ")}`
+}
+
 function showProcesses(id) {
   const processes = readProcessesOrPrintReason()
   if (processes === null) return 1
   if (id === undefined) {
     if (processes.length === 0) process.stdout.write("No processes.\n")
-    else for (const entry of processes) process.stdout.write(`${entry.id}  ${entry.stage}  ${entry.title}\n`)
+    else {
+      for (const entry of processes) {
+        const open = openFeedbackFiles(entry.id).length
+        process.stdout.write(`${entry.id}  ${entry.stage}  ${entry.title}${open === 0 ? "" : `  ${open} open feedback`}\n`)
+      }
+    }
     return 0
   }
   const entry = findProcessOrPrintReason(processes, id)
@@ -705,6 +748,11 @@ function showProcesses(id) {
     for (const version of versions) {
       lines.push(`  ${[version.version, version.draft, ...(version.approvedBy === undefined ? [] : [version.approvedBy]), version.at].join("  ")}`)
     }
+  }
+  const feedback = openFeedbackFiles(entry.id)
+  if (feedback.length > 0) {
+    lines.push("Feedback:")
+    for (const open of feedback) lines.push(feedbackLine(open))
   }
   lines.push("History:")
   for (const change of entry.history ?? []) lines.push(`  ${change.at}  ${change.stage}`)
@@ -789,9 +837,23 @@ function publishedProcesses() {
 /** Who approved a version and on which date, each `not recorded` when `approval.md` does not give it. */
 function versionApproval(id, number) {
   const file = versionFile(id, number, "approval.md")
-  const approver = approvalValue(file, "Approved by")
-  const date = /^\d{4}-\d{2}-\d{2}/.exec(approvalValue(file, "Approved at") ?? "")
+  const approver = labelledValue(file, "Approved by")
+  const date = /^\d{4}-\d{2}-\d{2}/.exec(labelledValue(file, "Approved at") ?? "")
   return { by: approver === undefined ? notRecorded : escapeHtml(approver), on: date === null ? notRecorded : date[0] }
+}
+
+/** The number and the text of a numbered item of a document, or null when the line is not one. */
+function numberedItem(line) {
+  return /^(\d+)\. (.*)$/.exec(line)
+}
+
+/** The steps of a version: the number of every numbered item of its document, each once, in the order of the document. */
+function documentSteps(lines) {
+  const numbers = lines.flatMap((line) => {
+    const item = numberedItem(line.trim())
+    return item === null ? [] : [item[1]]
+  })
+  return [...new Set(numbers)]
 }
 
 /** The lines of a document as HTML: headings, numbered and bulleted lists and paragraphs, with every text escaped. */
@@ -810,7 +872,7 @@ function documentHtml(lines) {
   }
   for (const line of lines.map((text) => text.trim())) {
     const heading = /^(#{1,6}) (.*)$/.exec(line)
-    const numbered = /^(\d+)\. (.*)$/.exec(line)
+    const numbered = numberedItem(line)
     const bulleted = /^- (.*)$/.exec(line)
     if (line === "") closeList()
     else if (heading !== null) {
@@ -863,6 +925,51 @@ function frontPage(published) {
   return htmlPage("Published processes", `<h1>Published processes</h1>\n${list}`)
 }
 
+/** The form under the document of a version, with one option per step of that version and the whole document as the first. */
+function feedbackForm(id, number, steps) {
+  return [
+    "<h2>Feedback</h2>",
+    `<form method="post" action="/${id}/${number}/feedback">`,
+    "<fieldset>",
+    "<legend>What went wrong?</legend>",
+    '<label><input type="radio" name="kind" value="document" required> I did not understand the document</label>',
+    '<label><input type="radio" name="kind" value="process" required> The process itself failed me</label>',
+    "</fieldset>",
+    '<p><label for="step">What is it about?</label>',
+    '<select id="step" name="step">',
+    '<option value="whole">The whole document</option>',
+    ...steps.map((step) => `<option value="${step}">Step ${step}</option>`),
+    "</select></p>",
+    '<p><label for="text">What happened?</label>',
+    `<textarea id="text" name="text" rows="6" maxlength="${feedbackTextLimit}" required></textarea></p>`,
+    '<p><label for="name">Your name (may be left empty)</label>',
+    `<input id="name" name="name" maxlength="${feedbackNameLimit}"></p>`,
+    "<p>Your feedback is stored with this version and is read by the owner of the process. Other readers do not see it.</p>",
+    '<p><button type="submit">Send feedback</button></p>',
+    "</form>",
+  ].join("\n")
+}
+
+/** The page that says the feedback on a version of a process is stored, with the way back to the document. */
+function receivedPage(entry, number) {
+  const body = [
+    "<h1>Feedback received</h1>",
+    `<p>Thank you. Your feedback on version ${number} of ${escapeHtml(entry.title)} is stored.</p>`,
+    `<p><a href="/${entry.id}/${number}">Back to the document</a></p>`,
+  ]
+  return htmlPage("Feedback received", body.join("\n"))
+}
+
+/** The page that says why a post of feedback was refused, with the way back to the document. */
+function notStoredPage(entry, number, reasons) {
+  const body = [
+    "<h1>Feedback not stored</h1>",
+    `<ul>\n${reasons.map((reason) => `<li>${reason}</li>`).join("\n")}\n</ul>`,
+    `<p><a href="/${entry.id}/${number}">Back to the document</a></p>`,
+  ]
+  return htmlPage("Feedback not stored", body.join("\n"))
+}
+
 /** The page of one published version: a notice when it is not the current one, the facts, the document and the version history. */
 function versionPage({ entry, versions }, number) {
   const current = versions.at(-1)
@@ -884,10 +991,24 @@ function versionPage({ entry, versions }, number) {
     ...notice,
     `<dl>\n<dt>Owner</dt><dd>${owner}</dd>\n<dt>Version</dt><dd>${number}</dd>\n<dt>Approved by</dt><dd>${approved.by}</dd>\n<dt>Approved on</dt><dd>${approved.on}</dd>\n</dl>`,
     `<main>\n${documentHtml(document)}\n</main>`,
+    feedbackForm(entry.id, number, documentSteps(document)),
     "<h2>Version history</h2>",
     `<ul>\n${history.join("\n")}\n</ul>`,
   ]
   return htmlPage(`${escapeHtml(entry.title)}, version ${number}`, body.join("\n"))
+}
+
+/** The page `Error` with the one sentence that says what went wrong, without the reason. */
+function errorPage(sentence) {
+  return htmlPage("Error", `<h1>Error</h1>\n<p>${sentence}</p>`)
+}
+
+/** The process and the version of the address `/<process-id>/<n>/feedback` of a published version, or null for every other path. */
+function feedbackTarget(pathname) {
+  const [id, number, last, ...rest] = pathname.slice(1).split("/")
+  if (last !== "feedback" || rest.length > 0 || !/^[1-9]\d*$/.test(number)) return null
+  const found = publishedProcesses().find((candidate) => candidate.entry.id === id)
+  return found === undefined || !found.versions.includes(Number(number)) ? null : { entry: found.entry, number: Number(number) }
 }
 
 /** The status and the page for the path of a request, from the board and the versions as they are at that moment. */
@@ -900,24 +1021,140 @@ function answerPath(pathname) {
     if (number === undefined) return { status: 200, page: versionPage(found, found.versions.at(-1)) }
     if (/^[1-9]\d*$/.test(number) && found.versions.includes(Number(number))) return { status: 200, page: versionPage(found, Number(number)) }
   }
+  const target = feedbackTarget(pathname)
+  if (target !== null) return { status: 200, page: receivedPage(target.entry, target.number) }
   const notFound = '<h1>Not found</h1>\n<p>There is no published process at this address.</p>\n<p><a href="/">All processes</a></p>'
   return { status: 404, page: htmlPage("Not found", notFound) }
 }
 
+function sendPage(response, status, page) {
+  response.writeHead(status, pageHeaders)
+  response.end(page)
+}
+
+/** The body of a request as text, or null when it is longer than the limit, of which the rest is not read. */
+function readBody(request) {
+  return new Promise((resolve) => {
+    const chunks = []
+    let size = 0
+    request.on("data", (chunk) => {
+      size += chunk.length
+      if (size > feedbackBodyLimit) {
+        request.pause()
+        resolve(null)
+        return
+      }
+      chunks.push(chunk)
+    })
+    request.on("end", () => {
+      resolve(Buffer.concat(chunks).toString("utf8"))
+    })
+  })
+}
+
+/** The text of a post as it is stored: one kind of line break, no control character but the tab, without the whitespace at its ends. */
+function feedbackText(value) {
+  return value
+    .replace(/\r\n?/g, "\n")
+    .replace(/(?![\n\t])\p{Cc}/gu, "")
+    .trim()
+}
+
+/** Writes one feedback as the next file `feedback-<k>.md` in the folder `feedback` of the process, which is created when it is missing. */
+function writeFeedbackFile(id, number, { step, kind, name, text }) {
+  const folder = path.join(process.cwd(), "processes", id, "feedback")
+  mkdirSync(folder, { recursive: true })
+  const next = (newestNumber(folder, /^feedback-(\d+)\.md$/) ?? 0) + 1
+  const lines = [
+    `# Feedback ${next}`,
+    "",
+    `Process: ${id}`,
+    `Version: ${number}`,
+    `Step: ${step}`,
+    `Kind: ${kind}`,
+    `From: ${name}`,
+    `Received at: ${new Date().toISOString()}`,
+    "Status: open",
+    "",
+    "## Text",
+    "",
+    text,
+  ]
+  writeFileSync(path.join(folder, `feedback-${next}.md`), `${lines.join("\n")}\n`, { flag: "wx" })
+}
+
+/** Reads a post of feedback, stores it when every check of it passes, and answers the reader. */
+async function storeFeedback(request, response, { entry, number }) {
+  const refuse = (status, reasons) => {
+    sendPage(response, status, notStoredPage(entry, number, reasons))
+  }
+  const origin = request.headers.origin
+  const port = request.socket.localPort
+  if (origin !== undefined && origin !== `http://127.0.0.1:${port}` && origin !== `http://localhost:${port}`) {
+    refuse(403, ["Feedback can only be sent from the reading view itself."])
+    return
+  }
+  const body = await readBody(request)
+  if (body === null) {
+    refuse(413, ["The feedback is too long."])
+    return
+  }
+  const posted = new URLSearchParams(body)
+  const kind = posted.get("kind")
+  const step = posted.get("step")
+  const text = feedbackText(posted.get("text") ?? "")
+  const name = oneLine(posted.get("name") ?? "")
+  const steps = documentSteps(fileLines(versionFile(entry.id, number, "process.md")) ?? [])
+  const reasons = []
+  if (kind !== "document" && kind !== "process") reasons.push("Choose what went wrong: the document or the process.")
+  if (step !== "whole" && !steps.includes(step)) reasons.push("Choose a step of this version or the whole document.")
+  if (text === "") reasons.push("Write what happened.")
+  if (text.length > feedbackTextLimit) reasons.push(`The text may be at most ${feedbackTextLimit} characters.`)
+  if (name.length > feedbackNameLimit) reasons.push(`The name may be at most ${feedbackNameLimit} characters.`)
+  if (reasons.length > 0) {
+    refuse(400, reasons)
+    return
+  }
+  try {
+    writeFeedbackFile(entry.id, number, { step: step === "whole" ? "whole document" : step, kind, name: name === "" ? "anonymous" : name, text })
+  } catch {
+    sendPage(response, 500, errorPage("The feedback could not be stored."))
+    return
+  }
+  response.writeHead(303, { Location: `/${entry.id}/${number}/feedback` })
+  response.end()
+}
+
 function answerRequest(request, response) {
-  if (request.method !== "GET" && request.method !== "HEAD") {
+  const pathname = request.url.split("?")[0]
+  if (request.method === "GET" || request.method === "HEAD") {
+    let answer
+    try {
+      answer = answerPath(pathname)
+    } catch {
+      answer = { status: 500, page: errorPage("The reading view cannot read the processes.") }
+    }
+    sendPage(response, answer.status, request.method === "HEAD" ? undefined : answer.page)
+    return
+  }
+  let target
+  try {
+    target = feedbackTarget(pathname)
+  } catch {
+    sendPage(response, 500, errorPage("The reading view cannot read the processes."))
+    return
+  }
+  if (target === null) {
     response.writeHead(405, { Allow: "GET, HEAD" })
     response.end()
     return
   }
-  let answer
-  try {
-    answer = answerPath(request.url.split("?")[0])
-  } catch {
-    answer = { status: 500, page: htmlPage("Error", "<h1>Error</h1>\n<p>The reading view cannot read the processes.</p>") }
+  if (request.method !== "POST") {
+    response.writeHead(405, { Allow: "GET, HEAD, POST" })
+    response.end()
+    return
   }
-  response.writeHead(answer.status, pageHeaders)
-  response.end(request.method === "HEAD" ? undefined : answer.page)
+  storeFeedback(request, response, target)
 }
 
 /** Starts the reading view on `127.0.0.1` and keeps running until the process is stopped. */
