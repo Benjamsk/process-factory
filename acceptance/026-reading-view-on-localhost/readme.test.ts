@@ -8,7 +8,7 @@ const serve =
 const pages =
   "Its front page lists every process that has a published version, and the page of a process shows the newest published document with the owner, who approved it and on which date, the version number and the version history, in which every earlier version can be opened."
 const only =
-  "It shows only versions the board lists, so no draft, no specification, no case and no approval that is not published can be read there, and it never writes a file."
+  "It shows only versions the board lists, so no draft, no specification, no case and no approval that is not published can be read there, and it writes nothing but the feedback of a reader."
 
 describe("the Status section of README.md", () => {
   it("says what process-factory serve starts, directly after the sentence about version folders", () => {
@@ -19,7 +19,7 @@ describe("the Status section of README.md", () => {
     expect(readmeStatus()).toContain(`${serve} ${pages}`)
   })
 
-  it("says that the view shows only versions the board lists and never writes a file", () => {
+  it("says that the view shows only versions the board lists and writes nothing but the feedback of a reader", () => {
     expect(readmeStatus()).toContain(`${pages} ${only}`)
   })
 })

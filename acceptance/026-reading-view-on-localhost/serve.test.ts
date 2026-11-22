@@ -109,11 +109,11 @@ describe("the usage of process-factory", () => {
 
 describe("every page of the reading view", () => {
   it.each([
-    ["the front page", "/", 200],
-    ["the page of a process", "/001-handle-a-lost-laptop", 200],
-    ["the page of an earlier version", "/001-handle-a-lost-laptop/1", 200],
-    ["the page Not found", "/no-such-process", 404],
-  ])("is a complete HTML document without script, with the four headers: %s", async (_name, pathname, status) => {
+    ["the front page", "/", 200, 0],
+    ["the page of a process", "/001-handle-a-lost-laptop", 200, 1],
+    ["the page of an earlier version", "/001-handle-a-lost-laptop/1", 200, 1],
+    ["the page Not found", "/no-such-process", 404, 0],
+  ])("is a complete HTML document without script, with the four headers: %s", async (_name, pathname, status, forms) => {
     writeLaptop(project)
     const address = await openView(project)
 
@@ -129,7 +129,7 @@ describe("every page of the reading view", () => {
     expect(page.body).toContain('<meta charset="utf-8">')
     expect(page.body).toContain('<meta name="viewport" content="width=device-width, initial-scale=1">')
     expect(page.body).not.toContain("<script")
-    expect(page.body).not.toContain("<form")
+    expect(page.body.split("<form").length - 1).toBe(forms)
     expect(page.body).not.toContain("<img")
     expect(page.body).not.toContain("<link")
   })

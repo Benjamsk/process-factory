@@ -1,5 +1,6 @@
 import { spawn, spawnSync, type ChildProcess } from "node:child_process"
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { request as httpRequest, type IncomingHttpHeaders } from "node:http"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -1836,6 +1837,47 @@ describe("the reading view of process-factory serve", () => {
     return { status: response.status, headers: response.headers, body: await response.text() }
   }
 
+  /** Sends a request with a body to the view on a connection of its own. An answer that arrived counts, also when the server closes the connection early. */
+  function send(address: string, pathname: string, body: string, more: { method?: string; headers?: Record<string, string> } = {}) {
+    const url = new URL(address)
+    return new Promise<{ status: number; headers: IncomingHttpHeaders; body: string }>((resolve, reject) => {
+      let answer: { status: number; headers: IncomingHttpHeaders; body: string } | undefined
+      const fail = (error: Error): void => {
+        if (answer === undefined) reject(error)
+        else resolve(answer)
+      }
+      const sent = httpRequest(
+        {
+          host: url.hostname,
+          port: url.port,
+          path: pathname,
+          method: more.method ?? "POST",
+          agent: false,
+          headers: { "Content-Type": "application/x-www-form-urlencoded", "Content-Length": String(Buffer.byteLength(body)), ...more.headers },
+        },
+        (response) => {
+          const received = { status: response.statusCode ?? 0, headers: response.headers, body: "" }
+          answer = received
+          response.setEncoding("utf8")
+          response.on("data", (chunk: string) => {
+            received.body += chunk
+          })
+          response.on("end", () => {
+            resolve(received)
+          })
+          response.on("error", fail)
+        },
+      )
+      sent.on("error", fail)
+      sent.end(body)
+    })
+  }
+
+  /** Posts form fields to the view as `application/x-www-form-urlencoded`. */
+  function postFeedback(address: string, pathname: string, values: Record<string, string>, headers: Record<string, string> = {}) {
+    return send(address, pathname, new URLSearchParams(values).toString(), { headers })
+  }
+
   /** The text between `<li>` and `</li>` of every such item of a page, in order. */
   function items(body: string): string[] {
     return [...body.matchAll(/<li>(.*?)<\/li>/gs)].map((match) => (match[1] ?? "").trim())
@@ -2044,6 +2086,298 @@ describe("the reading view of process-factory serve", () => {
     expect(result.stderr).toBe("process-factory: the port must be a number from 0 to 65535\n")
     expect(result.stdout).toBe("")
     expect(result.status).toBe(1)
+  })
+
+  describe("the feedback a reader sends from the page of a version", () => {
+    const feedbackFolder = `processes/${processId}/feedback`
+    const feedbackPath = `/${processId}/2/feedback`
+    const fields = { kind: "document", step: "1", text: "I did not understand step one.", name: "Ola Hansen" }
+    const kindReason = "Choose what went wrong: the document or the process."
+    const stepReason = "Choose a step of this version or the whole document."
+    const textReason = "Write what happened."
+    const refusedPosts: [string, Record<string, string>, string][] = [
+      ["no kind", { step: fields.step, text: fields.text }, kindReason],
+      ["a kind that is neither of the two", { ...fields, kind: "other" }, kindReason],
+      ["no step", { kind: fields.kind, text: fields.text }, stepReason],
+      ["a step the version does not have", { ...fields, step: "2" }, stepReason],
+      ["a step with a leading zero", { ...fields, step: "01" }, stepReason],
+      ["no text", { kind: fields.kind, step: fields.step }, textReason],
+      ["a text of only whitespace", { ...fields, text: " \r\n\t " }, textReason],
+      ["a text of 2001 characters", { ...fields, text: "t".repeat(2001) }, "The text may be at most 2000 characters."],
+      ["a name of 101 characters", { ...fields, name: "n".repeat(101) }, "The name may be at most 100 characters."],
+    ]
+
+    function storedFeedback(number: number): string {
+      return readWorkingFile(`${feedbackFolder}/feedback-${String(number)}.md`)
+    }
+
+    /** The sorted names in the folder `feedback` of the laptop process, empty when there is no such folder. */
+    function feedbackFiles(): string[] {
+      const folder = path.join(workingDirectory, feedbackFolder)
+      return existsSync(folder) ? readdirSync(folder).sort() : []
+    }
+
+    it("stands with its two kinds, its steps, its text and its name between the document and the version history", async () => {
+      writeView()
+      const address = await openView()
+
+      const page = await requestPage(address, `/${processId}`)
+
+      const body = page.body.replace(/\s+/g, " ").replace(/> </g, "><")
+      const part = body.slice(body.indexOf("</main>"), body.indexOf("<h2>Version history</h2>"))
+      expect(part).toContain("<h2>Feedback</h2>")
+      expect(part).toContain(`<form method="post" action="${feedbackPath}">`)
+      expect(part).toContain('<label><input type="radio" name="kind" value="document" required> I did not understand the document</label>')
+      expect(part).toContain('<label><input type="radio" name="kind" value="process" required> The process itself failed me</label>')
+      expect(part).toContain('<select id="step" name="step"><option value="whole">The whole document</option><option value="1">Step 1</option></select>')
+      expect(part).toContain('<textarea id="text" name="text" rows="6" maxlength="2000" required></textarea>')
+      expect(part).toContain('<input id="name" name="name" maxlength="100">')
+      expect(part).toContain('<button type="submit">Send feedback</button>')
+      expect(part).not.toContain("checked")
+      expect(page.body).not.toContain("<script")
+    })
+
+    it("posts to the version it is on, and is not on the front page", async () => {
+      writeView()
+      const address = await openView()
+
+      const earlier = await requestPage(address, `/${processId}/1`)
+
+      expect(earlier.body).toContain(`<form method="post" action="/${processId}/1/feedback">`)
+      expect(earlier.body).not.toContain(feedbackPath)
+      expect((await requestPage(address, "/")).body).not.toContain("<form")
+    })
+
+    it("answers an accepted post with 303 to the address itself and stores it as feedback-1.md", async () => {
+      writeView()
+      const address = await openView()
+
+      const answer = await postFeedback(address, feedbackPath, fields)
+
+      expect(answer.status).toBe(303)
+      expect(answer.headers.location).toBe(feedbackPath)
+      expect(answer.body).toBe("")
+      expect(storedFeedback(1)).toMatch(
+        /^# Feedback 1\n\nProcess: 001-handle-a-lost-laptop\nVersion: 2\nStep: 1\nKind: document\nFrom: Ola Hansen\nReceived at: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\nStatus: open\n\n## Text\n\nI did not understand step one\.\n$/,
+      )
+      const received = await requestPage(address, feedbackPath)
+      expect(received.status).toBe(200)
+      expect(received.body).toContain("<title>Feedback received</title>")
+      expect(received.body).toContain("<p>Thank you. Your feedback on version 2 of Handle a lost laptop is stored.</p>")
+      expect(received.body).toContain(`<p><a href="/${processId}/2">Back to the document</a></p>`)
+      expect(received.body).not.toContain(fields.text)
+      expect(received.body).not.toContain(fields.name)
+    })
+
+    it("stores the other kind, the whole document, the version of the address and anonymous for a post without a name", async () => {
+      writeView()
+      const address = await openView()
+
+      const answer = await postFeedback(address, `/${processId}/1/feedback`, { kind: "process", step: "whole", text: "The police did not answer." })
+
+      expect(answer.status).toBe(303)
+      expect(storedFeedback(1)).toContain("\nVersion: 1\nStep: whole document\nKind: process\nFrom: anonymous\n")
+    })
+
+    it("gives every feedback the next number and leaves the file that is there as it was", async () => {
+      writeView()
+      const address = await openView()
+
+      expect((await postFeedback(address, feedbackPath, fields)).status).toBe(303)
+      const first = storedFeedback(1)
+      expect((await postFeedback(address, feedbackPath, { ...fields, text: "A second remark." })).status).toBe(303)
+
+      expect(feedbackFiles()).toEqual(["feedback-1.md", "feedback-2.md"])
+      expect(storedFeedback(1)).toBe(first)
+      expect(storedFeedback(2)).toContain("# Feedback 2\n")
+      expect(storedFeedback(2)).toContain("\n## Text\n\nA second remark.\n")
+    })
+
+    it("stores a text with its lines and its tab but without its other control characters, and a name as one line", async () => {
+      writeView()
+      const address = await openView()
+
+      const answer = await postFeedback(address, feedbackPath, { ...fields, text: "  first\r\n\u001bsecond\tpart\u0007  ", name: "  Ola\r\nStatus: closed  " })
+
+      expect(answer.status).toBe(303)
+      const lines = storedFeedback(1).split("\n")
+      expect(lines).toContain("From: Ola Status: closed")
+      expect(lines.filter((line) => line.startsWith("Status: "))).toEqual(["Status: open"])
+      expect(lines.slice(lines.indexOf("## Text"))).toEqual(["## Text", "", "first", "second\tpart", ""])
+    })
+
+    it("stores a text of exactly 2000 characters and a name of exactly 100", async () => {
+      writeView()
+      const address = await openView()
+
+      const answer = await postFeedback(address, feedbackPath, { ...fields, text: "t".repeat(2000), name: "n".repeat(100) })
+
+      expect(answer.status).toBe(303)
+      expect(storedFeedback(1)).toContain(`\nFrom: ${"n".repeat(100)}\n`)
+      expect(storedFeedback(1).endsWith(`\n## Text\n\n${"t".repeat(2000)}\n`)).toBe(true)
+    })
+
+    it.each(refusedPosts)("answers 400 with the reason and writes no file for %s", async (_name, values, reason) => {
+      writeView()
+      const address = await openView()
+
+      const answer = await postFeedback(address, feedbackPath, values)
+
+      expect(answer.status).toBe(400)
+      expect(answer.body).toContain("<title>Feedback not stored</title>")
+      expect(answer.body).toContain("<h1>Feedback not stored</h1>")
+      expect(answer.body).toContain(`<li>${reason}</li>`)
+      expect(answer.body).toContain(`<p><a href="/${processId}/2">Back to the document</a></p>`)
+      expect(feedbackFiles()).toEqual([])
+    })
+
+    it("names the kind, the step and the text, in that order, for an empty post, and repeats nothing of it", async () => {
+      writeView()
+      const address = await openView()
+
+      const answer = await send(address, feedbackPath, "")
+      const refused = await postFeedback(address, feedbackPath, { step: fields.step, text: "Nobody else may read this.", name: "Secret Reader" })
+
+      expect(answer.status).toBe(400)
+      expect(items(answer.body)).toEqual([kindReason, stepReason, textReason])
+      expect(refused.body).not.toContain("Nobody else may read this.")
+      expect(refused.body).not.toContain("Secret Reader")
+      expect(feedbackFiles()).toEqual([])
+    })
+
+    it("answers 403 and writes no file for a post from another origin, and stores one from the view itself", async () => {
+      writeView()
+      const address = await openView()
+
+      const refused = await postFeedback(address, feedbackPath, fields, { Origin: "http://evil.example" })
+
+      expect(refused.status).toBe(403)
+      expect(items(refused.body)).toEqual(["Feedback can only be sent from the reading view itself."])
+      expect(feedbackFiles()).toEqual([])
+      expect((await postFeedback(address, feedbackPath, fields, { Origin: address })).status).toBe(303)
+      expect((await postFeedback(address, feedbackPath, fields, { Origin: address.replace("127.0.0.1", "localhost") })).status).toBe(303)
+      expect(feedbackFiles()).toEqual(["feedback-1.md", "feedback-2.md"])
+    })
+
+    it("answers 413 and writes no file for a body of 40000 bytes, and answers the next request", async () => {
+      writeView()
+      const address = await openView()
+
+      const answer = await send(address, feedbackPath, `kind=document&step=1&text=${"a".repeat(40_000)}`)
+
+      expect(answer.status).toBe(413)
+      expect(items(answer.body)).toEqual(["The feedback is too long."])
+      expect(feedbackFiles()).toEqual([])
+      expect((await requestPage(address, "/")).status).toBe(200)
+    })
+
+    it.each([["PUT"], ["DELETE"]])("answers %s at the address with 405 and Allow: GET, HEAD, POST", async (method) => {
+      writeView()
+      const address = await openView()
+
+      const refused = await send(address, feedbackPath, "", { method })
+
+      expect(refused.status).toBe(405)
+      expect(refused.headers.allow).toBe("GET, HEAD, POST")
+      expect(refused.body).toBe("")
+      expect(feedbackFiles()).toEqual([])
+    })
+
+    it.each([
+      ["a version that is not published", `/${processId}/3/feedback`],
+      ["a version with a leading zero", `/${processId}/02/feedback`],
+      ["a process without a published version", "/000-older-process/1/feedback"],
+      ["a path without a version", `/${processId}/feedback`],
+    ])("answers a post with 405 and Allow: GET, HEAD and a GET with 404 for %s", async (_name, pathname) => {
+      writeView()
+      const address = await openView()
+
+      const refused = await postFeedback(address, pathname, fields)
+
+      expect(refused.status).toBe(405)
+      expect(refused.headers.allow).toBe("GET, HEAD")
+      expect(refused.body).toBe("")
+      const page = await requestPage(address, pathname)
+      expect(page.status).toBe(404)
+      expect(page.body).toContain("<h1>Not found</h1>")
+      expect(feedbackFiles()).toEqual([])
+    })
+
+    it("answers 500 without a path when the feedback cannot be written, and keeps running", async () => {
+      writeView()
+      writeWorkingFile(feedbackFolder, "a file where the folder should be\n")
+      const address = await openView()
+
+      const answer = await postFeedback(address, feedbackPath, fields)
+
+      expect(answer.status).toBe(500)
+      expect(answer.body).toContain("<title>Error</title>")
+      expect(answer.body).toContain("<p>The feedback could not be stored.</p>")
+      expect(answer.body).not.toContain("processes")
+      expect((await requestPage(address, "/")).status).toBe(200)
+    })
+  })
+})
+
+describe("process-factory show and the open feedback of a process", () => {
+  const laptopId = "001-handle-a-lost-laptop"
+  const laptop = { id: laptopId, title: "Handle a lost laptop", stage: "published" }
+  const laptopTop = `${laptopId}\nTitle: Handle a lost laptop\nStage: published\n`
+
+  /** The lines above the text of an open feedback, as the reading view writes them. */
+  function openLines(version: string, step: string, kind: string): string[] {
+    return [`Version: ${version}`, `Step: ${step}`, `Kind: ${kind}`, "From: Ola Hansen", "Received at: 2026-11-22T10:15:00.000Z", "Status: open"]
+  }
+
+  /** Writes a feedback file of the laptop process with the lines above its text. */
+  function writeFeedback(number: number, lines: string[], text: string): void {
+    writeWorkingFile(`processes/${laptopId}/feedback/feedback-${String(number)}.md`, `# Feedback ${String(number)}\n\n${lines.join("\n")}\n\n## Text\n\n${text}\n`)
+  }
+
+  it("prints the number of open feedback behind a process that has any, and nothing behind a process without any", () => {
+    writeBoardFile([laptop, { id: "002-order-a-badge", title: "Order a badge", stage: "draft" }])
+    writeFeedback(1, openLines("2", "1", "document"), "I did not understand step one.")
+    writeFeedback(2, openLines("1", "whole document", "process"), "The police did not answer.")
+
+    const result = runCommand(["show"])
+
+    expect(result.stdout).toBe(`${laptopId}  published  Handle a lost laptop  2 open feedback\n002-order-a-badge  draft  Order a badge\n`)
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+  })
+
+  it("counts and lists only a file feedback-<k>.md whose first line Status: says open", () => {
+    writeBoardFile([laptop])
+    writeFeedback(1, openLines("2", "1", "document"), "I did not understand step one.")
+    writeFeedback(3, [...openLines("2", "1", "document").slice(0, -1), "Status: closed"], "Closed.\nStatus: open")
+    writeFeedback(5, openLines("2", "1", "document").slice(0, -1), "Without a status.")
+    writeWorkingFile(`processes/${laptopId}/feedback/notes.md`, "# Notes\n\nStatus: open\n\n## Text\n\nNot a feedback file.\n")
+
+    expect(runCommand(["show"]).stdout).toBe(`${laptopId}  published  Handle a lost laptop  1 open feedback\n`)
+    expect(runCommand(["show", laptopId]).stdout).toBe(`${laptopTop}Feedback:\n  1  version 2  step 1  document  I did not understand step one.\nHistory:\n`)
+  })
+
+  it("prints no line of feedback for a process whose folder feedback is missing", () => {
+    writeBoardFile([laptop])
+
+    expect(runCommand(["show"]).stdout).toBe(`${laptopId}  published  Handle a lost laptop\n`)
+    expect(runCommand(["show", laptopId]).stdout).toBe(`${laptopTop}History:\n`)
+  })
+
+  it("lists each open feedback on one line, in the order of their numbers, without the name and the time", () => {
+    writeBoardFile([laptop])
+    writeFeedback(10, openLines("2", "1", "process"), "The tenth remark.")
+    writeFeedback(2, openLines("1", "whole document", "process"), "The police\u001b[31m did not answer.\r\n\r\n  I waited\tan hour.")
+    writeFeedback(4, ["Status: open"], "Something went wrong.")
+
+    const result = runCommand(["show", laptopId])
+
+    expect(result.stdout).toBe(
+      `${laptopTop}Feedback:\n  2  version 1  whole document  process  The police [31m did not answer. I waited an hour.\n  4  version not recorded  step not recorded  not recorded  Something went wrong.\n  10  version 2  step 1  process  The tenth remark.\nHistory:\n`,
+    )
+    expect(result.stdout).not.toContain("Ola Hansen")
+    expect(result.stdout).not.toContain("2026-11-22T10:15")
+    expect(result.status).toBe(0)
   })
 })
 
