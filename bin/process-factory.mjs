@@ -23,6 +23,8 @@ const findingTags = ["high", "medium", "low"]
 const roundLimit = 5
 /** The port the reading view listens on when `--port` names none. */
 const viewPort = "4173"
+/** The port the dashboard listens on when `--port` names none. */
+const dashboardPort = "4174"
 /** The headers of every page of the reading view. */
 const pageHeaders = {
   "Content-Type": "text/html; charset=utf-8",
@@ -39,6 +41,14 @@ legend { font-weight: 700; }
 fieldset label { display: block; }
 textarea, #name { box-sizing: border-box; width: 100%; font: inherit; }
 :focus { outline: 2px solid #11467b; outline-offset: 2px; }`
+/** What the dashboard adds to those defaults: its ten sections stand next to each other, so the page scrolls sideways on a narrow screen. */
+const dashboardStyle = `body { max-width: none; min-width: 100rem; }
+section { display: inline-block; vertical-align: top; width: 9rem; margin-right: 1rem; }
+h2 { font-size: 1rem; }
+article { margin-bottom: 1rem; border: 1px solid #c4c4c4; padding: 0.5rem; }
+h3 { font-size: 1rem; margin-top: 0; }`
+/** What tells the browser to load a page of the dashboard again every five seconds. */
+const refreshElement = '<meta http-equiv="refresh" content="5">'
 /** What the reading view shows for an owner, an approver or a date the store does not record. */
 const notRecorded = "not recorded"
 /** The number of bytes of a post of feedback the reading view reads at most. */
@@ -1011,10 +1021,14 @@ function publishedVersions(entry) {
     .sort((first, second) => first - second)
 }
 
+/** The entries of the board whose id is a name a folder of a process may have, in the order of the board. */
+function boardProcesses() {
+  return readProcesses().filter((entry) => typeof entry.id === "string" && /^[a-z0-9-]+$/.test(entry.id))
+}
+
 /** The processes of the board that have a published version, each with its published versions, in the order of the board. */
 function publishedProcesses() {
-  return readProcesses()
-    .filter((entry) => typeof entry.id === "string" && /^[a-z0-9-]+$/.test(entry.id))
+  return boardProcesses()
     .map((entry) => ({ entry, versions: publishedVersions(entry) }))
     .filter((published) => published.versions.length > 0)
 }
@@ -1342,27 +1356,92 @@ function answerRequest(request, response) {
   storeFeedback(request, response, target)
 }
 
-/** Starts the reading view on `127.0.0.1` and keeps running until the process is stopped. */
-function serveReadingView(portArgument) {
-  const port = portArgument ?? viewPort
+/** A page of the dashboard: a page of `htmlPage` that the browser loads again every five seconds and that has room for the ten sections. */
+function dashboardPage(page) {
+  return page.replace("<head>\n", `<head>\n${refreshElement}\n`).replace("</style>", `${dashboardStyle}\n</style>`)
+}
+
+/** The open questions of a process: the numbered items under `## Questions` of its newest `questions-<n>.md` that has no `answers-<n>.md`. */
+function openQuestions(id) {
+  const folder = path.join(process.cwd(), "processes", id)
+  const number = newestNumber(folder, /^questions-(\d+)\.md$/)
+  if (number === null || existsSync(path.join(folder, `answers-${number}.md`))) return []
+  const lines = fileLines(path.join(folder, `questions-${number}.md`))
+  const body = lines === null ? null : sectionLines(lines, "Questions")
+  return (body ?? []).flatMap((line) => {
+    const item = numberedItem(line)
+    return item === null ? [] : [`<li value="${item[1]}">${escapeHtml(item[2])}</li>`]
+  })
+}
+
+/** The card of one process: its title, its id, its owner, its newest recorded round, its open questions and the cases that failed in that round. */
+function processCard(entry) {
+  const newest = (entry.rounds ?? []).at(-1)
+  const failing = (newest?.cases ?? []).filter((stored) => stored.result === "FAIL").map((stored) => `case ${stored.case}`)
+  const questions = openQuestions(entry.id)
+  return [
+    "<article>",
+    `<h3>${escapeHtml(entry.title)}</h3>`,
+    `<p>${escapeHtml(entry.id)}</p>`,
+    "<dl>",
+    `<dt>Owner</dt><dd>${entry.owner === undefined ? notRecorded : escapeHtml(entry.owner)}</dd>`,
+    `<dt>Round</dt><dd>${newest?.round ?? "none"}</dd>`,
+    `<dt>Open questions</dt><dd>${questions.length === 0 ? "none" : `<ol>\n${questions.join("\n")}\n</ol>`}</dd>`,
+    `<dt>Failing cases</dt><dd>${failing.length === 0 ? "none" : failing.join(", ")}</dd>`,
+    "</dl>",
+    "</article>",
+  ].join("\n")
+}
+
+/** The dashboard: one section per stage, in the order of the state machine, with one card per process of the board in that stage. */
+function dashboardMainPage() {
+  const processes = boardProcesses()
+  const sections = Object.keys(allowedMoves).map((stage) => {
+    const cards = processes.filter((entry) => entry.stage === stage).map(processCard)
+    return `<section>\n<h2>${stage}</h2>\n${cards.length === 0 ? "<p>No process.</p>" : cards.join("\n")}\n</section>`
+  })
+  const body = ["<h1>Dashboard</h1>", "<p>This page reloads every 5 seconds.</p>", ...sections]
+  return dashboardPage(htmlPage("Dashboard", body.join("\n")))
+}
+
+function answerDashboardRequest(request, response) {
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    response.writeHead(405, { Allow: "GET, HEAD" })
+    response.end()
+    return
+  }
+  const notFound = '<h1>Not found</h1>\n<p>There is nothing at this address.</p>\n<p><a href="/">Dashboard</a></p>'
+  let answer
+  try {
+    if (request.url.split("?")[0] === "/") answer = { status: 200, page: dashboardMainPage() }
+    else answer = { status: 404, page: dashboardPage(htmlPage("Not found", notFound)) }
+  } catch {
+    answer = { status: 500, page: dashboardPage(errorPage("The dashboard cannot read the processes.")) }
+  }
+  sendPage(response, answer.status, request.method === "HEAD" ? undefined : answer.page)
+}
+
+/** Starts a server of the command line on `127.0.0.1` and keeps running until the process is stopped. */
+function serveOnLocalhost(name, defaultPort, handler, portArgument) {
+  const port = portArgument ?? defaultPort
   if (!/^\d+$/.test(port) || Number(port) > 65535) {
     process.stderr.write("process-factory: the port must be a number from 0 to 65535\n")
     return 1
   }
-  const server = createServer(answerRequest)
+  const server = createServer(handler)
   server.on("error", (error) => {
     process.stderr.write(`process-factory: cannot serve on http://127.0.0.1:${port}: ${errorMessage(error)}\n`)
     process.exitCode = 1
   })
   server.listen(Number(port), "127.0.0.1", () => {
-    process.stdout.write(`Reading view on http://127.0.0.1:${server.address().port}\n`)
+    process.stdout.write(`${name} on http://127.0.0.1:${server.address().port}\n`)
   })
   return 0
 }
 
 function printUsage() {
   process.stderr.write(
-    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n',
+    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n',
   )
   return 1
 }
@@ -1381,5 +1460,7 @@ else if (commandArguments.length <= 2 && commandArguments[0] === "show") process
 else if (commandArguments.length === 2 && commandArguments[0] === "org" && commandArguments[1] === "init") process.exitCode = initialiseOrganisation()
 else if (commandArguments.length === 1 && commandArguments[0] === "check") process.exitCode = checkDependencies()
 else if (commandArguments[0] === "serve" && (commandArguments.length === 1 || (commandArguments.length === 3 && commandArguments[1] === "--port")))
-  process.exitCode = serveReadingView(commandArguments[2])
+  process.exitCode = serveOnLocalhost("Reading view", viewPort, answerRequest, commandArguments[2])
+else if (commandArguments[0] === "dashboard" && (commandArguments.length === 1 || (commandArguments.length === 3 && commandArguments[1] === "--port")))
+  process.exitCode = serveOnLocalhost("Dashboard", dashboardPort, answerDashboardRequest, commandArguments[2])
 else process.exitCode = printUsage()
