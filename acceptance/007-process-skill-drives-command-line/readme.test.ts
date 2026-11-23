@@ -14,12 +14,12 @@ function status(): string {
 }
 
 describe("the Status section of README.md", () => {
-  it("names the forms of /process and says next reports the stage and moves nothing", () => {
+  it("names the forms of /process and says next runs the stage the process is in", () => {
     expect(status()).toContain("`/process <prompt>`")
     expect(status()).toContain("`/process show`")
     expect(status()).toContain("`/process show <process-id>`")
     expect(status()).toContain("`/process next <process-id>`")
-    expect(status()).toContain("reports the stage and moves nothing")
+    expect(status()).toContain("`/process next <process-id>` runs the stage the process is in. Ten stages have a step.")
     expect(status()).not.toContain("Claude answers it in conversation")
   })
 

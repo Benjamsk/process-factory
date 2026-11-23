@@ -1,4 +1,4 @@
-import { processes, runCommand, writeFile } from "../006-process-state-machine/store.ts"
+import { processes, runCommand, writeBoard, writeFile } from "../006-process-state-machine/store.ts"
 import { approve, kari, prepareApproval, processFolder, processId } from "../024-named-owner-and-approval/approval.ts"
 
 export const specText = "# Specification: Handle a lost laptop\n\n## Dependencies\n\nStatus: decided\n\n- Role: Data protection officer\n"
@@ -29,11 +29,10 @@ export function publish(project: string) {
   return runCommand(project, ["move", processId, "published"])
 }
 
-/** Moves the published process through `regenerate` and `review` back to `approval`. */
+/** Puts the published process back in `approval` on the board, without a regeneration, which would ask for a reason and a change list. */
 export function backToApproval(project: string): void {
-  for (const stage of ["regenerate", "review", "approval"]) {
-    runCommand(project, ["move", processId, stage])
-  }
+  const [older = {}, own = {}] = processes(project)
+  writeBoard(project, [older, { ...own, stage: "approval" }])
 }
 
 /** The board entry of the process, the second on the board. */

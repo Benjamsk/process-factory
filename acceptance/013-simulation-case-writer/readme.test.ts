@@ -2,17 +2,17 @@ import { describe, expect, it } from "vitest"
 import { readmeStatus } from "../010-clarifying-questions/clarify.ts"
 
 describe("the Status section of README.md", () => {
-  it("says eight stages have a step and what the case writer does in cases, between the spec stage and every other stage", () => {
+  it("says ten stages have a step and what the case writer does in cases, between the spec stage and the stage published", () => {
     const text = readmeStatus()
     const cases =
       "In `cases` a case writer agent writes simulation cases from `spec.md` alone, never from a draft, one file `case-<n>.md` per case in the folder `cases` of the process"
-    expect(text).toContain("Eight stages have a step.")
+    expect(text).toContain("Ten stages have a step.")
     expect(text).not.toContain("Three stages have a step.")
     expect(text).toContain(cases)
     expect(text).toContain("and the process moves to `draft`.")
-    expect(text).toContain("For every other stage `next` reports the stage and moves nothing.")
+    expect(text).toContain("In `published` Claude starts a regeneration")
     expect(text.indexOf(cases)).toBeGreaterThan(text.indexOf("moves the process to `cases` after the user accepts it"))
-    expect(text.indexOf("For every other stage `next` reports the stage and moves nothing.")).toBeGreaterThan(text.indexOf(cases))
+    expect(text.indexOf("In `published` Claude starts a regeneration")).toBeGreaterThan(text.indexOf(cases))
   })
 
   it("says init writes the skill, and interviewer.md, questioner.md, spec-writer.md, case-writer.md, draft-writer.md and incident.md next to it", () => {

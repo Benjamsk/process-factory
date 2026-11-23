@@ -54,7 +54,7 @@ describe("conflicts.md in the section A rework of the draft writer", () => {
 })
 
 describe("the sections Rules and Your reply of the draft writer", () => {
-  it("allows conflicts.md in a rework next to the one new draft, names the reply line CONFLICTS and keeps the nine headings", () => {
+  it("allows conflicts.md in a rework next to the one new draft, names the reply line CONFLICTS and keeps the nine headings it had, with A regeneration before Your reply", () => {
     const rules = section(draftWriterTemplate, "Rules")
     expect(rules).toContain("Write only one new file `processes/<process-id>/drafts/draft-<n>.md`.")
     expect(rules).toContain("In a rework you also write the file `conflicts.md` that `A rework` names, when it asks for it.")
@@ -62,6 +62,6 @@ describe("the sections Rules and Your reply of the draft writer", () => {
     expect(section(draftWriterTemplate, "Your reply")).toContain(
       "When you wrote `conflicts.md`, the line `CONFLICTS processes/<process-id>/rounds/round-<r>/conflicts.md` comes last.",
     )
-    expect(headings(draftWriterTemplate, 2)).toEqual(["Rules", "What you read", "Before you write", "The reader", "People", "The cases", "A draft", "A rework", "Your reply"])
+    expect(headings(draftWriterTemplate, 2)).toEqual(["Rules", "What you read", "Before you write", "The reader", "People", "The cases", "A draft", "A rework", "A regeneration", "Your reply"])
   })
 })

@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs"
 import path from "node:path"
 import { beforeEach, describe, expect, it } from "vitest"
-import { emptyFolder, historyStages, processes, runCommand, writeBoard, writeFile } from "../006-process-state-machine/store.ts"
+import { emptyFolder, historyStages, processes, runCommand, writeBoard, writeFile, writeRegeneratedDraft } from "../006-process-state-machine/store.ts"
 import {
   boardEntry,
   breachId,
@@ -125,9 +125,15 @@ describe("process-factory move to published", () => {
     expect(runCommand(project, ["move", "002-other-process", "approval"]).status).toBe(0)
     expect(Object.keys(processes(project)[1] ?? {})).not.toContain("dependencies")
 
-    writeFile(project, rolesFile, "# Roles\n\n## Data protection officer\n\nOla Hansen is the data protection officer.\n\n## Head of IT\n\nPer Olsen is the head of IT.\n")
+    writeFile(
+      project,
+      rolesFile,
+      "# Roles\n\n## Data protection officer\n\nOla Hansen is the data protection officer. Kari Nordmann steps in when he is away.\n\n## Head of IT\n\nPer Olsen is the head of IT.\n",
+    )
     writeFile(project, `processes/${breachId}/spec.md`, specWith(breachTitle, ["- Role: Head of IT", "- Role: Data protection officer"]))
     for (const stage of ["regenerate", "review", "approval", "published"]) {
+      if (stage === "review") writeRegeneratedDraft(project, breachId, 2, ["Role: Data protection officer"])
+      if (stage === "published") expect(runCommand(project, ["approve", breachId, "--by", "Kari Nordmann"]).status).toBe(0)
       expect(runCommand(project, ["move", breachId, stage]).status).toBe(0)
     }
 

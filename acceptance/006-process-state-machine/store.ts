@@ -19,7 +19,7 @@ export const moves: [string, string[]][] = [
   ["rework", ["review"]],
   ["approval", ["published", "rework"]],
   ["published", ["regenerate"]],
-  ["regenerate", ["review"]],
+  ["regenerate", ["review", "published"]],
 ]
 
 /** A new empty folder outside the repository. */
@@ -67,6 +67,21 @@ export function approveDraft(folder: string, id: string): void {
   writeFile(folder, `processes/${id}/drafts/draft-1.md`, "# Draft 1\n")
   runCommand(folder, ["owner", id, "Kari Nordmann"])
   runCommand(folder, ["approve", id, "--by", "Kari Nordmann"])
+}
+
+/** Writes the open reader feedback `feedback-1.md` of the process `id`, which is a reason to regenerate it. */
+export function writeOpenFeedback(folder: string, id: string): void {
+  writeFile(folder, `processes/${id}/feedback/feedback-1.md`, `# Feedback 1\n\nProcess: ${id}\nVersion: 1\nStep: whole document\nKind: document\nFrom: anonymous\nStatus: open\n\n## Text\n\nStep 1 is unclear.\n`)
+}
+
+/**
+ * Writes `draft-<n>.md` of the process `id`, which is being regenerated from version 1, and its change list
+ * `changes-<n>.md` with one change that names these reasons.
+ */
+export function writeRegeneratedDraft(folder: string, id: string, number: number, reasons: string[]): void {
+  const changes = [`# Changes of draft-${String(number)}.md against version 1`, "", "## Change 1", "", "- Section: Steps", "- Change: Step 1 says more clearly what to do.", ...reasons.map((reason) => `- Reason: ${reason}`), ""]
+  writeFile(folder, `processes/${id}/drafts/draft-${String(number)}.md`, `# Draft ${String(number)}\n`)
+  writeFile(folder, `processes/${id}/drafts/changes-${String(number)}.md`, changes.join("\n"))
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

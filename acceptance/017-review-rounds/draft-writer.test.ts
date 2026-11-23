@@ -10,7 +10,7 @@ function intro(): string {
 }
 
 describe("the draft writer and the stage rework", () => {
-  it("has nine level 2 headings, with A rework between A draft and Your reply", () => {
+  it("has ten level 2 headings, with A rework after A draft and before A regeneration and Your reply", () => {
     expect(headings(draftWriterTemplate, 2)).toEqual([
       "Rules",
       "What you read",
@@ -20,6 +20,7 @@ describe("the draft writer and the stage rework", () => {
       "The cases",
       "A draft",
       "A rework",
+      "A regeneration",
       "Your reply",
     ])
   })
