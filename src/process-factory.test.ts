@@ -23,7 +23,7 @@ const skillFiles = [
 ]
 const boardPath = "processes/board.json"
 const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
 const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.md", "authority.md"]
 const timeForm = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
 
@@ -39,6 +39,48 @@ afterEach(() => {
 
 function runCommand(commandArguments: string[]) {
   return spawnSync(process.execPath, [commandFile, ...commandArguments], { cwd: workingDirectory, encoding: "utf8" })
+}
+
+const startedServers: ChildProcess[] = []
+
+/** Starts a server command of the command line on a free port of the working directory and gives the line it printed. */
+async function startServer(command: string): Promise<string> {
+  const child = spawn(process.execPath, [commandFile, command, "--port", "0"], { cwd: workingDirectory, stdio: ["ignore", "pipe", "pipe"] })
+  startedServers.push(child)
+  child.stdout.setEncoding("utf8")
+  let printed = ""
+  await new Promise<void>((resolve) => {
+    child.stdout.on("data", (chunk: string) => {
+      printed += chunk
+      if (printed.includes("\n")) resolve()
+    })
+    child.once("close", resolve)
+  })
+  return printed
+}
+
+/** Stops every server the tests started and waits until each has ended. */
+async function stopServers(): Promise<void> {
+  await Promise.all(
+    startedServers.splice(0).map(
+      (child) =>
+        new Promise<void>((resolve) => {
+          if (child.exitCode !== null || child.signalCode !== null) {
+            resolve()
+            return
+          }
+          child.once("exit", () => {
+            resolve()
+          })
+          child.kill()
+        }),
+    ),
+  )
+}
+
+async function requestPage(address: string, pathname: string, method = "GET") {
+  const response = await fetch(`${address}${pathname}`, { method })
+  return { status: response.status, headers: response.headers, body: await response.text() }
 }
 
 function writeWorkingFile(file: string, content: string): void {
@@ -2171,46 +2213,14 @@ describe("the reading view of process-factory serve", () => {
   const owner = "Kari Nordmann"
   const firstDocument = "# Handle a lost laptop\n\n1. IT manager (Ola Hansen): Call the police first.\n"
   const secondDocument = "# Handle a lost laptop\n\n1. IT manager (Ola Hansen): Block the laptop in Intune.\n"
-  const views: ChildProcess[] = []
 
-  afterEach(async () => {
-    await Promise.all(
-      views.splice(0).map(
-        (child) =>
-          new Promise<void>((resolve) => {
-            if (child.exitCode !== null || child.signalCode !== null) {
-              resolve()
-              return
-            }
-            child.once("exit", () => {
-              resolve()
-            })
-            child.kill()
-          }),
-      ),
-    )
-  })
+  afterEach(stopServers)
 
   /** Starts the view on a free port of the working directory and gives the address it printed. */
   async function openView(): Promise<string> {
-    const child = spawn(process.execPath, [commandFile, "serve", "--port", "0"], { cwd: workingDirectory, stdio: ["ignore", "pipe", "pipe"] })
-    views.push(child)
-    child.stdout.setEncoding("utf8")
-    let printed = ""
-    await new Promise<void>((resolve) => {
-      child.stdout.on("data", (chunk: string) => {
-        printed += chunk
-        if (printed.includes("\n")) resolve()
-      })
-      child.once("close", resolve)
-    })
+    const printed = await startServer("serve")
     expect(printed).toMatch(/^Reading view on http:\/\/127\.0\.0\.1:[1-9]\d*\n$/)
     return printed.trim().replace("Reading view on ", "")
-  }
-
-  async function requestPage(address: string, pathname: string, method = "GET") {
-    const response = await fetch(`${address}${pathname}`, { method })
-    return { status: response.status, headers: response.headers, body: await response.text() }
   }
 
   /** Sends a request with a body to the view on a connection of its own. An answer that arrived counts, also when the server closes the connection early. */
@@ -2695,6 +2705,203 @@ describe("the reading view of process-factory serve", () => {
   })
 })
 
+describe("the dashboard of process-factory dashboard", () => {
+  const processId = "001-handle-a-lost-laptop"
+  const title = "Handle a lost laptop"
+  const owner = "Kari Nordmann"
+  const refresh = '<meta http-equiv="refresh" content="5">'
+  const stages = ["intake", "clarify", "spec", "cases", "draft", "review", "rework", "approval", "published", "regenerate"]
+  const answeredQuestion = "Who reports a lost laptop?"
+
+  afterEach(stopServers)
+
+  /** Starts the dashboard on a free port of the working directory and gives the address it printed. */
+  async function openDashboard(): Promise<string> {
+    const printed = await startServer("dashboard")
+    expect(printed).toMatch(/^Dashboard on http:\/\/127\.0\.0\.1:[1-9]\d*\n$/)
+    return printed.trim().replace("Dashboard on ", "")
+  }
+
+  /** The page of the dashboard of the working directory, which must answer with 200. */
+  async function dashboardBody(): Promise<string> {
+    const page = await requestPage(await openDashboard(), "/")
+    expect(page.status).toBe(200)
+    return page.body
+  }
+
+  /** The sections of a page in their order, each with the stage of its `<h2>` and what stands inside it. */
+  function sectionsOf(body: string): { stage: string; html: string }[] {
+    return [...body.matchAll(/<section>\s*<h2>(.*?)<\/h2>(.*?)<\/section>/gs)].map((match) => ({ stage: match[1] ?? "", html: match[2] ?? "" }))
+  }
+
+  /** What stands inside the one `<article>` of a page, without the whitespace between its elements. */
+  function cardOf(body: string): string {
+    const found = [...body.matchAll(/<article>(.*?)<\/article>/gs)]
+    expect(found).toHaveLength(1)
+    return (found[0]?.[1] ?? "").replace(/>\s+</g, "><").trim()
+  }
+
+  /** The stages whose section holds a card. */
+  function stagesWithCard(body: string): string[] {
+    return sectionsOf(body)
+      .filter((section) => section.html.includes("<article>"))
+      .map((section) => section.stage)
+  }
+
+  function writeQuestions(number: number, questions: string[]): void {
+    const items = questions.map((question, index) => `${String(index + 1)}. ${question}`).join("\n")
+    writeWorkingFile(`processes/${processId}/questions-${String(number)}.md`, `# Questions ${String(number)}\n\n## Questions\n\n${items}\n`)
+  }
+
+  it("prints its address, answers GET / with the ten sections of an empty store and creates nothing there", async () => {
+    const body = await dashboardBody()
+
+    expect(body).toContain("<title>Dashboard</title>")
+    expect(body).toContain("<h1>Dashboard</h1>")
+    expect(body).toContain("<p>This page reloads every 5 seconds.</p>")
+    expect(sectionsOf(body).map((section) => section.stage)).toEqual(stages)
+    for (const section of sectionsOf(body)) expect(section.html).toContain("<p>No process.</p>")
+    expect(readdirSync(workingDirectory)).toEqual([])
+  })
+
+  it("has the four headers, the refresh element and no script on its page", async () => {
+    const page = await requestPage(await openDashboard(), "/")
+
+    expect(page.headers.get("content-type")).toBe("text/html; charset=utf-8")
+    expect(page.headers.get("cache-control")).toBe("no-store")
+    expect(page.headers.get("x-content-type-options")).toBe("nosniff")
+    expect(page.headers.get("content-security-policy")).toBe("default-src 'none'; style-src 'unsafe-inline'")
+    expect(page.body.startsWith("<!doctype html>")).toBe(true)
+    expect(page.body).toContain(refresh)
+    expect(page.body).not.toContain("<script")
+  })
+
+  it("shows the owner, the newest recorded round, the open questions and the failing cases of that round on the card", async () => {
+    writeBoardFile([
+      {
+        id: processId,
+        title,
+        stage: "rework",
+        owner,
+        rounds: [
+          { round: 1, draft: "draft-1.md", cases: [{ case: 4, result: "FAIL" }] },
+          {
+            round: 2,
+            draft: "draft-2.md",
+            cases: [
+              { case: 1, result: "PASS" },
+              { case: 3, result: "FAIL" },
+              { case: 5, result: "FAIL" },
+            ],
+          },
+        ],
+      },
+    ])
+    writeQuestions(1, [answeredQuestion])
+    writeWorkingFile(`processes/${processId}/answers-1.md`, "1. Whoever lost it.\n")
+    writeQuestions(2, ["Who decides that the police are called?", "How long may the laptop stay unblocked?"])
+
+    const body = await dashboardBody()
+
+    expect(stagesWithCard(body)).toEqual(["rework"])
+    expect(cardOf(body)).toBe(
+      `<h3>${title}</h3><p>${processId}</p><dl><dt>Owner</dt><dd>${owner}</dd><dt>Round</dt><dd>2</dd><dt>Open questions</dt><dd><ol><li value="1">Who decides that the police are called?</li><li value="2">How long may the laptop stay unblocked?</li></ol></dd><dt>Failing cases</dt><dd>case 3, case 5</dd></dl>`,
+    )
+    expect(body).not.toContain(answeredQuestion)
+    expect(body).not.toContain("case 4")
+  })
+
+  it("shows not recorded and none on the card of a new process whose newest questions file is answered", async () => {
+    writeBoardFile([{ id: processId, title, stage: "intake" }])
+    writeQuestions(1, [answeredQuestion])
+    writeWorkingFile(`processes/${processId}/answers-1.md`, "1. Whoever lost it.\n")
+
+    const body = await dashboardBody()
+
+    expect(cardOf(body)).toBe(
+      `<h3>${title}</h3><p>${processId}</p><dl><dt>Owner</dt><dd>not recorded</dd><dt>Round</dt><dd>none</dd><dt>Open questions</dt><dd>none</dd><dt>Failing cases</dt><dd>none</dd></dl>`,
+    )
+    expect(body).not.toContain(answeredQuestion)
+  })
+
+  it("escapes the title, the owner and a question", async () => {
+    writeBoardFile([{ id: processId, title: "Laptops & <phones>", stage: "clarify", owner: `Kari "K" O'Hara` }])
+    writeQuestions(1, ["Is <b>this</b> & that decided?"])
+
+    const body = await dashboardBody()
+
+    expect(body).toContain("<h3>Laptops &amp; &lt;phones&gt;</h3>")
+    expect(body).toContain("<dd>Kari &quot;K&quot; O&#39;Hara</dd>")
+    expect(body).toContain('<li value="1">Is &lt;b&gt;this&lt;/b&gt; &amp; that decided?</li>')
+    expect(body).not.toContain("<b>")
+  })
+
+  it("shows a process in the section of its new stage after a move, without a restart", async () => {
+    writeBoardFile([{ id: processId, title, stage: "draft" }])
+    const address = await openDashboard()
+    expect(stagesWithCard((await requestPage(address, "/")).body)).toEqual(["draft"])
+
+    expect(runCommand(["move", processId, "review"]).status).toBe(0)
+
+    expect(stagesWithCard((await requestPage(address, "/")).body)).toEqual(["review"])
+  })
+
+  it("answers 404 with the page Not found, without the path that was asked for and without a process", async () => {
+    writeBoardFile([{ id: processId, title, stage: "draft" }])
+
+    const page = await requestPage(await openDashboard(), "/board")
+
+    expect(page.status).toBe(404)
+    expect(page.body).toContain("<title>Not found</title>")
+    expect(page.body).toContain("<h1>Not found</h1>")
+    expect(page.body).toContain("<p>There is nothing at this address.</p>")
+    expect(page.body).toContain('<p><a href="/">Dashboard</a></p>')
+    expect(page.body).toContain(refresh)
+    expect(page.body).not.toContain("/board")
+    expect(page.body).not.toContain(title)
+  })
+
+  it("answers POST with 405 and Allow: GET, HEAD, and HEAD without a page", async () => {
+    const address = await openDashboard()
+
+    const refused = await requestPage(address, "/", "POST")
+
+    expect(refused.status).toBe(405)
+    expect(refused.headers.get("allow")).toBe("GET, HEAD")
+    expect(refused.body).toBe("")
+    const head = await requestPage(address, "/", "HEAD")
+    expect(head.status).toBe(200)
+    expect(head.body).toBe("")
+  })
+
+  it("answers 500 without the name of the file while the board cannot be read, and 200 again after it is repaired", async () => {
+    writeWorkingFile(boardPath, "{ not json")
+    const address = await openDashboard()
+
+    const broken = await requestPage(address, "/")
+
+    expect(broken.status).toBe(500)
+    expect(broken.body).toContain("<title>Error</title>")
+    expect(broken.body).toContain("<h1>Error</h1>")
+    expect(broken.body).toContain("<p>The dashboard cannot read the processes.</p>")
+    expect(broken.body).toContain(refresh)
+    expect(broken.body).not.toContain(boardPath)
+    expect(broken.body).not.toContain("JSON")
+
+    writeBoardFile([{ id: processId, title, stage: "draft" }])
+
+    expect(stagesWithCard((await requestPage(address, "/")).body)).toEqual(["draft"])
+  })
+
+  it.each([["abc"], ["70000"], ["-1"], ["4174x"]])("refuses the port %s with one line, starts no server and exits with 1", (port) => {
+    const result = runCommand(["dashboard", "--port", port])
+
+    expect(result.stderr).toBe("process-factory: the port must be a number from 0 to 65535\n")
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+  })
+})
+
 describe("process-factory show and the open feedback of a process", () => {
   const laptopId = "001-handle-a-lost-laptop"
   const laptop = { id: laptopId, title: "Handle a lost laptop", stage: "published" }
@@ -2758,7 +2965,7 @@ describe("process-factory show and the open feedback of a process", () => {
 })
 
 describe("process-factory with anything other than a command", () => {
-  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b", "c"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]], [["org"]], [["org", "init", "extra"]], [["answer"]], [["answer", "a"]], [["answer", "a", "b", "c"]], [["accept-spec"]], [["accept-spec", "a", "b"]], [["round"]], [["round", "a", "b"]], [["owner", "a"]], [["owner", "a", "b", "c"]], [["approve", "a"]], [["approve", "a", "b"]], [["approve", "a", "--as", "b"]], [["approve", "a", "--by", "b", "c"]], [["respec"]], [["respec", "a", "b"]], [["check", "extra"]], [["org", "check"]], [["serve", "extra"]], [["serve", "--port"]], [["serve", "--host", "0.0.0.0"]], [["serve", "--port", "0", "extra"]]])(
+  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b", "c"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]], [["org"]], [["org", "init", "extra"]], [["answer"]], [["answer", "a"]], [["answer", "a", "b", "c"]], [["accept-spec"]], [["accept-spec", "a", "b"]], [["round"]], [["round", "a", "b"]], [["owner", "a"]], [["owner", "a", "b", "c"]], [["approve", "a"]], [["approve", "a", "b"]], [["approve", "a", "--as", "b"]], [["approve", "a", "--by", "b", "c"]], [["respec"]], [["respec", "a", "b"]], [["check", "extra"]], [["org", "check"]], [["serve", "extra"]], [["serve", "--port"]], [["serve", "--host", "0.0.0.0"]], [["serve", "--port", "0", "extra"]], [["dashboard", "extra"]], [["dashboard", "--port"]], [["dashboard", "--host", "0.0.0.0"]], [["dashboard", "--port", "0", "extra"]]])(
     "prints the usage and writes nothing for %j",
     (commandArguments) => {
       const result = runCommand(commandArguments)
