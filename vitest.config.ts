@@ -4,7 +4,9 @@ export default defineConfig({
   test: {
     passWithNoTests: true,
     // More workers starve vitest's reporter RPC: the run exits 1 with no failing test.
-    maxWorkers: 4,
+    // Measured on the 120-file suite: 4 workers spend 606s of worker time in 197s and
+    // still time out calling onTaskUpdate; 2 spend 267s in 170s and exit 0.
+    maxWorkers: 2,
     projects: [
       {
         test: {
