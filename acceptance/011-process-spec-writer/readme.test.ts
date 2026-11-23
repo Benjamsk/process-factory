@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest"
 import { readmeStatus } from "../010-clarifying-questions/clarify.ts"
 
 describe("the Status section of README.md", () => {
-  it("says eight stages have a step and what the spec writer does in spec", () => {
+  it("says ten stages have a step and what the spec writer does in spec", () => {
     const text = readmeStatus()
-    expect(text).toContain("Eight stages have a step.")
+    expect(text).toContain("Ten stages have a step.")
     expect(text).toContain(
       "In `spec` a spec writer agent writes `spec.md` in the folder of the process, with eleven sections that are each marked decided or open.",
     )
     expect(text).toContain("moves the process to `cases` after the user accepts it")
-    expect(text).toContain("For every other stage `next` reports the stage and moves nothing.")
+    expect(text).toContain("In `published` Claude starts a regeneration")
     expect(text).not.toContain("Two stages have a step.")
   })
 

@@ -17,7 +17,7 @@ function step(number: number): string {
 }
 
 describe("the headings and the table of the skill", () => {
-  it("has twenty level 2 headings, the nineteen it had in their order and Approve the draft as the last", () => {
+  it("has twenty-two level 2 headings, the nineteen it had in their order, Approve the draft after them and the two steps of a regeneration as the last", () => {
     expect(headings(skillTemplate, 2)).toEqual([
       "The command line",
       "The organisation context",
@@ -39,11 +39,13 @@ describe("the headings and the table of the skill", () => {
       "Review the draft",
       "Rework the draft",
       "Approve the draft",
+      "Start a regeneration",
+      "Write the changes",
     ])
   })
 
-  it("sends the stage approval to the step Approve the draft and keeps None yet for published and regenerate", () => {
-    expect(tableRows(skillTemplate, "Run the stage").slice(7)).toEqual(["| `approval` | Approve the draft |", "| `published` | None yet |", "| `regenerate` | None yet |"])
+  it("sends the stage approval to the step Approve the draft, and published and regenerate to the steps of a regeneration", () => {
+    expect(tableRows(skillTemplate, "Run the stage").slice(7)).toEqual(["| `approval` | Approve the draft |", "| `published` | Start a regeneration |", "| `regenerate` | Write the changes |"])
     expect(section(skillTemplate, "Run the stage")).toContain("the factory cannot run this stage yet")
   })
 })

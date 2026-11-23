@@ -11,7 +11,7 @@ describe("the section The command line of the skill", () => {
     const text = section(skillTemplate, "The command line")
     expect(text).toContain("There are nine exceptions, and you write no other file.")
     expect(text).toContain(`${reworkException} ${conflictsException} In the interview of \`/process incident <process-id>\``)
-    expect(headings(skillTemplate, 2)).toHaveLength(20)
+    expect(headings(skillTemplate, 2)).toHaveLength(22)
   })
 })
 

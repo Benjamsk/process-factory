@@ -38,7 +38,7 @@ describe("the section Create a process of the skill", () => {
 })
 
 describe("the headings of the skill", () => {
-  it("has twenty level 2 headings, ending with Review the draft, Rework the draft and Approve the draft", () => {
+  it("has twenty-two level 2 headings, with Review the draft, Rework the draft and Approve the draft before the two steps of a regeneration", () => {
     expect(headings(skillTemplate, 2)).toEqual([
       "The command line",
       "The organisation context",
@@ -60,18 +60,20 @@ describe("the headings of the skill", () => {
       "Review the draft",
       "Rework the draft",
       "Approve the draft",
+      "Start a regeneration",
+      "Write the changes",
     ])
   })
 
   it("has # Process Factory as its only line that starts with # and no line that starts with ## but those headings", () => {
     const lines = readFile(root, skillTemplate).split(/\r?\n/)
     expect(lines.filter((line) => line.startsWith("# "))).toEqual(["# Process Factory"])
-    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(20)
+    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(22)
   })
 })
 
 describe("the section Run the stage of the skill", () => {
-  it("has a table with the ten stages, in which intake, clarify, spec, cases, draft, review, rework and approval have a step", () => {
+  it("has a table with the ten stages, in which every stage has a step", () => {
     expect(tableRows(skillTemplate, "Run the stage")).toEqual([
       "| `intake` | Ask the questions |",
       "| `clarify` | Collect the answers |",
@@ -81,12 +83,12 @@ describe("the section Run the stage of the skill", () => {
       "| `review` | Review the draft |",
       "| `rework` | Rework the draft |",
       "| `approval` | Approve the draft |",
-      "| `published` | None yet |",
-      "| `regenerate` | None yet |",
+      "| `published` | Start a regeneration |",
+      "| `regenerate` | Write the changes |",
     ])
   })
 
-  it("sends a stage with a step to the section with that name and keeps what it says for None yet", () => {
+  it("sends a stage with a step to the section with that name and keeps what it says for a stage that is not in the table", () => {
     const text = section(skillTemplate, "Run the stage")
     expect(text).toContain("Otherwise do the step in the section with that name")
     expect(text).toContain("the factory cannot run this stage yet")

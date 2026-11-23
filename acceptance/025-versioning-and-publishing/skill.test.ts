@@ -35,11 +35,11 @@ describe("the section The command line of the skill", () => {
 })
 
 describe("the section Approve the draft of the skill", () => {
-  it("is the text of the spec, in a skill that keeps its twenty headings and no step for published and regenerate", () => {
+  it("is the text of the spec, in a skill with twenty-two headings, of which the last two are the steps for published and regenerate", () => {
     expect(section(skillTemplate, "Approve the draft").trim()).toBe(approveTheDraft)
-    expect(headings(skillTemplate, 2)).toHaveLength(20)
-    expect(headings(skillTemplate, 2).at(-1)).toBe("Approve the draft")
-    expect(tableRows(skillTemplate, "Run the stage").slice(7)).toEqual(["| `approval` | Approve the draft |", "| `published` | None yet |", "| `regenerate` | None yet |"])
+    expect(headings(skillTemplate, 2)).toHaveLength(22)
+    expect(headings(skillTemplate, 2).slice(-3)).toEqual(["Approve the draft", "Start a regeneration", "Write the changes"])
+    expect(tableRows(skillTemplate, "Run the stage").slice(7)).toEqual(["| `approval` | Approve the draft |", "| `published` | Start a regeneration |", "| `regenerate` | Write the changes |"])
   })
 
   it("says in its first paragraph that an approved draft is published as a numbered version", () => {

@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync } from "node:fs"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { boardFile, emptyFolder, entries, history, processes, readFile, runCommand, writeFile } from "../006-process-state-machine/store.ts"
+import { boardFile, emptyFolder, entries, history, processes, readFile, runCommand, writeFile, writeOpenFeedback, writeRegeneratedDraft } from "../006-process-state-machine/store.ts"
 import { approvalFile, approve, kari, olderEntry, prepareApproval, processFolder, processId, writeDrafts, writeProcess } from "../024-named-owner-and-approval/approval.ts"
 import { backToApproval, caseText, ownStored, prepareApproved, publish, specText, storedVersions, versionFolder, writeSpecAndCases } from "./versions.ts"
 
@@ -223,7 +223,9 @@ describe("a refused move to published and a move to another stage", () => {
     const stored = ["1", "approval-draft-3.md"]
     expect(entries(project, `${processFolder}/versions`)).toEqual(stored)
 
+    writeOpenFeedback(project, processId)
     for (const stage of ["regenerate", "review", "approval"]) {
+      if (stage === "review") writeRegeneratedDraft(project, processId, 4, ["feedback-1.md"])
       expect(runCommand(project, ["move", processId, stage]).status).toBe(0)
       expect(storedVersions(project)).toEqual(versions)
       expect(entries(project, `${processFolder}/versions`)).toEqual(stored)

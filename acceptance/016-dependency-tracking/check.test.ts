@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs"
 import path from "node:path"
 import { beforeEach, describe, expect, it } from "vitest"
-import { approveDraft, boardFile, emptyFolder, entries, processes, readFile, runCommand, writeBoard, writeFile } from "../006-process-state-machine/store.ts"
+import { approveDraft, boardFile, emptyFolder, entries, processes, readFile, runCommand, writeBoard, writeFile, writeRegeneratedDraft } from "../006-process-state-machine/store.ts"
 import {
   boardEntry,
   breachId,
@@ -186,6 +186,8 @@ describe("process-factory check and the stage of a process", () => {
     expect(check(project)).toContain(`${breachId}  ${breachTitle}\n`)
 
     for (const stage of ["regenerate", "review", "approval", "published"]) {
+      if (stage === "review") writeRegeneratedDraft(project, breachId, 2, ["Role: Data protection officer"])
+      if (stage === "published") expect(runCommand(project, ["approve", breachId, "--by", "Kari Nordmann"]).status).toBe(0)
       expect(runCommand(project, ["move", breachId, stage]).status).toBe(0)
     }
 

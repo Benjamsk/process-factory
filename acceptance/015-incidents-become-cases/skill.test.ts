@@ -104,7 +104,7 @@ describe("the section Greet the user of the skill", () => {
 })
 
 describe("the headings of the skill", () => {
-  it("has twenty level 2 headings, with Record an incident between Interview the user and Show the board", () => {
+  it("has twenty-two level 2 headings, with Record an incident between Interview the user and Show the board", () => {
     expect(headings(skillTemplate, 2)).toEqual([
       "The command line",
       "The organisation context",
@@ -126,13 +126,15 @@ describe("the headings of the skill", () => {
       "Review the draft",
       "Rework the draft",
       "Approve the draft",
+      "Start a regeneration",
+      "Write the changes",
     ])
   })
 
-  it("has # Process Factory as its only line that starts with # and twenty lines that start with ##", () => {
+  it("has # Process Factory as its only line that starts with # and twenty-two lines that start with ##", () => {
     const lines = readFile(root, skillTemplate).split(/\r?\n/)
     expect(lines.filter((line) => line.startsWith("# "))).toEqual(["# Process Factory"])
-    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(20)
+    expect(lines.filter((line) => line.startsWith("## "))).toHaveLength(22)
   })
 })
 

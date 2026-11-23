@@ -76,11 +76,11 @@ describe("the section Greet the user of the skill", () => {
 })
 
 describe("the section Send a process back to spec of the skill", () => {
-  it("is the eleventh of twenty level 2 headings, between Show one process and Run the stage, with Approve the draft still the last", () => {
+  it("is the eleventh of twenty-two level 2 headings, between Show one process and Run the stage, with Approve the draft before the two steps of a regeneration", () => {
     const titles = headings(skillTemplate, 2)
-    expect(titles).toHaveLength(20)
+    expect(titles).toHaveLength(22)
     expect(titles.slice(9, 12)).toEqual(["Show one process", "Send a process back to spec", "Run the stage"])
-    expect(titles.at(-1)).toBe("Approve the draft")
+    expect(titles.at(-3)).toBe("Approve the draft")
   })
 
   it("is the text of the spec", () => {

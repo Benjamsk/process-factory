@@ -19,7 +19,7 @@ describe("the file templates/skills/process/draft-writer.md", () => {
     expect(/\r?\n\r?\n$/.test(text)).toBe(false)
   })
 
-  it("has the nine level 2 headings of the spec, in order, and no others outside fenced code blocks", () => {
+  it("has the ten level 2 headings of the spec, in order, and no others outside fenced code blocks", () => {
     expect(headings(draftWriter, 2)).toEqual([
       "Rules",
       "What you read",
@@ -29,6 +29,7 @@ describe("the file templates/skills/process/draft-writer.md", () => {
       "The cases",
       "A draft",
       "A rework",
+      "A regeneration",
       "Your reply",
     ])
   })

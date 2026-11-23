@@ -1,6 +1,21 @@
 import { rmSync } from "node:fs"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { approveDraft, boardFile, entries, emptyFolder, history, historyStages, moves, processes, readFile, runCommand, writeBoard, writeFile } from "./store.ts"
+import {
+  approveDraft,
+  boardFile,
+  entries,
+  emptyFolder,
+  history,
+  historyStages,
+  moves,
+  processes,
+  readFile,
+  runCommand,
+  writeBoard,
+  writeFile,
+  writeOpenFeedback,
+  writeRegeneratedDraft,
+} from "./store.ts"
 
 const breachId = "001-handle-a-personal-data-breach"
 const breachTitle = "Handle a personal data breach"
@@ -81,9 +96,13 @@ describe("process-factory move with a move the machine allows", () => {
     "moves a process from %s to each of its allowed stages",
     (from, allowed) => {
       for (const to of allowed) {
-        writeBoard(project, [{ id: "001-handle-a-breach", title: "Handle a breach", stage: from, history: [{ at: "2026-11-18T17:02:11.123Z", stage: from }] }])
+        const versions = to === "regenerate" ? { versions: [{ version: 1, draft: "draft-1.md", at: "2026-11-18T17:02:11.123Z" }] } : {}
+        writeBoard(project, [{ id: "001-handle-a-breach", title: "Handle a breach", stage: from, history: [{ at: "2026-11-18T17:02:11.123Z", stage: from }], ...versions }])
         if (to === "published") {
           approveDraft(project, "001-handle-a-breach")
+        }
+        if (to === "regenerate") {
+          writeOpenFeedback(project, "001-handle-a-breach")
         }
         const result = runCommand(project, ["move", "001-handle-a-breach", to])
         expect(result.stdout).toBe(`${to}\n`)
@@ -102,10 +121,16 @@ describe("process-factory move with a move the machine allows", () => {
     const sections = ["Trigger", "Scope", "Roles", "Steps", "AI steps", "Deadlines", "Legal basis", "Duties to notify", "Escalation", "Records", "Dependencies"]
     runCommand(project, ["new", breachTitle])
     writeFile(project, `processes/${breachId}/spec.md`, `# Specification: ${breachTitle}\n\n${sections.map((name) => `## ${name}\n\nStatus: decided\n\nSettled.\n`).join("\n")}`)
-    for (const stage of loop) {
+    for (const [index, stage] of loop.entries()) {
       const accepts = stage === "cases"
       if (stage === "published") {
         approveDraft(project, breachId)
+      }
+      if (stage === "regenerate") {
+        writeOpenFeedback(project, breachId)
+      }
+      if (index === loop.length - 1) {
+        writeRegeneratedDraft(project, breachId, 2, ["feedback-1.md"])
       }
       const result = runCommand(project, accepts ? ["accept-spec", breachId] : ["move", breachId, stage])
       expect(result.stdout).toBe(accepts ? `Accepted processes/${breachId}/spec.md\ncases\n` : `${stage}\n`)
