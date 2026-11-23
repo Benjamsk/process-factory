@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest"
 import config from "../../vitest.config.ts"
 
 describe("the worker cap in vitest.config.ts", () => {
-  it("caps the worker pool at 4 at the root of the config", () => {
-    expect(config.test?.maxWorkers).toBe(4)
+  it("caps the worker pool at 2 at the root of the config", () => {
+    expect(config.test?.maxWorkers).toBe(2)
   })
 
   it("sets the cap at the root only and leaves the unit and acceptance projects as they were", () => {
-    expect(config.test?.maxWorkers).toBe(4)
+    expect(config.test?.maxWorkers).toBe(2)
     const projects = JSON.stringify(config.test?.projects)
     expect(projects).not.toContain("maxWorkers")
     expect(projects).not.toContain("minWorkers")
