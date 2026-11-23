@@ -257,8 +257,8 @@ function isRoundReason(entry, reason) {
   return round !== undefined && round.round > entry.regeneration.round && (round.verdicts ?? []).some((given) => given.reviewer === named[2])
 }
 
-/** The first problem of a change list of a regeneration, in the order of 3.2 of the spec, or undefined when it has none. */
-function changeListReason(lines, entry) {
+/** The first problem of the lines of a change list of a regeneration, in the order of 3.2 of the spec, or undefined when it has none. */
+function problemOfChangeList(lines, entry) {
   if (lines === null) return "is missing"
   const version = entry.regeneration.version
   const changes = changeSections(lines)
@@ -284,7 +284,7 @@ function changeListReason(lines, entry) {
 /** The change list of the newest draft of a process that is being regenerated with its problem, or undefined when it has none. */
 function changeListProblem(entry) {
   const file = changeListFile(entry.id, newestDraftNumber(path.join(process.cwd(), "processes", entry.id)))
-  const problem = changeListReason(fileLines(path.join(process.cwd(), file)), entry)
+  const problem = problemOfChangeList(fileLines(path.join(process.cwd(), file)), entry)
   return problem === undefined ? undefined : `${file} ${problem}`
 }
 
