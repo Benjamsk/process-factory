@@ -134,7 +134,7 @@ describe("the usage of process-factory", () => {
     ["send-back alone", ["send-back"]],
     ["send-back with one argument", ["send-back", processId]],
     ["send-back with three arguments", ["send-back", processId, "note.md", "extra"]],
-  ])("has sixteen lines, with send-back directly after respec and before edit, and is printed with %s", (_name, args) => {
+  ])("has seventeen lines, with send-back directly after respec and before edit, and is printed with %s", (_name, args) => {
     writeStore(project, "approval")
     const before = tree(project)
 
@@ -142,7 +142,7 @@ describe("the usage of process-factory", () => {
 
     expect(result.stderr).toBe(usage)
     const lines = result.stderr.trimEnd().split("\n")
-    expect(lines).toHaveLength(16)
+    expect(lines).toHaveLength(17)
     expect(lines.slice(9, 13)).toEqual([
       "       process-factory respec <process-id>",
       "       process-factory send-back <process-id> <file>",

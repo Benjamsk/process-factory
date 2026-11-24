@@ -251,7 +251,7 @@ describe("the usage of process-factory", () => {
     ["edit alone", ["edit"]],
     ["edit with four arguments", ["edit", processId, "spec.md", "new.md", "--by"]],
     ["edit with another option than --by", ["edit", processId, "spec.md", "new.md", "--from", kari]],
-  ])("has sixteen lines, with edit directly after send-back and before org init, and is printed with %s", (_name, args) => {
+  ])("has seventeen lines, with edit directly after send-back and before org init, and is printed with %s", (_name, args) => {
     prepare(project, "rework")
     writeFile(project, "new.md", newSpec)
     const before = tree(project)
@@ -260,7 +260,7 @@ describe("the usage of process-factory", () => {
 
     expect(result.stderr).toBe(usage)
     const lines = result.stderr.trimEnd().split("\n")
-    expect(lines).toHaveLength(16)
+    expect(lines).toHaveLength(17)
     expect(lines.slice(10, 13)).toEqual([
       "       process-factory send-back <process-id> <file>",
       '       process-factory edit <process-id> <name> <file> --by "<person>"',
