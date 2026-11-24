@@ -1704,13 +1704,18 @@ function decisionTarget(pathname) {
   return entry === undefined ? null : { entry, action }
 }
 
+/** The page `Not done`: why a decision was not taken, with the way back to the process. */
+function notDonePage(id, reasons) {
+  return reasonsPage("Not done", reasons, `<p><a href="/${id}">Back to the process</a></p>`)
+}
+
 /** Runs the commands of a decision one after the other and answers the browser: the panel after the last, or the lines of the one that refused. */
-function runDecision(response, id, commands, input) {
+function runDecision(response, id, commands, input = "") {
   for (const args of commands) {
     const run = spawnSync(process.execPath, [import.meta.filename, ...args], { cwd: process.cwd(), input, encoding: "utf8" })
     if (run.status !== 0) {
       const lines = run.stderr.split("\n").filter((line) => line !== "")
-      sendPage(response, 409, reasonsPage("Not done", lines.map(escapeHtml), `<p><a href="/${id}">Back to the process</a></p>`))
+      sendPage(response, 409, notDonePage(id, lines.map(escapeHtml)))
       return
     }
   }
@@ -1730,7 +1735,7 @@ function answersFileText(id, posted) {
 /** Reads a post of a decision and runs the command line for it, which takes the decision or refuses it. */
 async function takeDecision(request, response, { entry, action }) {
   const refuse = (status, reason) => {
-    sendPage(response, status, reasonsPage("Not done", [reason], `<p><a href="/${entry.id}">Back to the process</a></p>`))
+    sendPage(response, status, notDonePage(entry.id, [reason]))
   }
   if (!isOwnOrigin(request)) {
     refuse(403, "A decision can only be sent from the dashboard itself.")
@@ -1747,10 +1752,10 @@ async function takeDecision(request, response, { entry, action }) {
     const answers = answersFileText(id, posted)
     if (answers === null) refuse(400, "Answer at least one question.")
     else runDecision(response, id, [["answer", id, "-"]], answers)
-  } else if (action === "accept-spec") runDecision(response, id, [["accept-spec", id]], "")
-  else if (action === "approve") runDecision(response, id, [["approve", id, "--by", posted.get("by") ?? ""], ["move", id, "published"]], "")
+  } else if (action === "accept-spec") runDecision(response, id, [["accept-spec", id]])
+  else if (action === "approve") runDecision(response, id, [["approve", id, "--by", posted.get("by") ?? ""], ["move", id, "published"]])
   else if (action === "send-back") runDecision(response, id, [["send-back", id, "-"]], posted.get("note") ?? "")
-  else runDecision(response, id, [["move", id, "regenerate"]], "")
+  else runDecision(response, id, [["move", id, "regenerate"]])
 }
 
 function answerDashboardRequest(request, response) {

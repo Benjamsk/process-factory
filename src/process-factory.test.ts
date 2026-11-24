@@ -1412,12 +1412,15 @@ describe("process-factory send-back", () => {
     expect(storedHistory(entry).map((change) => change.stage)).toEqual(["approval", "rework"])
   })
 
-  it.each([
+  /** Each send-back that is refused: what is wrong with it, the id and the file it is run with, the stage and further keys of the entry, and the line it prints. */
+  const refusals: [string, string, string, string, Record<string, unknown>, string][] = [
     ["an id that is not on the board", "009-not-on-the-board", "note.md", "approval", {}, "process-factory: there is no process 009-not-on-the-board"],
     ["a process in rework", processId, "note.md", "rework", {}, `${cannotLine}: it is in the stage rework, not in approval`],
     ["a process without a recorded round", processId, "note.md", "approval", { rounds: [] }, `${cannotLine}: no round is recorded for it`],
     ["a note of only empty lines", processId, "empty.md", "approval", {}, `${cannotLine}: the note is empty`],
-  ])("refuses %s with one line, exits with 1 and writes nothing", (_name, id, file, stage, more, line) => {
+  ]
+
+  it.each(refusals)("refuses %s with one line, exits with 1 and writes nothing", (_name, id, file, stage, more, line) => {
     prepareSendBack(stage, more)
     writeWorkingFile("empty.md", "\n   \n\t\n")
     const before = readWorkingFile(boardPath)
@@ -3522,10 +3525,12 @@ describe("the dashboard of process-factory dashboard", () => {
       expect(storedProcesses()[0]?.stage).toBe("spec")
     })
 
-    it.each([
+    const emptyAnswers: [string, Record<string, string>][] = [
       ["both fields hold only whitespace", { "answer-1": "  \r\n ", "answer-2": "\t" }],
       ["no field is sent", {}],
-    ])("answers 400 with the page Not done and stores nothing when %s", async (_name, values) => {
+    ]
+
+    it.each(emptyAnswers)("answers 400 with the page Not done and stores nothing when %s", async (_name, values) => {
       writeWaiting("clarify")
       writeQuestions(2, [firstQuestion, secondQuestion])
 
