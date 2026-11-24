@@ -47,6 +47,11 @@ section { display: inline-block; vertical-align: top; width: 9rem; margin-right:
 h2 { font-size: 1rem; }
 article { margin-bottom: 1rem; border: 1px solid #c4c4c4; padding: 0.5rem; }
 h3 { font-size: 1rem; margin-top: 0; }`
+/** What an open panel adds to the look of the dashboard: it stands at the right edge over the board, scrolls on its own, and leaves the board room beside it. */
+const panelStyle = `body { padding-right: 32rem; }
+aside { position: fixed; top: 0; right: 0; box-sizing: border-box; width: 30rem; max-width: 100%; height: 100%; overflow-y: auto; padding: 1rem 1.5rem; background: #fff; border-left: 1px solid #c4c4c4; box-shadow: -0.25rem 0 0.75rem rgba(0, 0, 0, 0.15); }
+aside section { display: block; width: auto; margin-right: 0; }
+aside article { border: 0; padding: 0; }`
 /** What tells the browser to load a page of the dashboard again every five seconds. */
 const refreshElement = '<meta http-equiv="refresh" content="5">'
 /** What the reading view shows for an owner, an approver or a date the store does not record. */
@@ -909,11 +914,15 @@ function feedbackTextLine(file) {
   return start === -1 ? "" : oneLine(lines.slice(start + 1).join("\n"))
 }
 
+/** What a feedback is about: the whole document or one step, `not recorded` when the file does not say. */
+function feedbackAbout(file) {
+  const step = labelledValue(file, "Step")
+  return step === "whole document" ? "whole document" : `step ${step ?? notRecorded}`
+}
+
 /** The line of one open feedback: its number, its version, the step it is about, its kind and its text. */
 function feedbackLine({ number, file }) {
-  const step = labelledValue(file, "Step")
-  const about = step === "whole document" ? "whole document" : `step ${step ?? notRecorded}`
-  const parts = [number, `version ${labelledValue(file, "Version") ?? notRecorded}`, about, labelledValue(file, "Kind") ?? notRecorded, feedbackTextLine(file)]
+  const parts = [number, `version ${labelledValue(file, "Version") ?? notRecorded}`, feedbackAbout(file), labelledValue(file, "Kind") ?? notRecorded, feedbackTextLine(file)]
   return `  ${parts.join("  ")}`
 }
 
@@ -1007,6 +1016,11 @@ function escapeHtml(text) {
   return text.replace(/[&<>"']/g, (character) => htmlEscapes[character])
 }
 
+/** A value the board records as escaped text, also when it is a number. */
+function boardText(value) {
+  return escapeHtml(String(value))
+}
+
 /** The path of a file in the folder of a version of a process. */
 function versionFile(id, number, name) {
   return path.join(process.cwd(), "processes", id, "versions", String(number), name)
@@ -1055,8 +1069,8 @@ function documentSteps(lines) {
   return [...new Set(numbers)]
 }
 
-/** The lines of a document as HTML: headings, numbered and bulleted lists and paragraphs, with every text escaped. */
-function documentHtml(lines) {
+/** The lines of a document as HTML: headings, numbered and bulleted lists and paragraphs, with every text escaped. `headingShift` lowers every heading by that many levels, to the sixth at most. */
+function documentHtml(lines, headingShift = 0) {
   const parts = []
   let listTag = ""
   let open = null
@@ -1076,7 +1090,8 @@ function documentHtml(lines) {
     if (line === "") closeList()
     else if (heading !== null) {
       closeList()
-      parts.push(`<h${heading[1].length}>${escapeHtml(heading[2])}</h${heading[1].length}>`)
+      const level = Math.min(6, heading[1].length + headingShift)
+      parts.push(`<h${level}>${escapeHtml(heading[2])}</h${level}>`)
     } else if (numbered !== null || bulleted !== null) {
       const tag = numbered === null ? "ul" : "ol"
       if (listTag === tag) closeElement()
@@ -1381,7 +1396,7 @@ function processCard(entry) {
   const questions = openQuestions(entry.id)
   return [
     "<article>",
-    `<h3>${escapeHtml(entry.title)}</h3>`,
+    `<h3><a href="/${entry.id}">${escapeHtml(entry.title)}</a></h3>`,
     `<p>${escapeHtml(entry.id)}</p>`,
     "<dl>",
     `<dt>Owner</dt><dd>${entry.owner === undefined ? notRecorded : escapeHtml(entry.owner)}</dd>`,
@@ -1393,15 +1408,140 @@ function processCard(entry) {
   ].join("\n")
 }
 
-/** The dashboard: one section per stage, in the order of the state machine, with one card per process of the board in that stage. */
-function dashboardMainPage() {
-  const processes = boardProcesses()
-  const sections = Object.keys(allowedMoves).map((stage) => {
+/** The board: one section per stage, in the order of the state machine, with one card per process of the board in that stage. */
+function boardSections(processes) {
+  return Object.keys(allowedMoves).map((stage) => {
     const cards = processes.filter((entry) => entry.stage === stage).map(processCard)
     return `<section>\n<h2>${stage}</h2>\n${cards.length === 0 ? "<p>No process.</p>" : cards.join("\n")}\n</section>`
   })
-  const body = ["<h1>Dashboard</h1>", "<p>This page reloads every 5 seconds.</p>", ...sections]
+}
+
+/** The dashboard: the board that the browser loads again every five seconds. */
+function dashboardMainPage(processes) {
+  const body = ["<h1>Dashboard</h1>", "<p>This page reloads every 5 seconds.</p>", ...boardSections(processes)]
   return dashboardPage(htmlPage("Dashboard", body.join("\n")))
+}
+
+/** The stage history of a process as a timeline: one item per element of its history on the board, oldest first. */
+function panelTimeline(entry) {
+  const history = Array.isArray(entry.history) ? entry.history : []
+  if (history.length === 0) return "<p>No stage is recorded.</p>"
+  const items = history.map((moved) => `<li><time>${boardText(moved.at)}</time> ${boardText(moved.stage)}</li>`)
+  return `<ol>\n${items.join("\n")}\n</ol>`
+}
+
+/** Every case of a process in the panel: one article per file `case-<n>.md`, in ascending order of `<n>`. */
+function panelCases(folder) {
+  const numbers = folderNumbers(path.join(folder, "cases"), /^case-(\d+)\.md$/)
+  if (numbers.length === 0) return "<p>No case yet.</p>"
+  return numbers.map((number) => `<article>\n${documentHtml(fileLines(path.join(folder, "cases", `case-${number}.md`)) ?? [], 3)}\n</article>`).join("\n")
+}
+
+/** The newest draft of a process in the panel: its name and its document. */
+function panelDraft(folder) {
+  const number = newestDraftNumber(folder)
+  if (number === null) return "<p>No draft yet.</p>"
+  return `<p>draft-${number}.md</p>\n${documentHtml(fileLines(path.join(folder, "drafts", `draft-${number}.md`)) ?? [], 3)}`
+}
+
+/** The findings of a reviewer of a round in the panel: one item per tagged line of its file, without the `- ` of the line. */
+function panelFindings(roundFolder, reviewer) {
+  const found = roundFindings(roundFolder, reviewer)
+  if (found === null) return "<p>The findings file cannot be read.</p>"
+  if (found.length === 0) return "<p>No findings.</p>"
+  return `<ul>\n${found.map((line) => `<li>${escapeHtml(line.slice(2))}</li>`).join("\n")}\n</ul>`
+}
+
+/** One recorded round in the panel: its draft, when it was recorded, why it stopped the loop, the verdict and the findings of each reviewer and the result of each case. */
+function panelRound(id, round) {
+  const roundFolder = `processes/${id}/rounds/round-${round.round}`
+  const facts = [`<dt>Draft</dt><dd>${boardText(round.draft)}</dd>`, `<dt>Recorded at</dt><dd>${boardText(round.at)}</dd>`]
+  if (round.stopped !== undefined) facts.push(`<dt>Stopped</dt><dd>${boardText(round.stopped)}</dd>`)
+  const reviews = (round.verdicts ?? []).flatMap((given) => [`<h5>${boardText(given.reviewer)}: ${boardText(given.verdict)}</h5>`, panelFindings(roundFolder, given.reviewer)])
+  const results = Array.isArray(round.cases) ? round.cases.map((stored) => `case ${boardText(stored.case)} ${boardText(stored.result)}`) : []
+  const cases = results.length === 0 ? [] : ["<h5>Cases</h5>", `<p>${results.join(", ")}</p>`]
+  return ["<article>", `<h4>Round ${round.round}</h4>`, "<dl>", ...facts, "</dl>", ...reviews, ...cases, "</article>"].join("\n")
+}
+
+/** The recorded rounds of a process in the panel, the newest first, without an element of the board whose round is no number of a round. */
+function panelRounds(entry) {
+  const rounds = (Array.isArray(entry.rounds) ? entry.rounds : []).filter((round) => Number.isInteger(round.round) && round.round >= 1)
+  if (rounds.length === 0) return "<p>No round is recorded.</p>"
+  return rounds
+    .reverse()
+    .map((round) => panelRound(entry.id, round))
+    .join("\n")
+}
+
+/** The published versions of a process in the panel: one row per version of the board with the facts it records. */
+function panelVersions(entry) {
+  const versions = Array.isArray(entry.versions) ? entry.versions : []
+  if (versions.length === 0) return "<p>No version is published.</p>"
+  const rows = versions.map(
+    (stored) =>
+      `<tr><td>${boardText(stored.version)}</td><td>${boardText(stored.draft)}</td><td>${boardText(stored.approvedBy ?? notRecorded)}</td><td>${boardText(stored.at)}</td></tr>`,
+  )
+  return `<table>\n<tr><th>Version</th><th>Draft</th><th>Approved by</th><th>Approved at</th></tr>\n${rows.join("\n")}\n</table>`
+}
+
+/** The open feedback of a process in the panel: one article per open file, with its version, what it is about, its kind and its whole text. */
+function panelFeedback(id) {
+  const open = openFeedbackFiles(id)
+  if (open.length === 0) return "<p>No open feedback.</p>"
+  return open
+    .map(({ number, file }) =>
+      [
+        "<article>",
+        `<h4>Feedback ${number}</h4>`,
+        "<dl>",
+        `<dt>Version</dt><dd>${escapeHtml(labelledValue(file, "Version") ?? notRecorded)}</dd>`,
+        `<dt>About</dt><dd>${escapeHtml(feedbackAbout(file))}</dd>`,
+        `<dt>Kind</dt><dd>${escapeHtml(labelledValue(file, "Kind") ?? notRecorded)}</dd>`,
+        "</dl>",
+        `<p>${escapeHtml(feedbackTextLine(file))}</p>`,
+        "</article>",
+      ].join("\n"),
+    )
+    .join("\n")
+}
+
+/** The panel of one process: where it stands, links to its seven parts, and each part as the store has it at this moment. */
+function processPanel(entry) {
+  const folder = path.join(process.cwd(), "processes", entry.id)
+  const spec = fileLines(path.join(folder, "spec.md"))
+  const parts = [
+    ["timeline", "Timeline", panelTimeline(entry)],
+    ["spec", "Specification", spec === null ? "<p>No specification yet.</p>" : documentHtml(spec, 3)],
+    ["cases", "Cases", panelCases(folder)],
+    ["draft", "Draft", panelDraft(folder)],
+    ["rounds", "Rounds", panelRounds(entry)],
+    ["versions", "Versions", panelVersions(entry)],
+    ["feedback", "Open feedback", panelFeedback(entry.id)],
+  ]
+  return [
+    "<aside>",
+    '<p><a href="/">Close</a></p>',
+    `<h2>${boardText(entry.title)}</h2>`,
+    `<p>${boardText(entry.id)}</p>`,
+    "<p>The dashboard does not reload while a process is open. Load the page again to see what has changed.</p>",
+    "<dl>",
+    `<dt>Stage</dt><dd>${boardText(entry.stage)}</dd>`,
+    `<dt>Owner</dt><dd>${boardText(entry.owner ?? notRecorded)}</dd>`,
+    "</dl>",
+    "<nav>",
+    "<ul>",
+    ...parts.map(([id, heading]) => `<li><a href="#${id}">${heading}</a></li>`),
+    "</ul>",
+    "</nav>",
+    ...parts.map(([id, heading, html]) => `<section id="${id}">\n<h3>${heading}</h3>\n${html}\n</section>`),
+    "</aside>",
+  ].join("\n")
+}
+
+/** The board with the panel of one process over it: the sections and cards of the dashboard, the title of the process and the panel after them, and no refresh. */
+function dashboardProcessPage(processes, entry) {
+  const body = ["<h1>Dashboard</h1>", ...boardSections(processes), processPanel(entry)]
+  return htmlPage(boardText(entry.title), body.join("\n")).replace("</style>", `${dashboardStyle}\n${panelStyle}\n</style>`)
 }
 
 function answerDashboardRequest(request, response) {
@@ -1410,11 +1550,15 @@ function answerDashboardRequest(request, response) {
     response.end()
     return
   }
+  const pathname = request.url.split("?")[0]
   const notFound = '<h1>Not found</h1>\n<p>There is nothing at this address.</p>\n<p><a href="/">Dashboard</a></p>'
   let answer
   try {
-    if (request.url.split("?")[0] === "/") answer = { status: 200, page: dashboardMainPage() }
-    else answer = { status: 404, page: dashboardPage(htmlPage("Not found", notFound)) }
+    const processes = boardProcesses()
+    const open = /^\/[a-z0-9-]+$/.test(pathname) ? processes.find((entry) => entry.id === pathname.slice(1)) : undefined
+    if (pathname === "/") answer = { status: 200, page: dashboardMainPage(processes) }
+    else if (open === undefined) answer = { status: 404, page: dashboardPage(htmlPage("Not found", notFound)) }
+    else answer = { status: 200, page: dashboardProcessPage(processes, open) }
   } catch {
     answer = { status: 500, page: dashboardPage(errorPage("The dashboard cannot read the processes.")) }
   }

@@ -127,8 +127,8 @@ describe("the dashboard", () => {
     expect(stagesOf(body, laptopId)).toEqual(["rework"])
     expect(stagesOf(body, employeeId)).toEqual(["intake"])
     expect(stagesOf(body, "003-close-the-books")).toEqual(["published"])
-    expect(cardOf(body, laptopId)).toContain(`<h3>${laptopTitle}</h3><p>${laptopId}</p>`)
-    expect(cardOf(body, employeeId)).toContain(`<h3>${employeeTitle}</h3><p>${employeeId}</p>`)
+    expect(cardOf(body, laptopId)).toContain(`<h3><a href="/${laptopId}">${laptopTitle}</a></h3><p>${laptopId}</p>`)
+    expect(cardOf(body, employeeId)).toContain(`<h3><a href="/${employeeId}">${employeeTitle}</a></h3><p>${employeeId}</p>`)
   })
 
   it("puts two processes in the same stage in the order of the board, and says No process. only in the sections without one", async () => {
@@ -178,7 +178,7 @@ describe("a card of the dashboard", () => {
 
     expect(card).toBe(
       compact(`
-        <h3>Handle a lost laptop</h3>
+        <h3><a href="/001-handle-a-lost-laptop">Handle a lost laptop</a></h3>
         <p>001-handle-a-lost-laptop</p>
         <dl>
         <dt>Owner</dt><dd>Kari Nordmann</dd>
@@ -197,7 +197,7 @@ describe("a card of the dashboard", () => {
 
     expect(card).toBe(
       compact(`
-        <h3>Onboard a new employee</h3>
+        <h3><a href="/002-onboard-a-new-employee">Onboard a new employee</a></h3>
         <p>002-onboard-a-new-employee</p>
         <dl>
         <dt>Owner</dt><dd>not recorded</dd>
@@ -303,7 +303,7 @@ describe("a card of the dashboard", () => {
 
     const card = await cardOfEntry(entry(laptopId, "Laptops & <phones>", "clarify", { owner: `Kari "K" O'Hara` }))
 
-    expect(card).toContain("<h3>Laptops &amp; &lt;phones&gt;</h3>")
+    expect(card).toContain('<h3><a href="/001-handle-a-lost-laptop">Laptops &amp; &lt;phones&gt;</a></h3>')
     expect(fact(card, "Owner")).toBe("Kari &quot;K&quot; O&#39;Hara")
     expect(fact(card, "Open questions")).toBe('<ol><li value="1">Is &lt;b&gt;this&lt;/b&gt; &amp; that decided?</li></ol>')
     expect(card).not.toContain("<b>")
