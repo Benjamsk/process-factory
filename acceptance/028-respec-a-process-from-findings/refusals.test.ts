@@ -16,6 +16,7 @@ const usageLines = [
   '       process-factory owner <process-id> "<person>"',
   '       process-factory approve <process-id> --by "<person>"',
   "       process-factory respec <process-id>",
+  "       process-factory send-back <process-id> <file>",
   "       process-factory org init",
   "       process-factory check",
   "       process-factory serve [--port <number>]",
@@ -115,7 +116,7 @@ describe("the usage of process-factory", () => {
     ["respec alone", ["respec"]],
     ["the arguments respec a b", ["respec", "a", "b"]],
     ["no argument", []],
-  ])("has fourteen lines, with respec directly after approve, and is printed with %s", (_name, args) => {
+  ])("has fifteen lines, with respec directly after approve, and is printed with %s", (_name, args) => {
     prepareRespec(project)
     const before = readFile(project, boardFile)
 

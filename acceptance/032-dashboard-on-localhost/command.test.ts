@@ -96,11 +96,11 @@ describe("the usage of process-factory", () => {
     ["dashboard --port", ["--port"]],
     ["dashboard --host 0.0.0.0", ["--host", "0.0.0.0"]],
     ["dashboard --port 0 extra", ["--port", "0", "extra"]],
-  ])("has fourteen lines, with dashboard as the last, directly after serve, and is printed with %s", (_name, args) => {
+  ])("has fifteen lines, with dashboard as the last, directly after serve, and is printed with %s", (_name, args) => {
     const result = runDashboard(project, args)
 
     expect(result.stderr).toBe(usage)
-    expect(result.stderr.trimEnd().split("\n")).toHaveLength(14)
+    expect(result.stderr.trimEnd().split("\n")).toHaveLength(15)
     expect(result.stderr.endsWith("       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n")).toBe(true)
     expect(result.stdout).toBe("")
     expect(result.status).toBe(1)
