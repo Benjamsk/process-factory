@@ -39,8 +39,8 @@ a { color: #11467b; }
 dt { font-weight: 700; }
 dd { margin: 0 0 0.5rem 0; }
 legend { font-weight: 700; }
-fieldset label { display: block; }
-textarea, #name { box-sizing: border-box; width: 100%; font: inherit; }
+form label { display: block; }
+textarea, #name, #by { box-sizing: border-box; width: 100%; font: inherit; }
 :focus { outline: 2px solid #11467b; outline-offset: 2px; }`
 /** What the dashboard adds to those defaults: its ten sections stand next to each other, so the page scrolls sideways on a narrow screen. */
 const dashboardStyle = `body { max-width: none; min-width: 100rem; }
@@ -52,9 +52,7 @@ h3 { font-size: 1rem; margin-top: 0; }`
 const panelStyle = `body { padding-right: 32rem; }
 aside { position: fixed; top: 0; right: 0; box-sizing: border-box; width: 30rem; max-width: 100%; height: 100%; overflow-y: auto; padding: 1rem 1.5rem; background: #fff; border-left: 1px solid #c4c4c4; box-shadow: -0.25rem 0 0.75rem rgba(0, 0, 0, 0.15); }
 aside section { display: block; width: auto; margin-right: 0; }
-aside article { border: 0; padding: 0; }
-aside label { display: block; }
-aside #by { box-sizing: border-box; width: 100%; font: inherit; }`
+aside article { border: 0; padding: 0; }`
 /** What tells the browser to load a page of the dashboard again every five seconds. */
 const refreshElement = '<meta http-equiv="refresh" content="5">'
 /** What the reading view shows for an owner, an approver or a date the store does not record. */
@@ -67,6 +65,12 @@ const feedbackTextLimit = 2000
 const feedbackNameLimit = 100
 /** The decisions the dashboard takes for a person, each the last part of the address it is posted to. */
 const decisionActions = ["answer", "accept-spec", "approve", "send-back", "regenerate"]
+/** The stages in which the specification and the cases of a process can be edited. */
+const editStages = ["spec", "cases", "draft", "review", "rework", "approval"]
+/** The stages from which an edit moves a process back to `draft`, so that a new draft is written from the edited files. */
+const stagesThatMoveToDraft = ["review", "rework", "approval"]
+/** The number of bytes of a post of an edit the dashboard reads at most. */
+const editBodyLimit = 524288
 /** The five characters of a text from the store that could add markup to a page. */
 const htmlEscapes = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }
 /** The ten stages, each with the stages a process may move to from it. */
@@ -430,6 +434,7 @@ function moveProcess(id, stage) {
     entry.versions = [...(entry.versions ?? []), version]
   }
   if (stage === "published") delete entry.regeneration
+  if (stage === "review") delete entry.needsDraft
   writeBoard(processes)
   process.stdout.write(`${stage}\n`)
   return 0
@@ -527,14 +532,18 @@ function sectionLines(lines, heading) {
   return end === -1 ? body : body.slice(0, end)
 }
 
-/** The sections of a `spec.md` that are not marked decided, in the order of the eleven. */
-function openSpecSections(folder) {
-  const lines = fileLines(path.join(folder, "spec.md"))
-  if (lines === null) return specSections
+/** The sections these lines of a specification do not mark decided, in the order of the eleven. */
+function openSections(lines) {
   return specSections.filter((name) => {
     const body = sectionLines(lines, name)
     return body === null || body.find((line) => line !== "") !== "Status: decided"
   })
+}
+
+/** The sections of a `spec.md` that are not marked decided, in the order of the eleven. */
+function openSpecSections(folder) {
+  const lines = fileLines(path.join(folder, "spec.md"))
+  return lines === null ? specSections : openSections(lines)
 }
 
 /** The `Role`, `System`, `Agreement` and `Policy` lines of the section `Dependencies` of a `spec.md`, in their order. */
@@ -951,6 +960,114 @@ function sendBackDraft(id, file) {
   return moveProcess(id, "rework")
 }
 
+/** Whether a name is one of the files of a process a person may edit: `spec.md` or a case. */
+function isEditableName(name) {
+  return name === "spec.md" || /^case-[1-9]\d*\.md$/.test(name)
+}
+
+/** The path of an edited file in the folder of a process. */
+function editedPath(name) {
+  return name === "spec.md" ? name : `cases/${name}`
+}
+
+/** Whether the specification and the cases of a process may be edited now: it is in an edit stage and is not being regenerated. */
+function isEditable(entry) {
+  return editStages.includes(entry.stage) && entry.regeneration === undefined
+}
+
+/** The files a process was edited since its newest draft was written, empty when it needs no new draft. */
+function editedNames(entry) {
+  return Array.isArray(entry.needsDraft) ? entry.needsDraft : []
+}
+
+/** The text of a file through `feedbackText`, or null when it cannot be read. */
+function editableText(file) {
+  try {
+    return feedbackText(readFileSync(file, "utf8"))
+  } catch {
+    return null
+  }
+}
+
+function editProcessFile(id, name, file, byArgument) {
+  const processes = readProcessesOrPrintReason()
+  if (processes === null) return 1
+  if (!/^[a-z0-9-]+$/.test(id)) {
+    process.stderr.write(`process-factory: there is no process ${id}\n`)
+    return 1
+  }
+  const entry = findProcessOrPrintReason(processes, id)
+  if (entry === undefined) return 1
+  if (!isEditableName(name)) {
+    process.stderr.write(`process-factory: cannot edit ${id}: ${name} is not spec.md or a case-<n>.md\n`)
+    return 1
+  }
+  const cannot = `process-factory: cannot edit ${name} of ${id}`
+  if (!editStages.includes(entry.stage)) {
+    process.stderr.write(`${cannot}: it is in the stage ${entry.stage}, not in spec, cases, draft, review, rework or approval\n`)
+    return 1
+  }
+  if (entry.regeneration !== undefined) {
+    process.stderr.write(`${cannot}: it is being regenerated from version ${entry.regeneration.version}, and a regeneration keeps the specification and the cases it started with\n`)
+    return 1
+  }
+  const stored = `processes/${id}/${editedPath(name)}`
+  if (!existsSync(path.join(process.cwd(), stored))) {
+    process.stderr.write(`${cannot}: ${stored} is not there\n`)
+    return 1
+  }
+  const by = byArgument.trim()
+  if (/[\r\n]/.test(by) || !/\p{L}/u.test(by)) {
+    process.stderr.write(`${cannot}: --by must be one line with at least one letter\n`)
+    return 1
+  }
+  if (entry.owner !== undefined && by !== entry.owner) {
+    process.stderr.write(`${cannot}: --by does not name its owner\n`)
+    return 1
+  }
+  if (!isNamedInRoles(by)) {
+    process.stderr.write(`${cannot}: ${by} is not named in organisation/roles.md\n`)
+    return 1
+  }
+  let posted
+  try {
+    posted = readFileOrStandardInput(file)
+  } catch (error) {
+    process.stderr.write(`process-factory: cannot read ${file}: ${errorMessage(error)}\n`)
+    return 1
+  }
+  const text = feedbackText(posted.toString("utf8"))
+  if (text === "") {
+    process.stderr.write(`${cannot}: the text is empty\n`)
+    return 1
+  }
+  if (text === editableText(path.join(process.cwd(), stored))) {
+    process.stderr.write(`${cannot}: the text is the same as ${stored}\n`)
+    return 1
+  }
+  const open = name === "spec.md" && entry.stage !== "spec" ? openSections(text.split("\n").map((line) => line.trimEnd())) : []
+  if (open.length > 0) {
+    process.stderr.write(`${cannot}: these sections would not be decided\n`)
+    for (const section of open) process.stderr.write(`  ${section}\n`)
+    return 1
+  }
+  try {
+    writeFileSync(path.join(process.cwd(), stored), `${text}\n`)
+  } catch (error) {
+    process.stderr.write(`process-factory: cannot write ${stored}: ${errorMessage(error)}\n`)
+    return 1
+  }
+  if (stagesThatMoveToDraft.includes(entry.stage)) entry.stage = "draft"
+  entry.history = [...(entry.history ?? []), { at: new Date().toISOString(), stage: entry.stage, edited: name, by }]
+  if (newestDraftNumber(path.join(process.cwd(), "processes", id)) !== null) {
+    const marked = editedNames(entry)
+    entry.needsDraft = marked.includes(name) ? marked : [...marked, name]
+  }
+  writeBoard(processes)
+  process.stdout.write(`Stored ${stored}\n${entry.stage}\n`)
+  return 0
+}
+
 /** A text as one line: every control character as a space, every run of whitespace as one space, without the whitespace at its ends. */
 function oneLine(text) {
   return text.replace(/\p{Cc}/gu, " ").replace(/\s+/g, " ").trim()
@@ -1002,6 +1119,8 @@ function showProcesses(id) {
   const lines = [entry.id, `Title: ${entry.title}`, `Stage: ${entry.stage}`]
   if (entry.owner !== undefined) lines.push(`Owner: ${entry.owner}`)
   if (entry.specAcceptedAt !== undefined) lines.push(`Spec accepted: ${entry.specAcceptedAt}`)
+  const marked = editedNames(entry)
+  if (marked.length > 0) lines.push(`Needs a new draft: ${marked.join(", ")}`)
   if (entry.regeneration !== undefined) lines.push(`Regenerating: version ${entry.regeneration.version}`)
   const rounds = entry.rounds ?? []
   const stopped = rounds.at(-1)?.stopped
@@ -1023,7 +1142,9 @@ function showProcesses(id) {
     for (const open of feedback) lines.push(feedbackLine(open))
   }
   lines.push("History:")
-  for (const change of entry.history ?? []) lines.push(`  ${change.at}  ${change.stage}`)
+  for (const change of entry.history ?? []) {
+    lines.push(`  ${change.at}  ${change.stage}${change.edited === undefined ? "" : `  ${change.edited} edited by ${change.by}`}`)
+  }
   process.stdout.write(`${lines.join("\n")}\n`)
   return 0
 }
@@ -1305,14 +1426,14 @@ function sendPage(response, status, page) {
   response.end(page)
 }
 
-/** The body of a request as text, or null when it is longer than the limit, of which the rest is not read. */
-function readBody(request) {
+/** The body of a request as text, or null when it is longer than `limit` bytes, of which the rest is not read. */
+function readBody(request, limit) {
   return new Promise((resolve) => {
     const chunks = []
     let size = 0
     request.on("data", (chunk) => {
       size += chunk.length
-      if (size > feedbackBodyLimit) {
+      if (size > limit) {
         request.pause()
         resolve(null)
         return
@@ -1372,7 +1493,7 @@ async function storeFeedback(request, response, { entry, number }) {
     refuse(403, ["Feedback can only be sent from the reading view itself."])
     return
   }
-  const body = await readBody(request)
+  const body = await readBody(request, feedbackBodyLimit)
   if (body === null) {
     refuse(413, ["The feedback is too long."])
     return
@@ -1457,7 +1578,13 @@ function openQuestions(id) {
   return { number, questions }
 }
 
-/** The card of one process: its title, its id, its owner, its newest recorded round, its open questions and the cases that failed in that round. */
+/** The mark of a process that needs a new draft, with the files it was edited since, or nothing when it has none. */
+function needsDraftMark(entry) {
+  const names = editedNames(entry)
+  return names.length === 0 ? [] : [`<p>Needs a new draft: ${names.map(boardText).join(", ")}</p>`]
+}
+
+/** The card of one process: its title, its id, whether it needs a new draft, its owner, its newest recorded round, its open questions and the cases that failed in that round. */
 function processCard(entry) {
   const newest = (entry.rounds ?? []).at(-1)
   const failing = (newest?.cases ?? []).filter((stored) => stored.result === "FAIL").map((stored) => `case ${stored.case}`)
@@ -1466,6 +1593,7 @@ function processCard(entry) {
     "<article>",
     `<h3><a href="/${entry.id}">${escapeHtml(entry.title)}</a></h3>`,
     `<p>${escapeHtml(entry.id)}</p>`,
+    ...needsDraftMark(entry),
     "<dl>",
     `<dt>Owner</dt><dd>${entry.owner === undefined ? notRecorded : escapeHtml(entry.owner)}</dd>`,
     `<dt>Round</dt><dd>${newest?.round ?? "none"}</dd>`,
@@ -1490,19 +1618,32 @@ function dashboardMainPage(processes) {
   return dashboardPage(htmlPage("Dashboard", body.join("\n")))
 }
 
-/** The stage history of a process as a timeline: one item per element of its history on the board, oldest first. */
+/** The stage history of a process as a timeline: one item per element of its history on the board, oldest first, an edit with the file and the person. */
 function panelTimeline(entry) {
   const history = Array.isArray(entry.history) ? entry.history : []
   if (history.length === 0) return "<p>No stage is recorded.</p>"
-  const items = history.map((moved) => `<li><time>${boardText(moved.at)}</time> ${boardText(moved.stage)}</li>`)
+  const items = history.map((moved) => {
+    const edited = moved.edited === undefined ? "" : `, ${boardText(moved.edited)} edited by ${boardText(moved.by)}`
+    return `<li><time>${boardText(moved.at)}</time> ${boardText(moved.stage)}${edited}</li>`
+  })
   return `<ol>\n${items.join("\n")}\n</ol>`
 }
 
-/** Every case of a process in the panel: one article per file `case-<n>.md`, in ascending order of `<n>`. */
-function panelCases(folder) {
+/** The link of the panel that opens the edit page of a file of a process. */
+function editLink(id, name) {
+  return `<p><a href="/${id}/edit/${name}">Edit ${name}</a></p>`
+}
+
+/** Every case of a process in the panel: one article per file `case-<n>.md`, in ascending order of `<n>`, each with its edit link when `editId` names the process. */
+function panelCases(folder, editId) {
   const numbers = folderNumbers(path.join(folder, "cases"), /^case-(\d+)\.md$/)
   if (numbers.length === 0) return "<p>No case yet.</p>"
-  return numbers.map((number) => `<article>\n${documentHtml(fileLines(path.join(folder, "cases", `case-${number}.md`)) ?? [], 3)}\n</article>`).join("\n")
+  return numbers
+    .map((number) => {
+      const link = editId === null ? "" : `${editLink(editId, `case-${number}.md`)}\n`
+      return `<article>\n${link}${documentHtml(fileLines(path.join(folder, "cases", `case-${number}.md`)) ?? [], 3)}\n</article>`
+    })
+    .join("\n")
 }
 
 /** The newest draft of a process in the panel: its name and its document. */
@@ -1660,11 +1801,13 @@ function processPanel(entry) {
   const spec = fileLines(path.join(folder, "spec.md"))
   const decision = decisionPart(entry, folder)
   const waits = `<p>After a decision the process waits in its new stage until /process next ${entry.id} is run in Claude Code.</p>`
+  const editId = isEditable(entry) ? entry.id : null
+  const specHtml = spec === null ? "<p>No specification yet.</p>" : `${editId === null ? "" : `${editLink(editId, "spec.md")}\n`}${documentHtml(spec, 3)}`
   const parts = [
     ...(decision === null ? [] : [["decision", "Decision", `${decision}\n${waits}`]]),
     ["timeline", "Timeline", panelTimeline(entry)],
-    ["spec", "Specification", spec === null ? "<p>No specification yet.</p>" : documentHtml(spec, 3)],
-    ["cases", "Cases", panelCases(folder)],
+    ["spec", "Specification", specHtml],
+    ["cases", "Cases", panelCases(folder, editId)],
     ["draft", "Draft", panelDraft(folder)],
     ["rounds", "Rounds", panelRounds(entry)],
     ["versions", "Versions", panelVersions(entry)],
@@ -1680,6 +1823,7 @@ function processPanel(entry) {
     `<dt>Stage</dt><dd>${boardText(entry.stage)}</dd>`,
     `<dt>Owner</dt><dd>${boardText(entry.owner ?? notRecorded)}</dd>`,
     "</dl>",
+    ...needsDraftMark(entry),
     "<nav>",
     "<ul>",
     ...parts.map(([id, heading]) => `<li><a href="#${id}">${heading}</a></li>`),
@@ -1741,7 +1885,7 @@ async function takeDecision(request, response, { entry, action }) {
     refuse(403, "A decision can only be sent from the dashboard itself.")
     return
   }
-  const body = await readBody(request)
+  const body = await readBody(request, feedbackBodyLimit)
   if (body === null) {
     refuse(413, "The decision is too long.")
     return
@@ -1758,6 +1902,137 @@ async function takeDecision(request, response, { entry, action }) {
   else runDecision(response, id, [["move", id, "regenerate"]])
 }
 
+/** The process, the name and the stored text of the address `/<process-id>/<part>/<name>` of a file of a process on the board, or null for every other path. */
+function fileTarget(pathname, part) {
+  const [id, found, name, ...rest] = pathname.slice(1).split("/")
+  if (found !== part || rest.length > 0 || name === undefined || !isEditableName(name)) return null
+  const entry = boardProcesses().find((candidate) => candidate.id === id)
+  return entry === undefined ? null : { entry, name }
+}
+
+/** The address `/<process-id>/edit/<name>` of a file that can be edited now, with the text it holds, or null when there is no such file. */
+function editTarget(pathname) {
+  const target = fileTarget(pathname, "edit")
+  if (target === null || !isEditable(target.entry)) return null
+  const text = editableText(path.join(process.cwd(), "processes", target.entry.id, editedPath(target.name)))
+  return text === null ? null : { ...target, text }
+}
+
+/** What a post of an edit at this address does: the check page against the stored text, the save when that text is null, or null when nothing is posted here. */
+function editPostTarget(pathname) {
+  const edit = editTarget(pathname)
+  if (edit !== null) return edit
+  const save = fileTarget(pathname, "save")
+  return save === null ? null : { ...save, text: null }
+}
+
+/** The page that holds the whole text of a file of a process in one field, which the next page compares with the stored text. */
+function editPage({ entry, name, text }) {
+  const title = `Edit ${name}`
+  const body = [
+    `<p><a href="/${entry.id}">Back to the process</a></p>`,
+    `<h1>${title}</h1>`,
+    `<p>${boardText(entry.title)}, ${boardText(entry.id)}</p>`,
+    `<form method="post" action="/${entry.id}/edit/${name}">`,
+    `<p><label for="text">The text of ${name}</label>`,
+    `<textarea id="text" name="text" rows="30" required>\n${escapeHtml(text)}</textarea></p>`,
+    "<p>Nothing is saved yet. The next page shows what changes.</p>",
+    '<p><button type="submit">Show what changes</button></p>',
+    "</form>",
+  ]
+  return htmlPage(title, body.join("\n"))
+}
+
+/**
+ * The old and the new lines in one list, each with the mark `-` when it is removed, `+` when it is added and none when
+ * it is in a longest common subsequence of the two. A removed line stands before the added lines of the same change.
+ */
+function comparedLines(oldLines, newLines) {
+  const width = newLines.length + 1
+  const common = new Uint32Array((oldLines.length + 1) * width)
+  for (let first = oldLines.length - 1; first >= 0; first -= 1) {
+    for (let second = newLines.length - 1; second >= 0; second -= 1) {
+      common[first * width + second] =
+        oldLines[first] === newLines[second]
+          ? common[(first + 1) * width + second + 1] + 1
+          : Math.max(common[(first + 1) * width + second], common[first * width + second + 1])
+    }
+  }
+  const lines = []
+  let first = 0
+  let second = 0
+  while (first < oldLines.length || second < newLines.length) {
+    if (first < oldLines.length && second < newLines.length && oldLines[first] === newLines[second]) {
+      lines.push({ mark: "", text: oldLines[first] })
+      first += 1
+      second += 1
+    } else if (second === newLines.length || (first < oldLines.length && common[(first + 1) * width + second] >= common[first * width + second + 1])) {
+      lines.push({ mark: "-", text: oldLines[first] })
+      first += 1
+    } else {
+      lines.push({ mark: "+", text: newLines[second] })
+      second += 1
+    }
+  }
+  return lines
+}
+
+/** One item per compared line: a removed line in `<del>`, an added line in `<ins>`, each after its mark, an unchanged line as it is. */
+function comparedItems(lines) {
+  return lines.map(({ mark, text }) => {
+    if (mark === "") return `<li>${escapeHtml(text)}</li>`
+    const tag = mark === "-" ? "del" : "ins"
+    return `<li><${tag}>${mark} ${escapeHtml(text)}</${tag}></li>`
+  })
+}
+
+/** The page that shows line by line what an edit changes in a file and asks for the name of the person who saves it. */
+function checkPage({ entry, name, text }, newText) {
+  const cleaned = feedbackText(newText)
+  const lines = comparedLines(text.split("\n"), cleaned.split("\n"))
+  const title = `Check the edit of ${name}`
+  const head = [`<p><a href="/${entry.id}">Back to the process</a></p>`, `<h1>${title}</h1>`, `<p>${boardText(entry.title)}, ${boardText(entry.id)}</p>`]
+  const marked = (mark) => lines.filter((line) => line.mark === mark).length
+  if (marked("-") + marked("+") === 0) return htmlPage(title, [...head, `<p>Nothing changes in ${name}.</p>`].join("\n"))
+  const movesBack = stagesThatMoveToDraft.includes(entry.stage)
+    ? [`<p>Saving moves the process back to the stage draft, so that /process next ${entry.id} in Claude Code writes a new draft from the edited files.</p>`]
+    : []
+  const body = [
+    ...head,
+    `<p>Lines removed: ${marked("-")}. Lines added: ${marked("+")}. A line that starts with - is removed, a line that starts with + is added.</p>`,
+    `<ul>\n${comparedItems(lines).join("\n")}\n</ul>`,
+    ...movesBack,
+    `<form method="post" action="/${entry.id}/save/${name}">`,
+    `<input type="hidden" name="text" value="${escapeHtml(cleaned)}">`,
+    '<p><label for="by">Your full name</label>',
+    '<input id="by" name="by" required></p>',
+    '<p><button type="submit">Save</button></p>',
+    "</form>",
+  ]
+  return htmlPage(title, body.join("\n"))
+}
+
+/** Reads a post of an edit and answers the browser: the check page, or the save through the command line, which refuses what it may not store. */
+async function takeEdit(request, response, target) {
+  const id = target.entry.id
+  const refuse = (status, reason) => {
+    sendPage(response, status, notDonePage(id, [reason]))
+  }
+  if (!isOwnOrigin(request)) {
+    refuse(403, "An edit can only be sent from the dashboard itself.")
+    return
+  }
+  const body = await readBody(request, editBodyLimit)
+  if (body === null) {
+    refuse(413, "The edit is too long.")
+    return
+  }
+  const posted = new URLSearchParams(body)
+  const newText = posted.get("text") ?? ""
+  if (target.text === null) runDecision(response, id, [["edit", id, target.name, "-", "--by", posted.get("by") ?? ""]], newText)
+  else sendPage(response, 200, checkPage(target, newText))
+}
+
 function answerDashboardRequest(request, response) {
   const pathname = request.url.split("?")[0]
   if (request.method === "GET" || request.method === "HEAD") {
@@ -1766,28 +2041,34 @@ function answerDashboardRequest(request, response) {
     try {
       const processes = boardProcesses()
       const open = /^\/[a-z0-9-]+$/.test(pathname) ? processes.find((entry) => entry.id === pathname.slice(1)) : undefined
+      const edit = open === undefined ? editTarget(pathname) : null
       if (pathname === "/") answer = { status: 200, page: dashboardMainPage(processes) }
-      else if (open === undefined) answer = { status: 404, page: dashboardPage(htmlPage("Not found", notFound)) }
-      else answer = { status: 200, page: dashboardProcessPage(processes, open) }
+      else if (open !== undefined) answer = { status: 200, page: dashboardProcessPage(processes, open) }
+      else if (edit !== null) answer = { status: 200, page: editPage(edit) }
+      else answer = { status: 404, page: dashboardPage(htmlPage("Not found", notFound)) }
     } catch {
       answer = { status: 500, page: dashboardPage(errorPage("The dashboard cannot read the processes.")) }
     }
     sendPage(response, answer.status, request.method === "HEAD" ? undefined : answer.page)
     return
   }
-  let target
+  let decision = null
+  let edit = null
   try {
-    target = request.method === "POST" ? decisionTarget(pathname) : null
+    if (request.method === "POST") {
+      decision = decisionTarget(pathname)
+      if (decision === null) edit = editPostTarget(pathname)
+    }
   } catch {
     sendPage(response, 500, errorPage("The dashboard cannot read the processes."))
     return
   }
-  if (target === null) {
+  if (decision !== null) takeDecision(request, response, decision)
+  else if (edit !== null) takeEdit(request, response, edit)
+  else {
     response.writeHead(405, { Allow: "GET, HEAD" })
     response.end()
-    return
   }
-  takeDecision(request, response, target)
 }
 
 /** Starts a server of the command line on `127.0.0.1` and keeps running until the process is stopped. */
@@ -1810,7 +2091,7 @@ function serveOnLocalhost(name, defaultPort, handler, portArgument) {
 
 function printUsage() {
   process.stderr.write(
-    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n',
+    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory edit <process-id> <name> <file> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n',
   )
   return 1
 }
@@ -1826,6 +2107,8 @@ else if (commandArguments.length === 3 && commandArguments[0] === "owner") proce
 else if (commandArguments.length === 4 && commandArguments[0] === "approve" && commandArguments[2] === "--by") process.exitCode = approveDraft(commandArguments[1], commandArguments[3])
 else if (commandArguments.length === 2 && commandArguments[0] === "respec") process.exitCode = respecProcess(commandArguments[1])
 else if (commandArguments.length === 3 && commandArguments[0] === "send-back") process.exitCode = sendBackDraft(commandArguments[1], commandArguments[2])
+else if (commandArguments.length === 6 && commandArguments[0] === "edit" && commandArguments[4] === "--by")
+  process.exitCode = editProcessFile(commandArguments[1], commandArguments[2], commandArguments[3], commandArguments[5])
 else if (commandArguments.length <= 2 && commandArguments[0] === "show") process.exitCode = showProcesses(commandArguments[1])
 else if (commandArguments.length === 2 && commandArguments[0] === "org" && commandArguments[1] === "init") process.exitCode = initialiseOrganisation()
 else if (commandArguments.length === 1 && commandArguments[0] === "check") process.exitCode = checkDependencies()
