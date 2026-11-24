@@ -23,7 +23,7 @@ const skillFiles = [
 ]
 const boardPath = "processes/board.json"
 const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
 const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.md", "authority.md"]
 const timeForm = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
 
@@ -37,8 +37,8 @@ afterEach(() => {
   rmSync(workingDirectory, { recursive: true, force: true })
 })
 
-function runCommand(commandArguments: string[]) {
-  return spawnSync(process.execPath, [commandFile, ...commandArguments], { cwd: workingDirectory, encoding: "utf8" })
+function runCommand(commandArguments: string[], input?: string) {
+  return spawnSync(process.execPath, [commandFile, ...commandArguments], { cwd: workingDirectory, encoding: "utf8", input })
 }
 
 const startedServers: ChildProcess[] = []
@@ -81,6 +81,47 @@ async function stopServers(): Promise<void> {
 async function requestPage(address: string, pathname: string, method = "GET") {
   const response = await fetch(`${address}${pathname}`, { method })
   return { status: response.status, headers: response.headers, body: await response.text() }
+}
+
+/** Sends a request with a body to a server on a connection of its own. An answer that arrived counts, also when the server closes the connection early. */
+function send(address: string, pathname: string, body: string, more: { method?: string; headers?: Record<string, string> } = {}) {
+  const url = new URL(address)
+  return new Promise<{ status: number; headers: IncomingHttpHeaders; body: string }>((resolve, reject) => {
+    let answer: { status: number; headers: IncomingHttpHeaders; body: string } | undefined
+    const fail = (error: Error): void => {
+      if (answer === undefined) reject(error)
+      else resolve(answer)
+    }
+    const sent = httpRequest(
+      {
+        host: url.hostname,
+        port: url.port,
+        path: pathname,
+        method: more.method ?? "POST",
+        agent: false,
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "Content-Length": String(Buffer.byteLength(body)), ...more.headers },
+      },
+      (response) => {
+        const received = { status: response.statusCode ?? 0, headers: response.headers, body: "" }
+        answer = received
+        response.setEncoding("utf8")
+        response.on("data", (chunk: string) => {
+          received.body += chunk
+        })
+        response.on("end", () => {
+          resolve(received)
+        })
+        response.on("error", fail)
+      },
+    )
+    sent.on("error", fail)
+    sent.end(body)
+  })
+}
+
+/** Posts form fields to a server as `application/x-www-form-urlencoded`. */
+function postForm(address: string, pathname: string, values: Record<string, string>, headers: Record<string, string> = {}) {
+  return send(address, pathname, new URLSearchParams(values).toString(), { headers })
 }
 
 function writeWorkingFile(file: string, content: string): void {
@@ -1329,6 +1370,110 @@ describe("process-factory respec", () => {
   })
 })
 
+describe("process-factory send-back", () => {
+  const processId = "001-handle-a-lost-laptop"
+  const processFolder = `processes/${processId}`
+  const ownerFile = `${processFolder}/rounds/round-2/owner.md`
+  const cannotLine = `process-factory: cannot send ${processId} back to rework`
+  const note = "Step 3 must name the IT manager.\n\n  Shorten the first   section. \n"
+  const findings = "- [high] Step 3 must name the IT manager.\n- [high] Shorten the first section."
+  const rounds = [
+    { round: 1, draft: "draft-1.md", at: "2026-11-21T10:00:00.000Z", verdicts: [{ reviewer: "legal", verdict: "CHANGES" }] },
+    { round: 2, draft: "draft-2.md", at: "2026-11-22T10:00:00.000Z", verdicts: [{ reviewer: "legal", verdict: "CHANGES" }] },
+  ]
+
+  /** A process in `stage` with the recorded rounds 1 and 2, and a `note.md` next to the store. */
+  function prepareSendBack(stage = "approval", more: Record<string, unknown> = {}): void {
+    writeBoardFile([{ id: processId, title: "Handle a lost laptop", stage, history: [{ at: "2026-11-22T10:00:00.000Z", stage }], rounds, ...more }])
+    writeWorkingFile("note.md", note)
+  }
+
+  it("writes every line of the note as a finding of the owner in the folder of the newest round and prints the file and the stage", () => {
+    prepareSendBack()
+
+    const result = runCommand(["send-back", processId, "note.md"])
+
+    expect(result.stdout).toBe(`Stored ${ownerFile}\nrework\n`)
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    const lines = readWorkingFile(ownerFile).split("\n")
+    expect(lines.slice(0, 5)).toEqual(["# Findings of the owner", "", `Process: ${processId}`, "Round: 2", "Draft: draft-2.md"])
+    expect(lines[5]).toMatch(/^Sent back at: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
+    expect(lines.slice(6).join("\n")).toBe(`\nVerdict: CHANGES\n\n${findings}\n`)
+  })
+
+  it("moves the process to rework and records the stage in its history", () => {
+    prepareSendBack()
+
+    expect(runCommand(["send-back", processId, "note.md"]).status).toBe(0)
+
+    const entry = storedProcesses()[0]
+    expect(entry?.stage).toBe("rework")
+    expect(storedHistory(entry).map((change) => change.stage)).toEqual(["approval", "rework"])
+  })
+
+  it.each([
+    ["an id that is not on the board", "009-not-on-the-board", "note.md", "approval", {}, "process-factory: there is no process 009-not-on-the-board"],
+    ["a process in rework", processId, "note.md", "rework", {}, `${cannotLine}: it is in the stage rework, not in approval`],
+    ["a process without a recorded round", processId, "note.md", "approval", { rounds: [] }, `${cannotLine}: no round is recorded for it`],
+    ["a note of only empty lines", processId, "empty.md", "approval", {}, `${cannotLine}: the note is empty`],
+  ])("refuses %s with one line, exits with 1 and writes nothing", (_name, id, file, stage, more, line) => {
+    prepareSendBack(stage, more)
+    writeWorkingFile("empty.md", "\n   \n\t\n")
+    const before = readWorkingFile(boardPath)
+
+    const result = runCommand(["send-back", id, file])
+
+    expect(result.stderr).toBe(`${line}\n`)
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(existsSync(path.join(workingDirectory, `${processFolder}/rounds`))).toBe(false)
+    expect(readWorkingFile(boardPath)).toBe(before)
+  })
+
+  it("names the file it cannot read and an owner.md that is already there, and changes neither the file nor the stage", () => {
+    prepareSendBack()
+
+    const missing = runCommand(["send-back", processId, "missing.md"])
+
+    expect(missing.stderr.startsWith("process-factory: cannot read missing.md: ")).toBe(true)
+    expect(missing.status).toBe(1)
+    writeWorkingFile(ownerFile, "# Kept\n")
+
+    const second = runCommand(["send-back", processId, "note.md"])
+
+    expect(second.stderr.startsWith(`process-factory: cannot write ${ownerFile}: `)).toBe(true)
+    expect(second.stdout).toBe("")
+    expect(second.status).toBe(1)
+    expect(readWorkingFile(ownerFile)).toBe("# Kept\n")
+    expect(storedProcesses()[0]?.stage).toBe("approval")
+  })
+
+  it("reads the note from standard input when the file is -", () => {
+    prepareSendBack()
+
+    const result = runCommand(["send-back", processId, "-"], note)
+
+    expect(result.stdout).toBe(`Stored ${ownerFile}\nrework\n`)
+    expect(result.status).toBe(0)
+    expect(readWorkingFile(ownerFile)).toContain(`Verdict: CHANGES\n\n${findings}\n`)
+  })
+
+  it("reads the answers of answer from standard input when the file is -", () => {
+    writeBoardFile([{ id: processId, title: "Handle a lost laptop", stage: "clarify", history: [{ at: "2026-11-22T10:00:00.000Z", stage: "clarify" }] }])
+    writeWorkingFile(`${processFolder}/questions-1.md`, "# Questions 1\n\n## Questions\n\n1. Who calls the police?\n")
+    const answers = "# Answers 1\n\n## 1. Who calls the police?\n\nThe IT manager.\n"
+
+    const result = runCommand(["answer", processId, "-"], answers)
+
+    expect(result.stdout).toBe(`Stored ${processFolder}/answers-1.md\nspec\n`)
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    expect(readWorkingFile(`${processFolder}/answers-1.md`)).toBe(answers)
+    expect(storedProcesses()[0]?.stage).toBe("spec")
+  })
+})
+
 describe("process-factory org init", () => {
   it("creates the five files in the fixed order, reports each one and copies the templates", () => {
     const result = runCommand(["org", "init"])
@@ -2120,6 +2265,22 @@ describe("the regeneration of a published process", () => {
     expect(result.status).toBe(0)
   })
 
+  it("accepts round-2/owner.md as a reason once the owner stored findings in that round, and not before", () => {
+    prepareRegenerating(changesWithReason("round-2/owner.md"))
+    changeEntry({ stage: "rework", rounds: [firstRound, secondRound] })
+
+    const without = runCommand(["move", processId, "review"])
+
+    expect(without.stderr).toBe(`process-factory: cannot move ${processId} from rework to review: ${changesFile} names a reason that is not in ${reasonsFile}: round-2/owner.md\n`)
+    expect(without.status).toBe(1)
+    writeWorkingFile(`${processFolder}/rounds/round-2/owner.md`, "# Findings of the owner\n\nVerdict: CHANGES\n\n- [high] Step 3 must name the IT manager.\n")
+
+    const withFindings = runCommand(["move", processId, "review"])
+
+    expect(withFindings.stdout).toBe("review\n")
+    expect(withFindings.status).toBe(0)
+  })
+
   it.each(["round-1/legal.md", "round-2/nobody.md", "round-3/legal.md"])("refuses the reason %s from rework", (reason) => {
     prepareRegenerating(changesWithReason(reason))
     changeEntry({ stage: "rework", rounds: [firstRound, secondRound] })
@@ -2221,47 +2382,6 @@ describe("the reading view of process-factory serve", () => {
     const printed = await startServer("serve")
     expect(printed).toMatch(/^Reading view on http:\/\/127\.0\.0\.1:[1-9]\d*\n$/)
     return printed.trim().replace("Reading view on ", "")
-  }
-
-  /** Sends a request with a body to the view on a connection of its own. An answer that arrived counts, also when the server closes the connection early. */
-  function send(address: string, pathname: string, body: string, more: { method?: string; headers?: Record<string, string> } = {}) {
-    const url = new URL(address)
-    return new Promise<{ status: number; headers: IncomingHttpHeaders; body: string }>((resolve, reject) => {
-      let answer: { status: number; headers: IncomingHttpHeaders; body: string } | undefined
-      const fail = (error: Error): void => {
-        if (answer === undefined) reject(error)
-        else resolve(answer)
-      }
-      const sent = httpRequest(
-        {
-          host: url.hostname,
-          port: url.port,
-          path: pathname,
-          method: more.method ?? "POST",
-          agent: false,
-          headers: { "Content-Type": "application/x-www-form-urlencoded", "Content-Length": String(Buffer.byteLength(body)), ...more.headers },
-        },
-        (response) => {
-          const received = { status: response.statusCode ?? 0, headers: response.headers, body: "" }
-          answer = received
-          response.setEncoding("utf8")
-          response.on("data", (chunk: string) => {
-            received.body += chunk
-          })
-          response.on("end", () => {
-            resolve(received)
-          })
-          response.on("error", fail)
-        },
-      )
-      sent.on("error", fail)
-      sent.end(body)
-    })
-  }
-
-  /** Posts form fields to the view as `application/x-www-form-urlencoded`. */
-  function postFeedback(address: string, pathname: string, values: Record<string, string>, headers: Record<string, string> = {}) {
-    return send(address, pathname, new URLSearchParams(values).toString(), { headers })
   }
 
   /** The text between `<li>` and `</li>` of every such item of a page, in order. */
@@ -2538,7 +2658,7 @@ describe("the reading view of process-factory serve", () => {
       writeView()
       const address = await openView()
 
-      const answer = await postFeedback(address, feedbackPath, fields)
+      const answer = await postForm(address, feedbackPath, fields)
 
       expect(answer.status).toBe(303)
       expect(answer.headers.location).toBe(feedbackPath)
@@ -2559,7 +2679,7 @@ describe("the reading view of process-factory serve", () => {
       writeView()
       const address = await openView()
 
-      const answer = await postFeedback(address, `/${processId}/1/feedback`, { kind: "process", step: "whole", text: "The police did not answer." })
+      const answer = await postForm(address, `/${processId}/1/feedback`, { kind: "process", step: "whole", text: "The police did not answer." })
 
       expect(answer.status).toBe(303)
       expect(storedFeedback(1)).toContain("\nVersion: 1\nStep: whole document\nKind: process\nFrom: anonymous\n")
@@ -2569,9 +2689,9 @@ describe("the reading view of process-factory serve", () => {
       writeView()
       const address = await openView()
 
-      expect((await postFeedback(address, feedbackPath, fields)).status).toBe(303)
+      expect((await postForm(address, feedbackPath, fields)).status).toBe(303)
       const first = storedFeedback(1)
-      expect((await postFeedback(address, feedbackPath, { ...fields, text: "A second remark." })).status).toBe(303)
+      expect((await postForm(address, feedbackPath, { ...fields, text: "A second remark." })).status).toBe(303)
 
       expect(feedbackFiles()).toEqual(["feedback-1.md", "feedback-2.md"])
       expect(storedFeedback(1)).toBe(first)
@@ -2583,7 +2703,7 @@ describe("the reading view of process-factory serve", () => {
       writeView()
       const address = await openView()
 
-      const answer = await postFeedback(address, feedbackPath, { ...fields, text: "  first\r\n\u001bsecond\tpart\u0007  ", name: "  Ola\r\nStatus: closed  " })
+      const answer = await postForm(address, feedbackPath, { ...fields, text: "  first\r\n\u001bsecond\tpart\u0007  ", name: "  Ola\r\nStatus: closed  " })
 
       expect(answer.status).toBe(303)
       const lines = storedFeedback(1).split("\n")
@@ -2596,7 +2716,7 @@ describe("the reading view of process-factory serve", () => {
       writeView()
       const address = await openView()
 
-      const answer = await postFeedback(address, feedbackPath, { ...fields, text: "t".repeat(2000), name: "n".repeat(100) })
+      const answer = await postForm(address, feedbackPath, { ...fields, text: "t".repeat(2000), name: "n".repeat(100) })
 
       expect(answer.status).toBe(303)
       expect(storedFeedback(1)).toContain(`\nFrom: ${"n".repeat(100)}\n`)
@@ -2607,7 +2727,7 @@ describe("the reading view of process-factory serve", () => {
       writeView()
       const address = await openView()
 
-      const answer = await postFeedback(address, feedbackPath, values)
+      const answer = await postForm(address, feedbackPath, values)
 
       expect(answer.status).toBe(400)
       expect(answer.body).toContain("<title>Feedback not stored</title>")
@@ -2622,7 +2742,7 @@ describe("the reading view of process-factory serve", () => {
       const address = await openView()
 
       const answer = await send(address, feedbackPath, "")
-      const refused = await postFeedback(address, feedbackPath, { step: fields.step, text: "Nobody else may read this.", name: "Secret Reader" })
+      const refused = await postForm(address, feedbackPath, { step: fields.step, text: "Nobody else may read this.", name: "Secret Reader" })
 
       expect(answer.status).toBe(400)
       expect(items(answer.body)).toEqual([kindReason, stepReason, textReason])
@@ -2635,13 +2755,13 @@ describe("the reading view of process-factory serve", () => {
       writeView()
       const address = await openView()
 
-      const refused = await postFeedback(address, feedbackPath, fields, { Origin: "http://evil.example" })
+      const refused = await postForm(address, feedbackPath, fields, { Origin: "http://evil.example" })
 
       expect(refused.status).toBe(403)
       expect(items(refused.body)).toEqual(["Feedback can only be sent from the reading view itself."])
       expect(feedbackFiles()).toEqual([])
-      expect((await postFeedback(address, feedbackPath, fields, { Origin: address })).status).toBe(303)
-      expect((await postFeedback(address, feedbackPath, fields, { Origin: address.replace("127.0.0.1", "localhost") })).status).toBe(303)
+      expect((await postForm(address, feedbackPath, fields, { Origin: address })).status).toBe(303)
+      expect((await postForm(address, feedbackPath, fields, { Origin: address.replace("127.0.0.1", "localhost") })).status).toBe(303)
       expect(feedbackFiles()).toEqual(["feedback-1.md", "feedback-2.md"])
     })
 
@@ -2678,7 +2798,7 @@ describe("the reading view of process-factory serve", () => {
       writeView()
       const address = await openView()
 
-      const refused = await postFeedback(address, pathname, fields)
+      const refused = await postForm(address, pathname, fields)
 
       expect(refused.status).toBe(405)
       expect(refused.headers.allow).toBe("GET, HEAD")
@@ -2694,7 +2814,7 @@ describe("the reading view of process-factory serve", () => {
       writeWorkingFile(feedbackFolder, "a file where the folder should be\n")
       const address = await openView()
 
-      const answer = await postFeedback(address, feedbackPath, fields)
+      const answer = await postForm(address, feedbackPath, fields)
 
       expect(answer.status).toBe(500)
       expect(answer.body).toContain("<title>Error</title>")
@@ -3193,6 +3313,396 @@ describe("the dashboard of process-factory dashboard", () => {
         expect(page.body).toContain("<h1>Not found</h1>")
         expect(page.body).not.toContain("<aside")
       }
+    })
+
+    describe("the part Decision of a process that waits for a person", () => {
+      const firstQuestion = "Who decides that the police are called?"
+      const secondQuestion = "How long may the laptop stay unblocked?"
+      const specSections = ["Trigger", "Scope", "Roles", "Steps", "AI steps", "Deadlines", "Legal basis", "Duties to notify", "Escalation", "Records", "Dependencies"]
+      const waits = `<p>After a decision the process waits in its new stage until /process next ${processId} is run in Claude Code.</p>`
+      const approveForm = [
+        `<form method="post" action="/${processId}/approve">`,
+        '<p><label for="by">Your full name</label>',
+        '<input id="by" name="by" required></p>',
+        '<p><button type="submit">Approve and publish</button></p>',
+        "</form>",
+      ].join("")
+      const sendBackForm = [
+        `<form method="post" action="/${processId}/send-back">`,
+        '<p><label for="note">What must change in the draft</label>',
+        '<textarea id="note" name="note" rows="6" required></textarea></p>',
+        '<p><button type="submit">Send back for one more round</button></p>',
+        "</form>",
+      ].join("")
+
+      /** A board with the laptop process in `stage`, owned by Kari Nordmann unless `more` says otherwise. */
+      function writeWaitingBoard(stage: string, more: Record<string, unknown> = {}): void {
+        writeBoardFile([{ id: processId, title, stage, owner, history: [{ at: "2026-11-22T10:00:00.000Z", stage }], ...more }])
+      }
+
+      /** A `spec.md` of the eleven sections, each decided except those named in `open`. */
+      function specText(open: string[] = []): string {
+        return `# Specification: ${title}\n\n${specSections.map((name) => `## ${name}\n\nStatus: ${open.includes(name) ? "open" : "decided"}\n`).join("\n")}`
+      }
+
+      it("is the first link and the first section of a process in clarify, with one empty field per open question", async () => {
+        writeWaitingBoard("clarify")
+        writeQuestions(2, [firstQuestion, secondQuestion])
+
+        const { panel } = await openPanel(await openDashboard())
+
+        expect(compactHtml(panel)).toContain('<nav><ul><li><a href="#decision">Decision</a></li><li><a href="#timeline">Timeline</a></li>')
+        expect([...panel.matchAll(/<section id="([^"]*)">/g)].map((match) => match[1])).toEqual(["decision", ...parts.map(([id]) => id)])
+        expect(part(panel, "decision")).toBe(
+          [
+            "<h3>Decision</h3>",
+            `<form method="post" action="/${processId}/answer">`,
+            `<p><label for="answer-1">1. ${firstQuestion}</label>`,
+            '<textarea id="answer-1" name="answer-1" rows="4"></textarea></p>',
+            `<p><label for="answer-2">2. ${secondQuestion}</label>`,
+            '<textarea id="answer-2" name="answer-2" rows="4"></textarea></p>',
+            "<p>A field left empty is stored as Not known.</p>",
+            '<p><button type="submit">Store the answers</button></p>',
+            "</form>",
+            waits,
+          ].join(""),
+        )
+      })
+
+      it("escapes a question in its label", async () => {
+        writeWaitingBoard("clarify")
+        writeQuestions(1, ["Who calls <the police> & when?"])
+
+        const { body, panel } = await openPanel(await openDashboard())
+
+        expect(part(panel, "decision")).toContain('<label for="answer-1">1. Who calls &lt;the police&gt; &amp; when?</label>')
+        expect(body).not.toContain("<the police>")
+      })
+
+      it("accepts the specification of a process in spec of which every section is decided, and waits for nobody with an open section", async () => {
+        writeWaitingBoard("spec")
+        writeWorkingFile(`processes/${processId}/spec.md`, specText())
+        const address = await openDashboard()
+
+        const decided = (await openPanel(address)).panel
+
+        expect(part(decided, "decision")).toBe(
+          [
+            "<h3>Decision</h3>",
+            `<form method="post" action="/${processId}/accept-spec">`,
+            "<p>Every section of the specification is decided. Read it under Specification before you accept it.</p>",
+            '<p><button type="submit">Accept the specification</button></p>',
+            "</form>",
+            waits,
+          ].join(""),
+        )
+        writeWorkingFile(`processes/${processId}/spec.md`, specText(["Scope"]))
+        const open = (await openPanel(address)).panel
+        expect(open).not.toContain('id="decision"')
+        expect(open).not.toContain("<form")
+      })
+
+      it("offers the owner of a process in approval the approve form and then the send back form, with no field filled in", async () => {
+        writeWaitingBoard("approval")
+        writeWorkingFile(`processes/${processId}/drafts/draft-2.md`, "# Handle a lost laptop\n\nDraft 2.\n")
+
+        const { panel } = await openPanel(await openDashboard())
+
+        expect(part(panel, "decision")).toBe(`<h3>Decision</h3>${approveForm}${sendBackForm}${waits}`)
+        expect(part(panel, "decision")).not.toContain("value=")
+        expect(part(panel, "decision")).not.toContain(owner)
+      })
+
+      it("says that a process in approval without an owner cannot be approved here, and still offers the send back form", async () => {
+        writeWaitingBoard("approval", { owner: undefined })
+        writeWorkingFile(`processes/${processId}/drafts/draft-2.md`, "# Handle a lost laptop\n\nDraft 2.\n")
+
+        const { panel } = await openPanel(await openDashboard())
+
+        const noOwner = `<p>This process has no owner, so its draft cannot be approved here. /process next ${processId} in Claude Code names one.</p>`
+        expect(part(panel, "decision")).toBe(`<h3>Decision</h3>${noOwner}${sendBackForm}${waits}`)
+        expect(panel).not.toContain(`action="/${processId}/approve"`)
+      })
+
+      it("says that the newest draft is already approved when its approval file is there, and still offers the send back form", async () => {
+        writeWaitingBoard("approval")
+        writeWorkingFile(`processes/${processId}/drafts/draft-2.md`, "# Handle a lost laptop\n\nDraft 2.\n")
+        writeWorkingFile(`processes/${processId}/versions/approval-draft-2.md`, `# Approval of draft-2.md\n\nApproved by: ${owner}\n`)
+
+        const { panel } = await openPanel(await openDashboard())
+
+        const approved = `<p>draft-2.md is already approved. /process next ${processId} in Claude Code publishes it.</p>`
+        expect(part(panel, "decision")).toBe(`<h3>Decision</h3>${approved}${sendBackForm}${waits}`)
+        expect(panel).not.toContain(`action="/${processId}/approve"`)
+      })
+
+      it("starts a regeneration of a published process", async () => {
+        writeWaitingBoard("published")
+
+        const { panel } = await openPanel(await openDashboard())
+
+        expect(part(panel, "decision")).toBe(
+          [
+            "<h3>Decision</h3>",
+            `<form method="post" action="/${processId}/regenerate">`,
+            "<p>A regeneration writes the published document again with only the changes that open feedback, new cases and changed dependencies ask for. The command line refuses it when there is none of these.</p>",
+            '<p><button type="submit">Start a regeneration</button></p>',
+            "</form>",
+            waits,
+          ].join(""),
+        )
+      })
+
+      it.each(["intake", "cases", "draft", "review", "rework", "regenerate"])("is not in the panel of a process in %s, which keeps its seven sections", async (stage) => {
+        writeWaitingBoard(stage)
+
+        const { panel } = await openPanel(await openDashboard())
+
+        expect(panel).not.toContain('id="decision"')
+        expect(panel).not.toContain("<form")
+        expect([...panel.matchAll(/<section id="([^"]*)">/g)].map((match) => match[1])).toEqual(parts.map(([id]) => id))
+      })
+
+      it("is not in the panel of a process in clarify whose newest questions file is answered", async () => {
+        writeWaitingBoard("clarify")
+        writeQuestions(1, [firstQuestion])
+        writeWorkingFile(`processes/${processId}/answers-1.md`, "# Answers 1\n\n## 1. Who decides that the police are called?\n\nNot known.\n")
+
+        const { body, panel } = await openPanel(await openDashboard())
+
+        expect(panel).not.toContain('id="decision"')
+        expect(panel).not.toContain("<form")
+        expect(body).not.toContain("<form")
+      })
+    })
+  })
+
+  describe("the decisions a person takes on the dashboard", () => {
+    const processFolder = `processes/${processId}`
+    const firstQuestion = "Who decides that the police are called?"
+    const secondQuestion = "How long may the laptop stay unblocked?"
+    const rolesText = `# Roles\n\n## Data protection officer\n\n${owner} is the data protection officer.\n`
+    const specSections = ["Trigger", "Scope", "Roles", "Steps", "AI steps", "Deadlines", "Legal basis", "Duties to notify", "Escalation", "Records", "Dependencies"]
+    const backLink = `<p><a href="/${processId}">Back to the process</a></p>`
+    const rounds = [{ round: 1, draft: "draft-1.md", at: "2026-11-22T10:00:00.000Z", verdicts: [{ reviewer: "legal", verdict: "PASS" }] }]
+
+    /** The address a decision is posted to. */
+    function address(action: string): string {
+      return `/${processId}/${action}`
+    }
+
+    /** A board with the laptop process in `stage`, owned by Kari Nordmann, who is named in `organisation/roles.md`. */
+    function writeWaiting(stage: string, more: Record<string, unknown> = {}): void {
+      writeWorkingFile("organisation/roles.md", rolesText)
+      writeBoardFile([{ id: processId, title, stage, owner, history: [{ at: "2026-11-22T10:00:00.000Z", stage }], ...more }])
+    }
+
+    /** The process in `spec` with a specification of which every section is decided. */
+    function writeDecidedSpec(): void {
+      writeWaiting("spec")
+      writeWorkingFile(`${processFolder}/spec.md`, `# Specification: ${title}\n\n${specSections.map((name) => `## ${name}\n\nStatus: decided\n`).join("\n")}`)
+    }
+
+    /** The process in `approval` with the recorded round 1 and the drafts 1 and 2, of which none is approved. */
+    function writeWaitingApproval(): void {
+      writeWaiting("approval", { rounds })
+      for (const number of [1, 2]) writeWorkingFile(`${processFolder}/drafts/draft-${String(number)}.md`, `# Handle a lost laptop\n\nDraft ${String(number)}.\n`)
+    }
+
+    it("stores the answers in the form of the skill, Not known. for a field left empty, and moves the process to spec", async () => {
+      writeWaiting("clarify")
+      writeQuestions(2, [firstQuestion, secondQuestion])
+
+      const answer = await postForm(await openDashboard(), address("answer"), { "answer-1": "  The IT manager.\r\n", "answer-2": "" })
+
+      expect(answer.status).toBe(303)
+      expect(answer.headers.location).toBe(`/${processId}`)
+      expect(answer.body).toBe("")
+      expect(readWorkingFile(`${processFolder}/answers-2.md`)).toBe(`# Answers 2\n\n## 1. ${firstQuestion}\n\nThe IT manager.\n\n## 2. ${secondQuestion}\n\nNot known.\n`)
+      expect(storedProcesses()[0]?.stage).toBe("spec")
+    })
+
+    it.each([
+      ["both fields hold only whitespace", { "answer-1": "  \r\n ", "answer-2": "\t" }],
+      ["no field is sent", {}],
+    ])("answers 400 with the page Not done and stores nothing when %s", async (_name, values) => {
+      writeWaiting("clarify")
+      writeQuestions(2, [firstQuestion, secondQuestion])
+
+      const answer = await postForm(await openDashboard(), address("answer"), values)
+
+      expect(answer.status).toBe(400)
+      expect(answer.body).toContain("<title>Not done</title>")
+      expect(answer.body).toContain("<h1>Not done</h1>")
+      expect(answer.body).toContain("<li>Answer at least one question.</li>")
+      expect(answer.body).toContain(backLink)
+      expect(answer.body).not.toContain(refresh)
+      expect(existsSync(path.join(workingDirectory, `${processFolder}/answers-2.md`))).toBe(false)
+      expect(storedProcesses()[0]?.stage).toBe("clarify")
+    })
+
+    it("accepts a specification of which every section is decided and records the time on the board", async () => {
+      writeDecidedSpec()
+
+      const answer = await postForm(await openDashboard(), address("accept-spec"), {})
+
+      expect(answer.status).toBe(303)
+      expect(answer.headers.location).toBe(`/${processId}`)
+      expect(storedProcesses()[0]?.stage).toBe("cases")
+      expect(storedProcesses()[0]?.specAcceptedAt).toMatch(timeForm)
+    })
+
+    it("answers 409 with the line of the command line for a process in another stage, and changes no file", async () => {
+      writeWaiting("draft")
+      const before = readWorkingFile(boardPath)
+
+      const answer = await postForm(await openDashboard(), address("accept-spec"), {})
+
+      expect(answer.status).toBe(409)
+      expect(answer.body).toContain("<h1>Not done</h1>")
+      expect(answer.body).toContain(`<li>process-factory: cannot accept the spec of ${processId}: it is in the stage draft, not in spec</li>`)
+      expect(answer.body).toContain(backLink)
+      expect(readWorkingFile(boardPath)).toBe(before)
+    })
+
+    it("refuses a post from another origin with 403 and changes nothing, and carries out the same post from the dashboard itself", async () => {
+      writeDecidedSpec()
+      const dashboard = await openDashboard()
+
+      const foreign = await postForm(dashboard, address("accept-spec"), {}, { Origin: "http://evil.example" })
+
+      expect(foreign.status).toBe(403)
+      expect(foreign.body).toContain("<li>A decision can only be sent from the dashboard itself.</li>")
+      expect(storedProcesses()[0]?.stage).toBe("spec")
+      expect((await postForm(dashboard, address("accept-spec"), {}, { Origin: dashboard })).status).toBe(303)
+      expect(storedProcesses()[0]?.stage).toBe("cases")
+    })
+
+    it("approves the newest draft as its owner and publishes it as version 1 with the same click", async () => {
+      writeWaitingApproval()
+
+      const answer = await postForm(await openDashboard(), address("approve"), { by: owner })
+
+      expect(answer.status).toBe(303)
+      expect(answer.headers.location).toBe(`/${processId}`)
+      expect(readWorkingFile(`${processFolder}/versions/approval-draft-2.md`)).toContain(`Approved by: ${owner}\n`)
+      expect(readWorkingFile(`${processFolder}/versions/1/process.md`)).toContain("Draft 2.")
+      expect(storedProcesses()[0]?.stage).toBe("published")
+      expect(storedProcesses()[0]?.versions).toEqual([{ version: 1, draft: "draft-2.md", approvedBy: owner, at: expect.stringMatching(timeForm) }])
+    })
+
+    it("answers 409 with the page Not done, the line of the command line and the link back for a name that is not the owner, and writes nothing", async () => {
+      writeWaitingApproval()
+
+      const answer = await postForm(await openDashboard(), address("approve"), { by: "Ola Hansen" })
+
+      expect(answer.status).toBe(409)
+      expect(answer.headers["content-type"]).toBe("text/html; charset=utf-8")
+      expect(answer.headers["cache-control"]).toBe("no-store")
+      expect(answer.headers["x-content-type-options"]).toBe("nosniff")
+      expect(answer.headers["content-security-policy"]).toBe("default-src 'none'; style-src 'unsafe-inline'")
+      expect(answer.body).toContain("<title>Not done</title>")
+      expect(answer.body).toContain(`<li>process-factory: cannot approve ${processId}: --by does not name its owner</li>`)
+      expect(answer.body).toContain(backLink)
+      expect(answer.body).not.toContain(refresh)
+      expect(answer.body).not.toContain("<script")
+      expect(existsSync(path.join(workingDirectory, `${processFolder}/versions`))).toBe(false)
+      expect(storedProcesses()[0]?.stage).toBe("approval")
+    })
+
+    it("stores the lines of the note as findings of the owner of the newest recorded round and moves the process to rework", async () => {
+      writeWaitingApproval()
+
+      const answer = await postForm(await openDashboard(), address("send-back"), { note: "Step 3 must name the IT manager.\r\nShorten the first section." })
+
+      expect(answer.status).toBe(303)
+      expect(answer.headers.location).toBe(`/${processId}`)
+      expect(readWorkingFile(`${processFolder}/rounds/round-1/owner.md`)).toContain(
+        "Verdict: CHANGES\n\n- [high] Step 3 must name the IT manager.\n- [high] Shorten the first section.\n",
+      )
+      expect(storedProcesses()[0]?.stage).toBe("rework")
+    })
+
+    it("answers 409 with the line of the command line for a note without text, and changes nothing", async () => {
+      writeWaitingApproval()
+      const before = readWorkingFile(boardPath)
+
+      const answer = await postForm(await openDashboard(), address("send-back"), { note: " \r\n " })
+
+      expect(answer.status).toBe(409)
+      expect(answer.body).toContain(`<li>process-factory: cannot send ${processId} back to rework: the note is empty</li>`)
+      expect(existsSync(path.join(workingDirectory, `${processFolder}/rounds`))).toBe(false)
+      expect(readWorkingFile(boardPath)).toBe(before)
+    })
+
+    it("answers 413 for a post of more than 32768 bytes, and changes nothing", async () => {
+      writeWaitingApproval()
+      const before = readWorkingFile(boardPath)
+
+      const answer = await send(await openDashboard(), address("send-back"), `note=${"x".repeat(40_000)}`)
+
+      expect(answer.status).toBe(413)
+      expect(answer.body).toContain("<li>The decision is too long.</li>")
+      expect(existsSync(path.join(workingDirectory, `${processFolder}/rounds`))).toBe(false)
+      expect(readWorkingFile(boardPath)).toBe(before)
+    })
+
+    it("starts a regeneration of a published process that has an open feedback", async () => {
+      writeWaiting("published", { versions: [{ version: 1, draft: "draft-1.md", approvedBy: owner, at: "2026-11-21T09:00:00.000Z" }] })
+      writeWorkingFile(`${processFolder}/feedback/feedback-1.md`, "# Feedback 1\n\nVersion: 1\nStatus: open\n\n## Text\n\nStep 1 is unclear.\n")
+
+      const answer = await postForm(await openDashboard(), address("regenerate"), {})
+
+      expect(answer.status).toBe(303)
+      expect(storedProcesses()[0]?.stage).toBe("regenerate")
+      expect(readWorkingFile(`${processFolder}/regeneration-1.md`)).toContain("- feedback-1.md\n")
+    })
+
+    it("answers 409 with the line of move for a published process with nothing to regenerate it for", async () => {
+      writeWaiting("published", { versions: [{ version: 1, draft: "draft-1.md", approvedBy: owner, at: "2026-11-21T09:00:00.000Z" }] })
+
+      const answer = await postForm(await openDashboard(), address("regenerate"), {})
+
+      expect(answer.status).toBe(409)
+      expect(answer.body).toContain(
+        `<li>process-factory: cannot move ${processId} from published to regenerate: there is nothing to regenerate it for: no open feedback, no case newer than version 1 and no changed dependency</li>`,
+      )
+      expect(storedProcesses()[0]?.stage).toBe("published")
+    })
+
+    it("answers 500 with the page Error and without the refresh element while the board cannot be read", async () => {
+      writeWorkingFile(boardPath, "{ not json")
+
+      const answer = await postForm(await openDashboard(), address("approve"), { by: owner })
+
+      expect(answer.status).toBe(500)
+      expect(answer.body).toContain("<h1>Error</h1>")
+      expect(answer.body).toContain("<p>The dashboard cannot read the processes.</p>")
+      expect(answer.body).not.toContain(refresh)
+    })
+
+    it("answers every other post and every other method of a decision with 405 and Allow: GET, HEAD, and a GET of a decision with 404", async () => {
+      writeWaitingApproval()
+      const before = readWorkingFile(boardPath)
+      const dashboard = await openDashboard()
+      const refused: [string, string][] = [
+        ["POST", `/${processId}`],
+        ["POST", "/"],
+        ["POST", address("publish")],
+        ["POST", "/003-not-on-the-board/approve"],
+        ["PUT", address("approve")],
+      ]
+
+      for (const [method, pathname] of refused) {
+        const answer = await send(dashboard, pathname, `by=${encodeURIComponent(owner)}`, { method })
+        expect(answer.status).toBe(405)
+        expect(answer.headers.allow).toBe("GET, HEAD")
+        expect(answer.body).toBe("")
+      }
+      const page = await requestPage(dashboard, address("approve"))
+      expect(page.status).toBe(404)
+      expect(page.body).toContain("<h1>Not found</h1>")
+      expect(readWorkingFile(boardPath)).toBe(before)
     })
   })
 })

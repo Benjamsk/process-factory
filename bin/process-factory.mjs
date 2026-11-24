@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { constants, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { createServer } from "node:http"
@@ -51,7 +52,9 @@ h3 { font-size: 1rem; margin-top: 0; }`
 const panelStyle = `body { padding-right: 32rem; }
 aside { position: fixed; top: 0; right: 0; box-sizing: border-box; width: 30rem; max-width: 100%; height: 100%; overflow-y: auto; padding: 1rem 1.5rem; background: #fff; border-left: 1px solid #c4c4c4; box-shadow: -0.25rem 0 0.75rem rgba(0, 0, 0, 0.15); }
 aside section { display: block; width: auto; margin-right: 0; }
-aside article { border: 0; padding: 0; }`
+aside article { border: 0; padding: 0; }
+aside label { display: block; }
+aside #by { box-sizing: border-box; width: 100%; font: inherit; }`
 /** What tells the browser to load a page of the dashboard again every five seconds. */
 const refreshElement = '<meta http-equiv="refresh" content="5">'
 /** What the reading view shows for an owner, an approver or a date the store does not record. */
@@ -62,6 +65,8 @@ const feedbackBodyLimit = 32768
 const feedbackTextLimit = 2000
 /** The number of characters the cleaned name of a reader may have. */
 const feedbackNameLimit = 100
+/** The decisions the dashboard takes for a person, each the last part of the address it is posted to. */
+const decisionActions = ["answer", "accept-spec", "approve", "send-back", "regenerate"]
 /** The five characters of a text from the store that could add markup to a page. */
 const htmlEscapes = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }
 /** The ten stages, each with the stages a process may move to from it. */
@@ -264,12 +269,14 @@ function listedValues(body, label) {
   return body.filter((line) => line.startsWith(prefix)).map((line) => line.slice(prefix.length))
 }
 
-/** Whether a reason names the findings file of a reviewer of a round the entry recorded after the regeneration started. */
+/** Whether a reason names the findings file of a reviewer, or the stored findings of the owner, of a round the entry recorded after the regeneration started. */
 function isRoundReason(entry, reason) {
   const named = /^round-(\d+)\/([a-z0-9-]+)\.md$/.exec(reason)
   if (named === null) return false
   const round = (entry.rounds ?? []).find((recorded) => recorded.round === Number(named[1]))
-  return round !== undefined && round.round > entry.regeneration.round && (round.verdicts ?? []).some((given) => given.reviewer === named[2])
+  if (round === undefined || round.round <= entry.regeneration.round) return false
+  if (named[2] === "owner") return existsSync(path.join(process.cwd(), "processes", entry.id, "rounds", `round-${named[1]}`, "owner.md"))
+  return (round.verdicts ?? []).some((given) => given.reviewer === named[2])
 }
 
 /** The first problem of the lines of a change list of a regeneration, in the order of 3.2 of the spec, or undefined when it has none. */
@@ -454,6 +461,11 @@ function newestDraftNumber(processFolder) {
   return newestNumber(path.join(processFolder, "drafts"), /^draft-(\d+)\.md$/)
 }
 
+/** The bytes of a file, or of standard input when the file is `-`. */
+function readFileOrStandardInput(file) {
+  return readFileSync(file === "-" ? 0 : file)
+}
+
 function answerProcess(id, file) {
   const processes = readProcessesOrPrintReason()
   if (processes === null) return 1
@@ -475,7 +487,7 @@ function answerProcess(id, file) {
   }
   let answers
   try {
-    answers = readFileSync(file)
+    answers = readFileOrStandardInput(file)
   } catch (error) {
     process.stderr.write(`process-factory: cannot read ${file}: ${errorMessage(error)}\n`)
     return 1
@@ -893,6 +905,52 @@ function respecProcess(id) {
   return 0
 }
 
+function sendBackDraft(id, file) {
+  const processes = readProcessesOrPrintReason()
+  if (processes === null) return 1
+  if (!/^[a-z0-9-]+$/.test(id)) {
+    process.stderr.write(`process-factory: there is no process ${id}\n`)
+    return 1
+  }
+  const entry = findProcessOrPrintReason(processes, id)
+  if (entry === undefined) return 1
+  const cannot = `process-factory: cannot send ${id} back to rework`
+  if (entry.stage !== "approval") {
+    process.stderr.write(`${cannot}: it is in the stage ${entry.stage}, not in approval\n`)
+    return 1
+  }
+  const newest = (entry.rounds ?? []).at(-1)
+  const round = newest?.round
+  if (!Number.isInteger(round) || round < 1) {
+    process.stderr.write(`${cannot}: no round is recorded for it\n`)
+    return 1
+  }
+  let note
+  try {
+    note = readFileOrStandardInput(file)
+  } catch (error) {
+    process.stderr.write(`process-factory: cannot read ${file}: ${errorMessage(error)}\n`)
+    return 1
+  }
+  const findings = note.toString("utf8").split(/\r?\n/).map(oneLine).filter((line) => line !== "")
+  if (findings.length === 0) {
+    process.stderr.write(`${cannot}: the note is empty\n`)
+    return 1
+  }
+  const roundFolder = `processes/${id}/rounds/round-${round}`
+  const findingsFile = `${roundFolder}/owner.md`
+  const head = ["# Findings of the owner", "", `Process: ${id}`, `Round: ${round}`, `Draft: ${newest.draft}`, `Sent back at: ${new Date().toISOString()}`, "", "Verdict: CHANGES", ""]
+  try {
+    mkdirSync(path.join(process.cwd(), roundFolder), { recursive: true })
+    writeFileSync(path.join(process.cwd(), findingsFile), `${[...head, ...findings.map((line) => `- [high] ${line}`)].join("\n")}\n`, { flag: "wx" })
+  } catch (error) {
+    process.stderr.write(`process-factory: cannot write ${findingsFile}: ${errorMessage(error)}\n`)
+    return 1
+  }
+  process.stdout.write(`Stored ${findingsFile}\n`)
+  return moveProcess(id, "rework")
+}
+
 /** A text as one line: every control character as a space, every run of whitespace as one space, without the whitespace at its ends. */
 function oneLine(text) {
   return text.replace(/\p{Cc}/gu, " ").replace(/\s+/g, " ").trim()
@@ -1174,14 +1232,15 @@ function receivedPage(entry, number) {
   return htmlPage("Feedback received", body.join("\n"))
 }
 
+/** A page that says why something was not done: its title as its heading, one item per reason and the way back. */
+function reasonsPage(title, reasons, back) {
+  const body = [`<h1>${title}</h1>`, `<ul>\n${reasons.map((reason) => `<li>${reason}</li>`).join("\n")}\n</ul>`, back]
+  return htmlPage(title, body.join("\n"))
+}
+
 /** The page that says why a post of feedback was refused, with the way back to the document. */
 function notStoredPage(entry, number, reasons) {
-  const body = [
-    "<h1>Feedback not stored</h1>",
-    `<ul>\n${reasons.map((reason) => `<li>${reason}</li>`).join("\n")}\n</ul>`,
-    `<p><a href="/${entry.id}/${number}">Back to the document</a></p>`,
-  ]
-  return htmlPage("Feedback not stored", body.join("\n"))
+  return reasonsPage("Feedback not stored", reasons, `<p><a href="/${entry.id}/${number}">Back to the document</a></p>`)
 }
 
 /** The page of one published version: a notice when it is not the current one, the facts, the document and the version history. */
@@ -1297,14 +1356,19 @@ function writeFeedbackFile(id, number, { step, kind, name, text }) {
   writeFileSync(path.join(folder, `feedback-${next}.md`), `${lines.join("\n")}\n`, { flag: "wx" })
 }
 
+/** Whether a post comes from a page of the server itself, which a post without the header `Origin` counts as. */
+function isOwnOrigin(request) {
+  const origin = request.headers.origin
+  const port = request.socket.localPort
+  return origin === undefined || origin === `http://127.0.0.1:${port}` || origin === `http://localhost:${port}`
+}
+
 /** Reads a post of feedback, stores it when every check of it passes, and answers the reader. */
 async function storeFeedback(request, response, { entry, number }) {
   const refuse = (status, reasons) => {
     sendPage(response, status, notStoredPage(entry, number, reasons))
   }
-  const origin = request.headers.origin
-  const port = request.socket.localPort
-  if (origin !== undefined && origin !== `http://127.0.0.1:${port}` && origin !== `http://localhost:${port}`) {
+  if (!isOwnOrigin(request)) {
     refuse(403, ["Feedback can only be sent from the reading view itself."])
     return
   }
@@ -1376,24 +1440,28 @@ function dashboardPage(page) {
   return page.replace("<head>\n", `<head>\n${refreshElement}\n`).replace("</style>", `${dashboardStyle}\n</style>`)
 }
 
-/** The open questions of a process: the numbered items under `## Questions` of its newest `questions-<n>.md` that has no `answers-<n>.md`. */
+/**
+ * The open questions of a process: the number of its newest `questions-<n>.md` that has no `answers-<n>.md`, and the
+ * number and the text of every numbered item under `## Questions` of that file. The number is null when there is none.
+ */
 function openQuestions(id) {
   const folder = path.join(process.cwd(), "processes", id)
   const number = newestNumber(folder, /^questions-(\d+)\.md$/)
-  if (number === null || existsSync(path.join(folder, `answers-${number}.md`))) return []
+  if (number === null || existsSync(path.join(folder, `answers-${number}.md`))) return { number: null, questions: [] }
   const lines = fileLines(path.join(folder, `questions-${number}.md`))
   const body = lines === null ? null : sectionLines(lines, "Questions")
-  return (body ?? []).flatMap((line) => {
+  const questions = (body ?? []).flatMap((line) => {
     const item = numberedItem(line)
-    return item === null ? [] : [`<li value="${item[1]}">${escapeHtml(item[2])}</li>`]
+    return item === null ? [] : [{ number: item[1], text: item[2] }]
   })
+  return { number, questions }
 }
 
 /** The card of one process: its title, its id, its owner, its newest recorded round, its open questions and the cases that failed in that round. */
 function processCard(entry) {
   const newest = (entry.rounds ?? []).at(-1)
   const failing = (newest?.cases ?? []).filter((stored) => stored.result === "FAIL").map((stored) => `case ${stored.case}`)
-  const questions = openQuestions(entry.id)
+  const questions = openQuestions(entry.id).questions.map((question) => `<li value="${question.number}">${escapeHtml(question.text)}</li>`)
   return [
     "<article>",
     `<h3><a href="/${entry.id}">${escapeHtml(entry.title)}</a></h3>`,
@@ -1505,11 +1573,95 @@ function panelFeedback(id) {
     .join("\n")
 }
 
+/** The form of the panel that stores an answer to every open question of a process in `clarify`. */
+function answerForm(id, questions) {
+  const fields = questions.map(
+    ({ number, text }) =>
+      `<p><label for="answer-${number}">${number}. ${escapeHtml(text)}</label>\n<textarea id="answer-${number}" name="answer-${number}" rows="4"></textarea></p>`,
+  )
+  return [
+    `<form method="post" action="/${id}/answer">`,
+    ...fields,
+    "<p>A field left empty is stored as Not known.</p>",
+    '<p><button type="submit">Store the answers</button></p>',
+    "</form>",
+  ].join("\n")
+}
+
+/** The form of the panel that accepts the specification of a process in `spec`. */
+function acceptForm(id) {
+  return [
+    `<form method="post" action="/${id}/accept-spec">`,
+    "<p>Every section of the specification is decided. Read it under Specification before you accept it.</p>",
+    '<p><button type="submit">Accept the specification</button></p>',
+    "</form>",
+  ].join("\n")
+}
+
+/** The form of the panel in which the owner of a process in `approval` approves its newest draft and publishes it. */
+function approveForm(id) {
+  return [
+    `<form method="post" action="/${id}/approve">`,
+    '<p><label for="by">Your full name</label>',
+    '<input id="by" name="by" required></p>',
+    '<p><button type="submit">Approve and publish</button></p>',
+    "</form>",
+  ].join("\n")
+}
+
+/** The form of the panel that sends the draft of a process in `approval` back for one more round, with a note. */
+function sendBackForm(id) {
+  return [
+    `<form method="post" action="/${id}/send-back">`,
+    '<p><label for="note">What must change in the draft</label>',
+    '<textarea id="note" name="note" rows="6" required></textarea></p>',
+    '<p><button type="submit">Send back for one more round</button></p>',
+    "</form>",
+  ].join("\n")
+}
+
+/** The form of the panel that starts a regeneration of a published process. */
+function regenerateForm(id) {
+  return [
+    `<form method="post" action="/${id}/regenerate">`,
+    "<p>A regeneration writes the published document again with only the changes that open feedback, new cases and changed dependencies ask for. The command line refuses it when there is none of these.</p>",
+    '<p><button type="submit">Start a regeneration</button></p>',
+    "</form>",
+  ].join("\n")
+}
+
+/** What the panel of a process in `approval` says about its approval: the approve form, or why its draft cannot be approved here. */
+function approvalPart(entry, folder) {
+  const number = newestDraftNumber(folder)
+  if (entry.owner === undefined) return `<p>This process has no owner, so its draft cannot be approved here. /process next ${entry.id} in Claude Code names one.</p>`
+  if (existsSync(path.join(folder, "versions", `approval-draft-${number}.md`))) {
+    return `<p>draft-${number}.md is already approved. /process next ${entry.id} in Claude Code publishes it.</p>`
+  }
+  const changes = entry.regeneration === undefined ? null : fileLines(path.join(process.cwd(), changeListFile(entry.id, number)))
+  const shown = changes === null ? [] : [`<p>changes-${number}.md</p>`, documentHtml(changes, 3)]
+  return [...shown, approveForm(entry.id)].join("\n")
+}
+
+/** What the panel asks the person who waits for a process to decide, or null when the process waits for nobody. */
+function decisionPart(entry, folder) {
+  if (entry.stage === "clarify") {
+    const { questions } = openQuestions(entry.id)
+    return questions.length === 0 ? null : answerForm(entry.id, questions)
+  }
+  if (entry.stage === "spec") return openSpecSections(folder).length === 0 ? acceptForm(entry.id) : null
+  if (entry.stage === "approval") return [approvalPart(entry, folder), sendBackForm(entry.id)].join("\n")
+  if (entry.stage === "published") return regenerateForm(entry.id)
+  return null
+}
+
 /** The panel of one process: where it stands, links to its seven parts, and each part as the store has it at this moment. */
 function processPanel(entry) {
   const folder = path.join(process.cwd(), "processes", entry.id)
   const spec = fileLines(path.join(folder, "spec.md"))
+  const decision = decisionPart(entry, folder)
+  const waits = `<p>After a decision the process waits in its new stage until /process next ${entry.id} is run in Claude Code.</p>`
   const parts = [
+    ...(decision === null ? [] : [["decision", "Decision", `${decision}\n${waits}`]]),
     ["timeline", "Timeline", panelTimeline(entry)],
     ["spec", "Specification", spec === null ? "<p>No specification yet.</p>" : documentHtml(spec, 3)],
     ["cases", "Cases", panelCases(folder)],
@@ -1544,25 +1696,93 @@ function dashboardProcessPage(processes, entry) {
   return htmlPage(boardText(entry.title), body.join("\n")).replace("</style>", `${dashboardStyle}\n${panelStyle}\n</style>`)
 }
 
+/** The process and the action of the address `/<process-id>/<action>` of a decision, or null for every other path. */
+function decisionTarget(pathname) {
+  const [id, action, ...rest] = pathname.slice(1).split("/")
+  if (rest.length > 0 || !decisionActions.includes(action)) return null
+  const entry = boardProcesses().find((candidate) => candidate.id === id)
+  return entry === undefined ? null : { entry, action }
+}
+
+/** Runs the commands of a decision one after the other and answers the browser: the panel after the last, or the lines of the one that refused. */
+function runDecision(response, id, commands, input) {
+  for (const args of commands) {
+    const run = spawnSync(process.execPath, [import.meta.filename, ...args], { cwd: process.cwd(), input, encoding: "utf8" })
+    if (run.status !== 0) {
+      const lines = run.stderr.split("\n").filter((line) => line !== "")
+      sendPage(response, 409, reasonsPage("Not done", lines.map(escapeHtml), `<p><a href="/${id}">Back to the process</a></p>`))
+      return
+    }
+  }
+  response.writeHead(303, { Location: `/${id}` })
+  response.end()
+}
+
+/** The answers of a post as the answers file of the open questions of a process, or null when no field holds an answer. */
+function answersFileText(id, posted) {
+  const { number, questions } = openQuestions(id)
+  const answers = questions.map((question) => ({ ...question, answer: feedbackText(posted.get(`answer-${question.number}`) ?? "") }))
+  if (answers.every((given) => given.answer === "")) return null
+  const sections = answers.flatMap((given) => [`## ${given.number}. ${given.text}`, "", given.answer === "" ? "Not known." : given.answer, ""])
+  return [`# Answers ${number}`, "", ...sections].join("\n")
+}
+
+/** Reads a post of a decision and runs the command line for it, which takes the decision or refuses it. */
+async function takeDecision(request, response, { entry, action }) {
+  const refuse = (status, reason) => {
+    sendPage(response, status, reasonsPage("Not done", [reason], `<p><a href="/${entry.id}">Back to the process</a></p>`))
+  }
+  if (!isOwnOrigin(request)) {
+    refuse(403, "A decision can only be sent from the dashboard itself.")
+    return
+  }
+  const body = await readBody(request)
+  if (body === null) {
+    refuse(413, "The decision is too long.")
+    return
+  }
+  const posted = new URLSearchParams(body)
+  const id = entry.id
+  if (action === "answer") {
+    const answers = answersFileText(id, posted)
+    if (answers === null) refuse(400, "Answer at least one question.")
+    else runDecision(response, id, [["answer", id, "-"]], answers)
+  } else if (action === "accept-spec") runDecision(response, id, [["accept-spec", id]], "")
+  else if (action === "approve") runDecision(response, id, [["approve", id, "--by", posted.get("by") ?? ""], ["move", id, "published"]], "")
+  else if (action === "send-back") runDecision(response, id, [["send-back", id, "-"]], posted.get("note") ?? "")
+  else runDecision(response, id, [["move", id, "regenerate"]], "")
+}
+
 function answerDashboardRequest(request, response) {
-  if (request.method !== "GET" && request.method !== "HEAD") {
+  const pathname = request.url.split("?")[0]
+  if (request.method === "GET" || request.method === "HEAD") {
+    const notFound = '<h1>Not found</h1>\n<p>There is nothing at this address.</p>\n<p><a href="/">Dashboard</a></p>'
+    let answer
+    try {
+      const processes = boardProcesses()
+      const open = /^\/[a-z0-9-]+$/.test(pathname) ? processes.find((entry) => entry.id === pathname.slice(1)) : undefined
+      if (pathname === "/") answer = { status: 200, page: dashboardMainPage(processes) }
+      else if (open === undefined) answer = { status: 404, page: dashboardPage(htmlPage("Not found", notFound)) }
+      else answer = { status: 200, page: dashboardProcessPage(processes, open) }
+    } catch {
+      answer = { status: 500, page: dashboardPage(errorPage("The dashboard cannot read the processes.")) }
+    }
+    sendPage(response, answer.status, request.method === "HEAD" ? undefined : answer.page)
+    return
+  }
+  let target
+  try {
+    target = request.method === "POST" ? decisionTarget(pathname) : null
+  } catch {
+    sendPage(response, 500, errorPage("The dashboard cannot read the processes."))
+    return
+  }
+  if (target === null) {
     response.writeHead(405, { Allow: "GET, HEAD" })
     response.end()
     return
   }
-  const pathname = request.url.split("?")[0]
-  const notFound = '<h1>Not found</h1>\n<p>There is nothing at this address.</p>\n<p><a href="/">Dashboard</a></p>'
-  let answer
-  try {
-    const processes = boardProcesses()
-    const open = /^\/[a-z0-9-]+$/.test(pathname) ? processes.find((entry) => entry.id === pathname.slice(1)) : undefined
-    if (pathname === "/") answer = { status: 200, page: dashboardMainPage(processes) }
-    else if (open === undefined) answer = { status: 404, page: dashboardPage(htmlPage("Not found", notFound)) }
-    else answer = { status: 200, page: dashboardProcessPage(processes, open) }
-  } catch {
-    answer = { status: 500, page: dashboardPage(errorPage("The dashboard cannot read the processes.")) }
-  }
-  sendPage(response, answer.status, request.method === "HEAD" ? undefined : answer.page)
+  takeDecision(request, response, target)
 }
 
 /** Starts a server of the command line on `127.0.0.1` and keeps running until the process is stopped. */
@@ -1585,7 +1805,7 @@ function serveOnLocalhost(name, defaultPort, handler, portArgument) {
 
 function printUsage() {
   process.stderr.write(
-    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n',
+    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n',
   )
   return 1
 }
@@ -1600,6 +1820,7 @@ else if (commandArguments.length === 2 && commandArguments[0] === "round") proce
 else if (commandArguments.length === 3 && commandArguments[0] === "owner") process.exitCode = setOwner(commandArguments[1], commandArguments[2])
 else if (commandArguments.length === 4 && commandArguments[0] === "approve" && commandArguments[2] === "--by") process.exitCode = approveDraft(commandArguments[1], commandArguments[3])
 else if (commandArguments.length === 2 && commandArguments[0] === "respec") process.exitCode = respecProcess(commandArguments[1])
+else if (commandArguments.length === 3 && commandArguments[0] === "send-back") process.exitCode = sendBackDraft(commandArguments[1], commandArguments[2])
 else if (commandArguments.length <= 2 && commandArguments[0] === "show") process.exitCode = showProcesses(commandArguments[1])
 else if (commandArguments.length === 2 && commandArguments[0] === "org" && commandArguments[1] === "init") process.exitCode = initialiseOrganisation()
 else if (commandArguments.length === 1 && commandArguments[0] === "check") process.exitCode = checkDependencies()
