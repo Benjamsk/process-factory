@@ -192,19 +192,20 @@ describe("process-factory approve in another form or for another id", () => {
     ["as owner without a name", ["owner", processId]],
     ["as owner with an argument after the name", ["owner", processId, kari, "extra"]],
     ["with no argument", []],
-  ])("prints the fifteen usage lines, with owner and approve after round, and writes nothing %s", (_name, args) => {
+  ])("prints the sixteen usage lines, with owner and approve after round, and writes nothing %s", (_name, args) => {
     prepareApproval(project)
     const before = readFile(project, boardFile)
 
     const result = runCommand(project, args)
 
     expect(result.stderr).toBe(usage)
-    expect(result.stderr.split("\n").slice(6, 12)).toEqual([
+    expect(result.stderr.split("\n").slice(6, 13)).toEqual([
       "       process-factory round <process-id>",
       '       process-factory owner <process-id> "<person>"',
       '       process-factory approve <process-id> --by "<person>"',
       "       process-factory respec <process-id>",
       "       process-factory send-back <process-id> <file>",
+      '       process-factory edit <process-id> <name> <file> --by "<person>"',
       "       process-factory org init",
     ])
     expect(result.stdout).toBe("")

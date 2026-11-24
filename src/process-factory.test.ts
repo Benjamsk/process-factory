@@ -23,7 +23,7 @@ const skillFiles = [
 ]
 const boardPath = "processes/board.json"
 const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory edit <process-id> <name> <file> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
 const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.md", "authority.md"]
 const timeForm = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
 
@@ -1474,6 +1474,191 @@ describe("process-factory send-back", () => {
     expect(result.status).toBe(0)
     expect(readWorkingFile(`${processFolder}/answers-1.md`)).toBe(answers)
     expect(storedProcesses()[0]?.stage).toBe("spec")
+  })
+})
+
+describe("process-factory edit", () => {
+  const processId = "001-handle-a-lost-laptop"
+  const processFolder = `processes/${processId}`
+  const specFile = `${processFolder}/spec.md`
+  const caseFile = `${processFolder}/cases/case-2.md`
+  const owner = "Kari Nordmann"
+  const cannotLine = `process-factory: cannot edit spec.md of ${processId}`
+  const specSections = ["Trigger", "Scope", "Roles", "Steps", "AI steps", "Deadlines", "Legal basis", "Duties to notify", "Escalation", "Records", "Dependencies"]
+  const regeneration = { version: 1, round: 0, at: "2026-11-23T09:00:00.000Z" }
+  const caseText = "# Case 2: Laptop 2\n\n## Situation\n\nThe laptop is lost abroad.\n"
+
+  /** A `spec.md` of the eleven sections with this line under `Deadlines`, each section decided except those named in `open`. */
+  function specText(deadline: string, open: string[] = []): string {
+    const section = (name: string): string => `## ${name}\n\nStatus: ${open.includes(name) ? "open" : "decided"}\n\n${name === "Deadlines" ? deadline : "Settled."}\n`
+    return `# Specification: Handle a lost laptop\n\n${specSections.map(section).join("\n")}`
+  }
+
+  const oldSpec = specText("The laptop is blocked within 48 hours.")
+  const newSpec = specText("The laptop is blocked within 24 hours.")
+
+  /** The process in `stage`, owned by Kari Nordmann unless `more` says otherwise, with its specification, the case 2, these drafts and a `new.md` of the new text. */
+  function prepareEdit(stage: string, more: Record<string, unknown> = {}, drafts: number[] = [1]): void {
+    writeWorkingFile("organisation/roles.md", `# Roles\n\n## Data protection officer\n\n${owner} is the data protection officer. Ola Hansen steps in when she is away.\n`)
+    writeBoardFile([{ id: processId, title: "Handle a lost laptop", stage, owner, history: [{ at: "2026-11-22T10:00:00.000Z", stage }], ...more }])
+    writeWorkingFile(specFile, oldSpec)
+    writeWorkingFile(caseFile, caseText)
+    for (const number of drafts) writeWorkingFile(`${processFolder}/drafts/draft-${String(number)}.md`, `# Draft ${String(number)}\n`)
+    writeWorkingFile("new.md", newSpec)
+  }
+
+  function runEdit(name: string, file: string, by = owner) {
+    return runCommand(["edit", processId, name, file, "--by", by])
+  }
+
+  it("replaces the file, prints it with the stage draft, records the edit in the history and marks the process", () => {
+    prepareEdit("rework")
+    writeWorkingFile("new.md", `${newSpec.replace(/\n/g, "\r\n")}\r\n\r\n`)
+
+    const result = runEdit("spec.md", "new.md")
+
+    expect(result.stdout).toBe(`Stored ${specFile}\ndraft\n`)
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    expect(readWorkingFile(specFile)).toBe(newSpec)
+    const entry = storedProcesses()[0]
+    expect(entry?.stage).toBe("draft")
+    expect(entry?.owner).toBe(owner)
+    expect(entry?.needsDraft).toEqual(["spec.md"])
+    expect(storedHistory(entry).at(-1)).toEqual({ at: expect.stringMatching(timeForm), stage: "draft", edited: "spec.md", by: owner })
+  })
+
+  it("keeps the stage of a process in cases and names every edited file once in the mark", () => {
+    prepareEdit("cases")
+
+    expect(runEdit("spec.md", "new.md").stdout).toBe(`Stored ${specFile}\ncases\n`)
+    expect(storedProcesses()[0]?.needsDraft).toEqual(["spec.md"])
+    writeWorkingFile("new.md", "# Case 2: Laptop 2\n\n## Situation\n\nThe laptop is stolen abroad.\n")
+    expect(runEdit("case-2.md", "new.md").status).toBe(0)
+    expect(storedProcesses()[0]?.needsDraft).toEqual(["spec.md", "case-2.md"])
+    writeWorkingFile("new.md", oldSpec)
+    expect(runEdit("spec.md", "new.md").status).toBe(0)
+
+    expect(storedProcesses()[0]?.needsDraft).toEqual(["spec.md", "case-2.md"])
+    expect(storedProcesses()[0]?.stage).toBe("cases")
+    expect(storedHistory(storedProcesses()[0]).map((change) => change.edited)).toEqual([undefined, "spec.md", "case-2.md", "spec.md"])
+  })
+
+  it("records the edit of a process without a draft in its history and marks it not at all", () => {
+    prepareEdit("draft", {}, [])
+
+    expect(runEdit("spec.md", "new.md").stdout).toBe(`Stored ${specFile}\ndraft\n`)
+
+    expect(storedHistory(storedProcesses()[0]).at(-1)).toEqual({ at: expect.stringMatching(timeForm), stage: "draft", edited: "spec.md", by: owner })
+    expect(storedProcesses()[0]).not.toHaveProperty("needsDraft")
+  })
+
+  it("replaces a case with the text on standard input when the file is -", () => {
+    prepareEdit("review")
+    const text = "# Case 2: Laptop 2\n\n## Situation\n\nThe laptop is stolen abroad.\n"
+
+    const result = runCommand(["edit", processId, "case-2.md", "-", "--by", owner], text)
+
+    expect(result.stdout).toBe(`Stored ${caseFile}\ndraft\n`)
+    expect(result.status).toBe(0)
+    expect(readWorkingFile(caseFile)).toBe(text)
+    expect(storedProcesses()[0]?.needsDraft).toEqual(["case-2.md"])
+  })
+
+  /** Each edit that is refused: what is wrong with it, the stage and further keys of the entry, the arguments after `edit` and the line it prints. */
+  const refusals: [string, string, Record<string, unknown>, string[], string][] = [
+    ["an id that is not on the board", "rework", {}, ["009-not-on-the-board", "spec.md", "new.md", "--by", owner], "process-factory: there is no process 009-not-on-the-board"],
+    ["the name draft-1.md", "rework", {}, [processId, "draft-1.md", "new.md", "--by", owner], `process-factory: cannot edit ${processId}: draft-1.md is not spec.md or a case-<n>.md`],
+    ["the name case-0.md", "rework", {}, [processId, "case-0.md", "new.md", "--by", owner], `process-factory: cannot edit ${processId}: case-0.md is not spec.md or a case-<n>.md`],
+    ["the name ../board.json", "rework", {}, [processId, "../board.json", "new.md", "--by", owner], `process-factory: cannot edit ${processId}: ../board.json is not spec.md or a case-<n>.md`],
+    ["a process in published", "published", {}, [processId, "spec.md", "new.md", "--by", owner], `${cannotLine}: it is in the stage published, not in spec, cases, draft, review, rework or approval`],
+    [
+      "a process that is being regenerated",
+      "review",
+      { regeneration },
+      [processId, "spec.md", "new.md", "--by", owner],
+      `${cannotLine}: it is being regenerated from version 1, and a regeneration keeps the specification and the cases it started with`,
+    ],
+    ["a case that is not there", "rework", {}, [processId, "case-7.md", "new.md", "--by", owner], `process-factory: cannot edit case-7.md of ${processId}: ${processFolder}/cases/case-7.md is not there`],
+    ["a name of spaces only", "rework", {}, [processId, "spec.md", "new.md", "--by", "   "], `${cannotLine}: --by must be one line with at least one letter`],
+    ["a name that is not the owner's", "rework", {}, [processId, "spec.md", "new.md", "--by", "Ola Hansen"], `${cannotLine}: --by does not name its owner`],
+    ["a name that is in no role", "rework", { owner: undefined }, [processId, "spec.md", "new.md", "--by", "Nobody Known"], `${cannotLine}: Nobody Known is not named in organisation/roles.md`],
+    ["a text of whitespace only", "rework", {}, [processId, "spec.md", "empty.md", "--by", owner], `${cannotLine}: the text is empty`],
+    ["a text that only has other line breaks", "rework", {}, [processId, "spec.md", "same.md", "--by", owner], `${cannotLine}: the text is the same as ${specFile}`],
+  ]
+
+  it.each(refusals)("refuses %s with one line, exits with 1 and changes no file", (_name, stage, more, commandArguments, line) => {
+    prepareEdit(stage, more)
+    writeWorkingFile("empty.md", "\n  \r\n\t\n")
+    writeWorkingFile("same.md", `${oldSpec.replace(/\n/g, "\r\n")}\r\n`)
+    const board = readWorkingFile(boardPath)
+
+    const result = runCommand(["edit", ...commandArguments])
+
+    expect(result.stderr).toBe(`${line}\n`)
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(readWorkingFile(specFile)).toBe(oldSpec)
+    expect(readWorkingFile(caseFile)).toBe(caseText)
+    expect(readWorkingFile(boardPath)).toBe(board)
+  })
+
+  it("accepts the owner's name with spaces around it, and refuses a file it cannot read and one it cannot write", () => {
+    prepareEdit("rework")
+
+    const missing = runEdit("spec.md", "missing.md")
+
+    expect(missing.stderr.startsWith("process-factory: cannot read missing.md: ")).toBe(true)
+    expect(missing.status).toBe(1)
+    expect(runEdit("spec.md", "new.md", `  ${owner}  `).status).toBe(0)
+    expect(storedHistory(storedProcesses()[0]).at(-1)?.by).toBe(owner)
+    prepareEdit("rework")
+    rmSync(path.join(workingDirectory, caseFile))
+    mkdirSync(path.join(workingDirectory, caseFile))
+
+    const unwritable = runEdit("case-2.md", "new.md")
+
+    expect(unwritable.stderr.startsWith(`process-factory: cannot write ${caseFile}: `)).toBe(true)
+    expect(unwritable.stdout).toBe("")
+    expect(unwritable.status).toBe(1)
+  })
+
+  it("refuses a specification that would leave a section open unless the process is in spec", () => {
+    prepareEdit("cases")
+    writeWorkingFile("open.md", specText("The laptop is blocked within 24 hours.", ["Scope", "Records"]))
+
+    const refused = runEdit("spec.md", "open.md")
+
+    expect(refused.stderr).toBe(`${cannotLine}: these sections would not be decided\n  Scope\n  Records\n`)
+    expect(refused.stdout).toBe("")
+    expect(refused.status).toBe(1)
+    expect(readWorkingFile(specFile)).toBe(oldSpec)
+
+    prepareEdit("spec")
+    writeWorkingFile("open.md", specText("The laptop is blocked within 24 hours.", ["Scope", "Records"]))
+
+    const stored = runEdit("spec.md", "open.md")
+
+    expect(stored.stdout).toBe(`Stored ${specFile}\nspec\n`)
+    expect(stored.status).toBe(0)
+    expect(readWorkingFile(specFile)).toBe(specText("The laptop is blocked within 24 hours.", ["Scope", "Records"]))
+  })
+
+  it("drops the mark when the process moves to review, and show prints the mark and the edit until then", () => {
+    prepareEdit("rework")
+    expect(runEdit("spec.md", "new.md").status).toBe(0)
+
+    const shown = runCommand(["show", processId]).stdout
+
+    expect(shown).toContain("\nStage: draft\n")
+    expect(shown).toContain("\nNeeds a new draft: spec.md\n")
+    expect(shown.indexOf("Needs a new draft")).toBeLessThan(shown.indexOf("History:"))
+    expect(shown.trimEnd().split("\n").at(-1)).toMatch(/^ {2}\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z {2}draft {2}spec\.md edited by Kari Nordmann$/)
+
+    expect(runCommand(["move", processId, "review"]).stdout).toBe("review\n")
+
+    expect(storedProcesses()[0]).not.toHaveProperty("needsDraft")
+    expect(runCommand(["show", processId]).stdout).not.toContain("Needs a new draft")
   })
 })
 
@@ -3178,7 +3363,7 @@ describe("the dashboard of process-factory dashboard", () => {
       const { panel } = await openPanel(await openDashboard())
 
       expect(part(panel, "spec")).toBe(
-        '<h3>Specification</h3><h4>Specification: Handle a lost laptop</h4><h5>Trigger</h5><p>An employee reports it.</p><h6>Detail</h6><h6>Deeper</h6><h5>Steps</h5><ol><li value="1">The employee tells the IT manager.</li></ol>',
+        `<h3>Specification</h3><p><a href="/${processId}/edit/spec.md">Edit spec.md</a></p><h4>Specification: Handle a lost laptop</h4><h5>Trigger</h5><p>An employee reports it.</p><h6>Detail</h6><h6>Deeper</h6><h5>Steps</h5><ol><li value="1">The employee tells the IT manager.</li></ol>`,
       )
     })
 
@@ -3190,7 +3375,8 @@ describe("the dashboard of process-factory dashboard", () => {
 
       expect(part(panel, "cases")).toBe(
         [1, 9, 10].reduce(
-          (shown, number) => `${shown}<article><h4>Case ${String(number)}: Laptop ${String(number)}</h4><p>Text of case ${String(number)}.</p></article>`,
+          (shown, number) =>
+            `${shown}<article><p><a href="/${processId}/edit/case-${String(number)}.md">Edit case-${String(number)}.md</a></p><h4>Case ${String(number)}: Laptop ${String(number)}</h4><p>Text of case ${String(number)}.</p></article>`,
           "<h3>Cases</h3>",
         ),
       )
@@ -3316,6 +3502,59 @@ describe("the dashboard of process-factory dashboard", () => {
         expect(page.body).toContain("<h1>Not found</h1>")
         expect(page.body).not.toContain("<aside")
       }
+    })
+
+    it("has the link Edit spec.md above the specification, a link above every case, and none while the process is being regenerated", async () => {
+      writeFullBoard()
+      writeProcessFiles()
+      const address = await openDashboard()
+
+      expect((await openPanel(address)).panel.split("/edit/")).toHaveLength(5)
+
+      writeBoardFile([{ id: processId, title, stage: "review", regeneration: { version: 1, round: 0, at: "2026-11-23T09:00:00.000Z" } }])
+      writeProcessFiles()
+      const { panel } = await openPanel(address)
+
+      expect(panel).not.toContain("/edit/")
+      expect(part(panel, "spec").startsWith("<h3>Specification</h3><h4>Specification: Handle a lost laptop</h4>")).toBe(true)
+    })
+
+    it("shows the mark that a process needs a new draft on its card and before the links of its panel, and nothing without it", async () => {
+      writeBoardFile([{ id: processId, title, stage: "draft", needsDraft: ["spec.md", "case-2.md"] }])
+      const mark = "<p>Needs a new draft: spec.md, case-2.md</p>"
+      const address = await openDashboard()
+
+      const board = (await requestPage(address, "/")).body
+      const { panel } = await openPanel(address)
+
+      expect(cardOf(board)).toContain(`<p>${processId}</p>${mark}<dl>`)
+      expect(compactHtml(panel)).toContain(`</dl>${mark}<nav>`)
+
+      writeBoardFile([{ id: processId, title, stage: "draft" }])
+
+      expect((await requestPage(address, "/")).body).not.toContain("Needs a new draft")
+      expect((await openPanel(address)).body).not.toContain("Needs a new draft")
+    })
+
+    it("shows an edit of the history in the timeline with its file and the escaped name of the person", async () => {
+      writeBoardFile([
+        {
+          id: processId,
+          title,
+          stage: "draft",
+          history: [
+            { at: "2026-11-22T10:00:00.000Z", stage: "rework" },
+            { at: "2026-11-24T12:00:00.000Z", stage: "draft", edited: "spec.md", by: "Kari <Nordmann>" },
+          ],
+        },
+      ])
+
+      const { body, panel } = await openPanel(await openDashboard())
+
+      expect(part(panel, "timeline")).toBe(
+        "<h3>Timeline</h3><ol><li><time>2026-11-22T10:00:00.000Z</time> rework</li><li><time>2026-11-24T12:00:00.000Z</time> draft, spec.md edited by Kari &lt;Nordmann&gt;</li></ol>",
+      )
+      expect(body).not.toContain("<Nordmann>")
     })
 
     describe("the part Decision of a process that waits for a person", () => {
@@ -3710,6 +3949,203 @@ describe("the dashboard of process-factory dashboard", () => {
       expect(readWorkingFile(boardPath)).toBe(before)
     })
   })
+
+  describe("the pages on which a person edits a file of a process", () => {
+    const processFolder = `processes/${processId}`
+    const specFile = `${processFolder}/spec.md`
+    const caseFile = `${processFolder}/cases/case-2.md`
+    const specText = "# Specification: Handle a lost laptop\n\n## Deadlines\n\nThe laptop is blocked within 48 hours.\n"
+    const editAddress = `/${processId}/edit/spec.md`
+    const saveAddress = `/${processId}/save/spec.md`
+    const backLink = `<p><a href="/${processId}">Back to the process</a></p>`
+    const saveForm = `<form method="post" action="${saveAddress}">`
+
+    /** The process in `stage`, owned by Kari Nordmann, who is named in `organisation/roles.md`, with its specification, the case 2 and one draft. */
+    function prepareEditable(stage: string): void {
+      writeWorkingFile("organisation/roles.md", `# Roles\n\n## Data protection officer\n\n${owner} is the data protection officer.\n`)
+      writeBoardFile([{ id: processId, title, stage, owner, history: [{ at: "2026-11-22T10:00:00.000Z", stage }] }])
+      writeWorkingFile(specFile, specText)
+      writeWorkingFile(caseFile, "# Case 2: Laptop 2\n\nThe laptop is lost abroad.\n")
+      writeWorkingFile(`${processFolder}/drafts/draft-1.md`, "# Draft 1\n")
+    }
+
+    /** What stands in the field `text` of an edit page after the one line break that follows its opening tag. */
+    function fieldText(body: string): string {
+      return /<textarea id="text" name="text" rows="30" required>\n(.*?)<\/textarea>/s.exec(body)?.[1] ?? "missing"
+    }
+
+    /** The value of the hidden field `text` of a check page as it is written in the page. */
+    function hiddenText(body: string): string {
+      return /<input type="hidden" name="text" value="([^"]*)">/.exec(body)?.[1] ?? "missing"
+    }
+
+    /** What stands between `<li>` and `</li>` of every item of a page, in order. */
+    function itemsOf(body: string): string[] {
+      return [...body.matchAll(/<li>(.*?)<\/li>/gs)].map((match) => match[1] ?? "")
+    }
+
+    it("holds the whole text of the file in one field, escaped, and asks to show what changes", async () => {
+      prepareEditable("rework")
+      writeWorkingFile(specFile, '# Specification\n\nCall <the police> & "wait"\n')
+
+      const page = await requestPage(await openDashboard(), editAddress)
+
+      expect(page.status).toBe(200)
+      expect(page.body).toContain("<title>Edit spec.md</title>")
+      expect(page.body).toContain("<h1>Edit spec.md</h1>")
+      expect(page.body).toContain(backLink)
+      expect(page.body).toContain(`<p>${title}, ${processId}</p>`)
+      expect(page.body).toContain(`<form method="post" action="${editAddress}">`)
+      expect(page.body).toContain('<label for="text">The text of spec.md</label>')
+      expect(fieldText(page.body)).toBe('# Specification\n\nCall &lt;the police&gt; &amp; &quot;wait&quot;')
+      expect(page.body).toContain("<p>Nothing is saved yet. The next page shows what changes.</p>")
+      expect(page.body).toContain('<button type="submit">Show what changes</button>')
+      expect(page.body).not.toContain(refresh)
+      expect(page.body).not.toContain("<the police>")
+    })
+
+    it("holds the text of a case at its own address", async () => {
+      prepareEditable("cases")
+
+      const page = await requestPage(await openDashboard(), `/${processId}/edit/case-2.md`)
+
+      expect(page.status).toBe(200)
+      expect(page.body).toContain("<h1>Edit case-2.md</h1>")
+      expect(page.body).toContain('<label for="text">The text of case-2.md</label>')
+      expect(fieldText(page.body)).toBe("# Case 2: Laptop 2\n\nThe laptop is lost abroad.")
+    })
+
+    it("marks the removed and the added lines of a posted text in their place, counts them, carries the text in a hidden field and writes nothing", async () => {
+      prepareEditable("rework")
+      const newText = specText.replace("The laptop is blocked within 48 hours.", "The laptop is blocked within 24 hours.\nThe IT manager confirms it.")
+
+      const page = await postForm(await openDashboard(), editAddress, { text: newText.replace(/\n/g, "\r\n") })
+
+      expect(page.status).toBe(200)
+      expect(page.body).toContain("<title>Check the edit of spec.md</title>")
+      expect(page.body).toContain("<h1>Check the edit of spec.md</h1>")
+      expect(page.body).toContain(backLink)
+      expect(page.body).toContain("<p>Lines removed: 1. Lines added: 2. A line that starts with - is removed, a line that starts with + is added.</p>")
+      expect(itemsOf(page.body)).toEqual([
+        "# Specification: Handle a lost laptop",
+        "",
+        "## Deadlines",
+        "",
+        "<del>- The laptop is blocked within 48 hours.</del>",
+        "<ins>+ The laptop is blocked within 24 hours.</ins>",
+        "<ins>+ The IT manager confirms it.</ins>",
+      ])
+      const form = page.body.slice(page.body.indexOf(saveForm)).replace(/>\s+</g, "><")
+      expect(form.startsWith(`${saveForm}<input type="hidden" name="text" value="`)).toBe(true)
+      expect(form).toContain('<p><label for="by">Your full name</label><input id="by" name="by" required></p><p><button type="submit">Save</button></p></form>')
+      expect(hiddenText(page.body)).toContain("The IT manager confirms it.")
+      expect(page.body).toContain(`<p>Saving moves the process back to the stage draft, so that /process next ${processId} in Claude Code writes a new draft from the edited files.</p>`)
+      expect(page.body).not.toContain(owner)
+      expect(readWorkingFile(specFile)).toBe(specText)
+    })
+
+    it("says that nothing changes without a form for the text of the file, and leaves the sentence about draft out in cases", async () => {
+      prepareEditable("cases")
+      const address = await openDashboard()
+
+      const same = await postForm(address, editAddress, { text: specText.replace(/\n/g, "\r\n") })
+
+      expect(same.status).toBe(200)
+      expect(same.body).toContain("<h1>Check the edit of spec.md</h1>")
+      expect(same.body).toContain("<p>Nothing changes in spec.md.</p>")
+      expect(same.body).not.toContain("<form")
+      expect(same.body).not.toContain("Lines removed")
+
+      const changed = await postForm(address, editAddress, { text: `${specText}The IT manager confirms it.\n` })
+
+      expect(changed.body).toContain(saveForm)
+      expect(changed.body).not.toContain("Saving moves")
+    })
+
+    it("saves a posted text through the command line, sends the browser to the panel and records the edit on the board", async () => {
+      prepareEditable("rework")
+      const text = "# Case 2: Laptop 2\n\nThe laptop is stolen abroad.\n"
+
+      const answer = await postForm(await openDashboard(), `/${processId}/save/case-2.md`, { text: text.replace(/\n/g, "\r\n"), by: owner })
+
+      expect(answer.status).toBe(303)
+      expect(answer.headers.location).toBe(`/${processId}`)
+      expect(answer.body).toBe("")
+      expect(readWorkingFile(caseFile)).toBe(text)
+      const entry = storedProcesses()[0]
+      expect(entry?.stage).toBe("draft")
+      expect(entry?.needsDraft).toEqual(["case-2.md"])
+      expect(storedHistory(entry).at(-1)).toEqual({ at: expect.stringMatching(timeForm), stage: "draft", edited: "case-2.md", by: owner })
+    })
+
+    it("answers 409 with the page Not done and the line of the command line for a name that is not the owner, and changes nothing", async () => {
+      prepareEditable("rework")
+
+      const answer = await postForm(await openDashboard(), saveAddress, { text: "# Specification\n\nNew text.\n", by: "Ola Hansen" })
+
+      expect(answer.status).toBe(409)
+      expect(answer.body).toContain("<title>Not done</title>")
+      expect(answer.body).toContain("<h1>Not done</h1>")
+      expect(answer.body).toContain(`<li>process-factory: cannot edit spec.md of ${processId}: --by does not name its owner</li>`)
+      expect(answer.body).toContain(backLink)
+      expect(answer.body).not.toContain(refresh)
+      expect(readWorkingFile(specFile)).toBe(specText)
+      expect(storedProcesses()[0]?.stage).toBe("rework")
+    })
+
+    it.each([
+      ["the edit address", `/${processId}/edit/spec.md`],
+      ["the save address", `/${processId}/save/spec.md`],
+    ])("refuses a post at %s from another origin with 403 and one of more than 524288 bytes with 413, and changes nothing", async (_name, pathname) => {
+      prepareEditable("rework")
+      const address = await openDashboard()
+
+      const foreign = await postForm(address, pathname, { text: "# Specification\n\nNew text.\n", by: owner }, { Origin: "http://evil.example" })
+
+      expect(foreign.status).toBe(403)
+      expect(foreign.body).toContain("<li>An edit can only be sent from the dashboard itself.</li>")
+
+      const long = await send(address, pathname, `by=${encodeURIComponent(owner)}&text=${"x".repeat(600_000)}`)
+
+      expect(long.status).toBe(413)
+      expect(long.body).toContain("<li>The edit is too long.</li>")
+      expect(readWorkingFile(specFile)).toBe(specText)
+      expect(storedProcesses()[0]?.stage).toBe("rework")
+    })
+
+    it("answers 404 for every other address of an edit and 405 for every other post and method", async () => {
+      prepareEditable("rework")
+      const address = await openDashboard()
+      expect((await requestPage(address, editAddress, "HEAD")).status).toBe(200)
+
+      for (const pathname of [`/${processId}/edit/draft-1.md`, `/${processId}/edit/case-7.md`, "/003-not-on-the-board/edit/spec.md", saveAddress, `${editAddress}/more`]) {
+        const page = await requestPage(address, pathname)
+        expect(page.status).toBe(404)
+        expect(page.body).toContain("<h1>Not found</h1>")
+      }
+      const refused: [string, string][] = [
+        ["POST", `/${processId}/edit/draft-1.md`],
+        ["POST", `/${processId}/edit/case-7.md`],
+        ["POST", "/003-not-on-the-board/save/spec.md"],
+        ["POST", `/${processId}/save/draft-1.md`],
+        ["PUT", saveAddress],
+        ["PUT", editAddress],
+      ]
+      for (const [method, pathname] of refused) {
+        const answer = await send(address, pathname, `by=${encodeURIComponent(owner)}&text=New`, { method })
+        expect(answer.status).toBe(405)
+        expect(answer.headers.allow).toBe("GET, HEAD")
+        expect(answer.body).toBe("")
+      }
+
+      writeBoardFile([{ id: processId, title, stage: "published", owner }])
+
+      expect((await requestPage(address, editAddress)).status).toBe(404)
+      const closed = await postForm(address, editAddress, { text: "# Specification\n\nNew text.\n" })
+      expect(closed.status).toBe(405)
+      expect(closed.headers.allow).toBe("GET, HEAD")
+    })
+  })
 })
 
 describe("process-factory show and the open feedback of a process", () => {
@@ -3775,7 +4211,7 @@ describe("process-factory show and the open feedback of a process", () => {
 })
 
 describe("process-factory with anything other than a command", () => {
-  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b", "c"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]], [["org"]], [["org", "init", "extra"]], [["answer"]], [["answer", "a"]], [["answer", "a", "b", "c"]], [["accept-spec"]], [["accept-spec", "a", "b"]], [["round"]], [["round", "a", "b"]], [["owner", "a"]], [["owner", "a", "b", "c"]], [["approve", "a"]], [["approve", "a", "b"]], [["approve", "a", "--as", "b"]], [["approve", "a", "--by", "b", "c"]], [["respec"]], [["respec", "a", "b"]], [["check", "extra"]], [["org", "check"]], [["serve", "extra"]], [["serve", "--port"]], [["serve", "--host", "0.0.0.0"]], [["serve", "--port", "0", "extra"]], [["dashboard", "extra"]], [["dashboard", "--port"]], [["dashboard", "--host", "0.0.0.0"]], [["dashboard", "--port", "0", "extra"]]])(
+  it.each([[[]], [["help"]], [["init", "extra"]], [["new"]], [["new", "a", "b", "c"]], [["move"]], [["move", "a"]], [["move", "a", "b", "c"]], [["show", "a", "b"]], [["org"]], [["org", "init", "extra"]], [["answer"]], [["answer", "a"]], [["answer", "a", "b", "c"]], [["accept-spec"]], [["accept-spec", "a", "b"]], [["round"]], [["round", "a", "b"]], [["owner", "a"]], [["owner", "a", "b", "c"]], [["approve", "a"]], [["approve", "a", "b"]], [["approve", "a", "--as", "b"]], [["approve", "a", "--by", "b", "c"]], [["respec"]], [["respec", "a", "b"]], [["edit"]], [["edit", "a", "spec.md", "new.md", "--by"]], [["edit", "a", "spec.md", "new.md", "--from", "b"]], [["check", "extra"]], [["org", "check"]], [["serve", "extra"]], [["serve", "--port"]], [["serve", "--host", "0.0.0.0"]], [["serve", "--port", "0", "extra"]], [["dashboard", "extra"]], [["dashboard", "--port"]], [["dashboard", "--host", "0.0.0.0"]], [["dashboard", "--port", "0", "extra"]]])(
     "prints the usage and writes nothing for %j",
     (commandArguments) => {
       const result = runCommand(commandArguments)
