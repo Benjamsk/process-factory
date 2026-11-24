@@ -179,6 +179,7 @@ describe("the panel of a process", () => {
     expect(part(panel, "spec")).toBe(
       compact(`
         <h3>Specification</h3>
+        <p><a href="/001-handle-a-lost-laptop/edit/spec.md">Edit spec.md</a></p>
         <h4>Specification: Handle a lost laptop</h4>
         <h5>Trigger</h5>
         <p>Status: decided</p>
@@ -198,7 +199,7 @@ describe("the panel of a process", () => {
 
     const shown = part(panel, "cases")
     expect(shown.startsWith("<h3>Cases</h3><article>")).toBe(true)
-    expect(articles(shown)).toEqual([caseHtml(1), caseHtml(2), caseHtml(9), caseHtml(10)])
+    expect(articles(shown)).toEqual([1, 2, 9, 10].map((number) => `<p><a href="/${laptopId}/edit/case-${String(number)}.md">Edit case-${String(number)}.md</a></p>${caseHtml(number)}`))
   })
 
   it("shows the name and the whole text of the newest draft, and nothing of an earlier draft", async () => {

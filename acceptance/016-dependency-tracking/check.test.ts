@@ -26,7 +26,7 @@ import {
 } from "./dependencies.ts"
 
 const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory edit <process-id> <name> <file> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
 const newOfficer = "## Data protection officer\n\nOla Hansen is the data protection officer. Kari Nordmann steps in when he is away.\n"
 
 /** Runs `check` and expects it to succeed with nothing on standard error; gives what it printed. */
@@ -229,7 +229,7 @@ describe("the usage of process-factory", () => {
     ["no argument", []],
     ["an unknown command", ["publish"]],
     ["org check", ["org", "check"]],
-  ])("has fifteen lines, with check after org init and before serve, and is printed with %s", (_name, args) => {
+  ])("has sixteen lines, with check after org init and before serve, and is printed with %s", (_name, args) => {
     const result = runCommand(project, args)
 
     expect(result.stderr).toBe(usage)
