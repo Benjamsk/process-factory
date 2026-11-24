@@ -27,6 +27,7 @@ describe("the Status section of README.md", () => {
     const at = paragraphs.indexOf(paragraph)
     expect(at).toBeGreaterThan(-1)
     expect(paragraphs[at + 1]?.startsWith("The factory reads what it knows about the organisation")).toBe(true)
-    expect(paragraphs[at - 1]?.startsWith("Every process is in one of the stages")).toBe(true)
+    expect(paragraphs[at - 1]?.startsWith("`process-factory export <process-id> --format html|markdown --link <address>` writes the newest published version")).toBe(true)
+    expect(paragraphs[at - 2]?.startsWith("Every process is in one of the stages")).toBe(true)
   })
 })

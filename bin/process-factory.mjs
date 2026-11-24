@@ -1392,6 +1392,115 @@ function versionPage({ entry, versions }, number) {
   return htmlPage(`${escapeHtml(entry.title)}, version ${number}`, body.join("\n"))
 }
 
+/** The address of the reading view without the slashes at the end of its path, or null when it is not an address an export can link to. */
+function readingViewAddress(address) {
+  let parsed
+  try {
+    parsed = new URL(address)
+  } catch {
+    return null
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null
+  if (parsed.username !== "" || parsed.password !== "" || parsed.search !== "" || parsed.hash !== "") return null
+  return `${parsed.origin}${parsed.pathname.replace(/\/+$/, "")}`
+}
+
+/** The six values of the stamp of an export, as the store holds them: each format escapes them as it needs. */
+function exportStamp(entry, number, link) {
+  const approver = labelledValue(versionFile(entry.id, number, "approval.md"), "Approved by")
+  return {
+    title: entry.title,
+    number,
+    owner: entry.owner ?? notRecorded,
+    by: approver ?? notRecorded,
+    on: versionApproval(entry.id, number).on,
+    link,
+  }
+}
+
+/** The six paragraphs of the stamp of an HTML export, with every value escaped. */
+function htmlStamp(stamp) {
+  return [
+    `<p><strong>${escapeHtml(stamp.title)}</strong></p>`,
+    `<p>Version ${stamp.number}</p>`,
+    `<p>Owner: ${escapeHtml(stamp.owner)}</p>`,
+    `<p>Approved by: ${escapeHtml(stamp.by)}</p>`,
+    `<p>Approved on: ${escapeHtml(stamp.on)}</p>`,
+    `<p>This is a copy. The reading view is the source of truth, and the current version is at <a href="${escapeHtml(stamp.link)}">${escapeHtml(stamp.link)}</a>.</p>`,
+  ].join("\n")
+}
+
+/** The HTML export of a version: the stamp, the document as the reading view shows it, and the stamp again. */
+function htmlExport(stamp, lines) {
+  const paragraphs = htmlStamp(stamp)
+  const body = [`<header>\n${paragraphs}\n</header>`, `<main>\n${documentHtml(lines)}\n</main>`, `<footer>\n${paragraphs}\n</footer>`]
+  return htmlPage(`${escapeHtml(stamp.title)}, version ${stamp.number}`, body.join("\n"))
+}
+
+/** A value of the stamp of a Markdown export, with a backslash before every character that could add markup. */
+function markdownText(value) {
+  return value.replace(/[\\`*_[\]<>&]/g, (character) => `\\${character}`)
+}
+
+/** The stamp of a Markdown export, with every value of the board and of the approval escaped. */
+function markdownStamp(stamp) {
+  return [
+    `**${markdownText(stamp.title)}**`,
+    "",
+    `- Version ${stamp.number}`,
+    `- Owner: ${markdownText(stamp.owner)}`,
+    `- Approved by: ${markdownText(stamp.by)}`,
+    `- Approved on: ${stamp.on}`,
+    "",
+    `This is a copy. The reading view is the source of truth, and the current version is at <${stamp.link}>.`,
+  ].join("\n")
+}
+
+/** The Markdown export of a version: the stamp, the document between two lines `---`, and the stamp again. */
+function markdownExport(stamp, lines) {
+  const text = markdownStamp(stamp)
+  const document = lines.join("\n").replace(/^\n+|\n+$/g, "")
+  return `${text}\n\n---\n\n${document}\n\n---\n\n${text}\n`
+}
+
+/** Writes the newest published version of a process as one file in `exports`, or prints why it cannot be exported. */
+function exportVersion(id, format, address) {
+  if (format !== "html" && format !== "markdown") {
+    process.stderr.write("process-factory: the format must be html or markdown\n")
+    return 1
+  }
+  const viewAddress = readingViewAddress(address)
+  if (viewAddress === null) {
+    process.stderr.write("process-factory: the link must be an address that starts with http:// or https://, without a user name, a query or a fragment\n")
+    return 1
+  }
+  if (readProcessesOrPrintReason() === null) return 1
+  const entry = findProcessOrPrintReason(boardProcesses(), id)
+  if (entry === undefined) return 1
+  const number = publishedVersions(entry).at(-1)
+  if (number === undefined) {
+    process.stderr.write(`process-factory: cannot export ${id}: it has no published version\n`)
+    return 1
+  }
+  const lines = fileLines(versionFile(id, number, "process.md"))
+  if (lines === null) {
+    process.stderr.write(`process-factory: cannot export ${id}: cannot read processes/${id}/versions/${number}/process.md\n`)
+    return 1
+  }
+  const asHtml = format === "html"
+  const name = `${id}-v${number}.${asHtml ? "html" : "md"}`
+  const stamp = exportStamp(entry, number, `${viewAddress}/${id}/${number}`)
+  try {
+    mkdirSync(path.join(process.cwd(), "exports"), { recursive: true })
+    writeFileSync(path.join(process.cwd(), "exports", name), asHtml ? htmlExport(stamp, lines) : markdownExport(stamp, lines))
+  } catch (error) {
+    process.stderr.write(`process-factory: cannot write exports/${name}: ${errorMessage(error)}\n`)
+    return 1
+  }
+  process.stdout.write(`exports/${name}\n`)
+  return 0
+}
+
 /** The page `Error` with the one sentence that says what went wrong, without the reason. */
 function errorPage(sentence) {
   return htmlPage("Error", `<h1>Error</h1>\n<p>${sentence}</p>`)
@@ -2091,7 +2200,7 @@ function serveOnLocalhost(name, defaultPort, handler, portArgument) {
 
 function printUsage() {
   process.stderr.write(
-    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory edit <process-id> <name> <file> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n',
+    'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory edit <process-id> <name> <file> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory export <process-id> --format html|markdown --link <address>\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n',
   )
   return 1
 }
@@ -2112,6 +2221,8 @@ else if (commandArguments.length === 6 && commandArguments[0] === "edit" && comm
 else if (commandArguments.length <= 2 && commandArguments[0] === "show") process.exitCode = showProcesses(commandArguments[1])
 else if (commandArguments.length === 2 && commandArguments[0] === "org" && commandArguments[1] === "init") process.exitCode = initialiseOrganisation()
 else if (commandArguments.length === 1 && commandArguments[0] === "check") process.exitCode = checkDependencies()
+else if (commandArguments.length === 6 && commandArguments[0] === "export" && commandArguments[2] === "--format" && commandArguments[4] === "--link")
+  process.exitCode = exportVersion(commandArguments[1], commandArguments[3], commandArguments[5])
 else if (commandArguments[0] === "serve" && (commandArguments.length === 1 || (commandArguments.length === 3 && commandArguments[1] === "--port")))
   process.exitCode = serveOnLocalhost("Reading view", viewPort, answerRequest, commandArguments[2])
 else if (commandArguments[0] === "dashboard" && (commandArguments.length === 1 || (commandArguments.length === 3 && commandArguments[1] === "--port")))

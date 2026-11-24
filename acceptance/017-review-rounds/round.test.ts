@@ -16,8 +16,8 @@ import {
 } from "./rounds.ts"
 
 const timeForm = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
-const sixteenLines =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory edit <process-id> <name> <file> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
+const seventeenLines =
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory edit <process-id> <name> <file> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory export <process-id> --format html|markdown --link <address>\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
 
 let project = ""
 
@@ -51,10 +51,10 @@ describe("the usage of process-factory", () => {
     ["no argument", []],
     ["round alone", ["round"]],
     ["the arguments round a b", ["round", "a", "b"]],
-  ])("has sixteen lines, with round after accept-spec, and is printed with %s", (_name, args) => {
+  ])("has seventeen lines, with round after accept-spec, and is printed with %s", (_name, args) => {
     const result = runCommand(project, args)
 
-    expect(result.stderr).toBe(sixteenLines)
+    expect(result.stderr).toBe(seventeenLines)
     expect(result.stderr).toBe(usage)
     expect(result.stdout).toBe("")
     expect(result.status).toBe(1)
