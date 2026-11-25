@@ -26,14 +26,14 @@ const roundLimit = 5
 const viewPort = "4173"
 /** The port the dashboard listens on when `--port` names none. */
 const dashboardPort = "4174"
-/** The headers of every page of the reading view. */
+/** The headers of every page of the reading view and of the dashboard. */
 const pageHeaders = {
   "Content-Type": "text/html; charset=utf-8",
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
   "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
 }
-/** The readable defaults of every page of the reading view. */
+/** The readable defaults of every page of the reading view, of the dashboard and of an HTML export. */
 const pageStyle = `body { margin: 0 auto; max-width: 40rem; padding: 2rem 1rem; background: #fff; color: #1b1b1b; font-family: system-ui, sans-serif; line-height: 1.5; }
 a { color: #11467b; }
 dt { font-weight: 700; }
@@ -55,10 +55,10 @@ aside section { display: block; width: auto; margin-right: 0; }
 aside article { border: 0; padding: 0; }`
 /** What tells the browser to load a page of the dashboard again every five seconds. */
 const refreshElement = '<meta http-equiv="refresh" content="5">'
-/** What the reading view shows for an owner, an approver or a date the store does not record. */
+/** What the command line, the reading view, the dashboard and an export show for a value the store does not record. */
 const notRecorded = "not recorded"
-/** The number of bytes of a post of feedback the reading view reads at most. */
-const feedbackBodyLimit = 32768
+/** The number of bytes that are read at most of a post of feedback to the reading view and of a post of a decision to the dashboard. */
+const formBodyLimit = 32768
 /** The number of characters the cleaned text of a feedback may have. */
 const feedbackTextLimit = 2000
 /** The number of characters the cleaned name of a reader may have. */
@@ -92,15 +92,20 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error)
 }
 
-/** The names of the files `<name>-reviewer.md` in a folder, sorted, empty when the folder cannot be read. */
-function reviewerFiles(folder) {
-  let names
+/** The names in a folder, empty when the folder cannot be read. */
+function folderNames(folder) {
   try {
-    names = readdirSync(folder)
+    return readdirSync(folder)
   } catch {
     return []
   }
-  return names.filter((name) => /^[a-z0-9-]+-reviewer\.md$/.test(name)).sort()
+}
+
+/** The names of the files `<name>-reviewer.md` in a folder, sorted, empty when the folder cannot be read. */
+function reviewerFiles(folder) {
+  return folderNames(folder)
+    .filter((name) => /^[a-z0-9-]+-reviewer\.md$/.test(name))
+    .sort()
 }
 
 function installSkill() {
@@ -147,6 +152,14 @@ function findProcessOrPrintReason(processes, id) {
   const entry = processes.find((candidate) => candidate.id === id)
   if (entry === undefined) process.stderr.write(`process-factory: there is no process ${id}\n`)
   return entry
+}
+
+/** The processes of the board and the entry with this id, an id a folder of a process may have, or null after printing why there is none. */
+function readEntryOrPrintReason(id) {
+  const processes = readProcessesOrPrintReason()
+  if (processes === null) return null
+  const entry = findProcessOrPrintReason(/^[a-z0-9-]+$/.test(id) ? processes : [], id)
+  return entry === undefined ? null : { processes, entry }
 }
 
 function writeBoard(processes) {
@@ -214,7 +227,7 @@ function writeVersion(id, entry, draftNumber, at) {
     copyFileSync(path.join(processFolder, "drafts", `draft-${draftNumber}.md`), path.join(versionFolder, "process.md"))
     if (existsSync(path.join(processFolder, "spec.md"))) copyFileSync(path.join(processFolder, "spec.md"), path.join(versionFolder, "spec.md"))
     mkdirSync(path.join(versionFolder, "cases"))
-    for (const caseNumber of folderNumbers(path.join(processFolder, "cases"), /^case-(\d+)\.md$/)) {
+    for (const caseNumber of caseNumbers(processFolder)) {
       const name = `case-${caseNumber}.md`
       copyFileSync(path.join(processFolder, "cases", name), path.join(versionFolder, "cases", name))
     }
@@ -283,7 +296,7 @@ function isRoundReason(entry, reason) {
   return (round.verdicts ?? []).some((given) => given.reviewer === named[2])
 }
 
-/** The first problem of the lines of a change list of a regeneration, in the order of 3.2 of the spec, or undefined when it has none. */
+/** The first problem of the lines of a change list of a regeneration, in the order of the checks below, or undefined when it has none. */
 function problemOfChangeList(lines, entry) {
   if (lines === null) return "is missing"
   const version = entry.regeneration.version
@@ -317,7 +330,7 @@ function changeListProblem(entry) {
 /** The names of the reasons to regenerate a process: its open feedback, its cases that version `<v>` does not hold, and its changed dependencies. */
 function regenerationReasons(entry, version) {
   const folder = path.join(process.cwd(), "processes", entry.id)
-  const newCases = folderNumbers(path.join(folder, "cases"), /^case-(\d+)\.md$/).filter(
+  const newCases = caseNumbers(folder).filter(
     (number) => !existsSync(path.join(folder, "versions", String(version), "cases", `case-${number}.md`)),
   )
   return [
@@ -442,13 +455,7 @@ function moveProcess(id, stage) {
 
 /** The numbers in the names of a folder that match the pattern, in ascending order, empty when the folder cannot be read. */
 function folderNumbers(folder, pattern) {
-  let names
-  try {
-    names = readdirSync(folder)
-  } catch {
-    return []
-  }
-  return names
+  return folderNames(folder)
     .flatMap((name) => {
       const match = pattern.exec(name)
       return match === null ? [] : [Number(match[1])]
@@ -466,37 +473,42 @@ function newestDraftNumber(processFolder) {
   return newestNumber(path.join(processFolder, "drafts"), /^draft-(\d+)\.md$/)
 }
 
-/** The bytes of a file, or of standard input when the file is `-`. */
-function readFileOrStandardInput(file) {
-  return readFileSync(file === "-" ? 0 : file)
+/** The numbers of the files `case-<n>.md` in the folder `cases` of a process, in ascending order. */
+function caseNumbers(processFolder) {
+  return folderNumbers(path.join(processFolder, "cases"), /^case-(\d+)\.md$/)
+}
+
+/** The number of the newest `questions-<n>.md` in the folder of a process, or null when there is none. */
+function newestQuestionsNumber(processFolder) {
+  return newestNumber(processFolder, /^questions-(\d+)\.md$/)
+}
+
+/** The bytes of a file, or of standard input when the file is `-`, or null after printing why it cannot be read. */
+function readInputOrPrintReason(file) {
+  try {
+    return readFileSync(file === "-" ? 0 : file)
+  } catch (error) {
+    process.stderr.write(`process-factory: cannot read ${file}: ${errorMessage(error)}\n`)
+    return null
+  }
 }
 
 function answerProcess(id, file) {
-  const processes = readProcessesOrPrintReason()
-  if (processes === null) return 1
-  if (!/^[a-z0-9-]+$/.test(id)) {
-    process.stderr.write(`process-factory: there is no process ${id}\n`)
-    return 1
-  }
-  const entry = findProcessOrPrintReason(processes, id)
-  if (entry === undefined) return 1
+  const found = readEntryOrPrintReason(id)
+  if (found === null) return 1
+  const { entry } = found
   if (entry.stage !== "clarify") {
     process.stderr.write(`process-factory: cannot answer ${id}: it is in the stage ${entry.stage}, not in clarify\n`)
     return 1
   }
   const folder = `processes/${id}`
-  const number = newestNumber(path.join(process.cwd(), folder), /^questions-(\d+)\.md$/)
+  const number = newestQuestionsNumber(path.join(process.cwd(), folder))
   if (number === null) {
     process.stderr.write(`process-factory: cannot answer ${id}: there is no questions file in ${folder}\n`)
     return 1
   }
-  let answers
-  try {
-    answers = readFileOrStandardInput(file)
-  } catch (error) {
-    process.stderr.write(`process-factory: cannot read ${file}: ${errorMessage(error)}\n`)
-    return 1
-  }
+  const answers = readInputOrPrintReason(file)
+  if (answers === null) return 1
   if (answers.toString("utf8").trim() === "") {
     process.stderr.write(`process-factory: cannot answer ${id}: ${file} is empty\n`)
     return 1
@@ -575,14 +587,9 @@ function changedDependencies(entry) {
 }
 
 function acceptSpec(id) {
-  const processes = readProcessesOrPrintReason()
-  if (processes === null) return 1
-  if (!/^[a-z0-9-]+$/.test(id)) {
-    process.stderr.write(`process-factory: there is no process ${id}\n`)
-    return 1
-  }
-  const entry = findProcessOrPrintReason(processes, id)
-  if (entry === undefined) return 1
+  const found = readEntryOrPrintReason(id)
+  if (found === null) return 1
+  const { processes, entry } = found
   if (entry.stage !== "spec") {
     process.stderr.write(`process-factory: cannot accept the spec of ${id}: it is in the stage ${entry.stage}, not in spec\n`)
     return 1
@@ -592,7 +599,7 @@ function acceptSpec(id) {
   if (open.length > 0) {
     process.stderr.write(`process-factory: cannot accept the spec of ${id}: these sections of ${folder}/spec.md are open\n`)
     for (const name of open) process.stderr.write(`  ${name}\n`)
-    const number = newestNumber(path.join(process.cwd(), folder), /^questions-(\d+)\.md$/)
+    const number = newestQuestionsNumber(path.join(process.cwd(), folder))
     if (number !== null && !existsSync(path.join(process.cwd(), folder, `answers-${number}.md`))) {
       process.stderr.write(`process-factory: ${folder}/questions-${number}.md has no answers yet: ${id} moves to clarify\n`)
       moveProcess(id, "clarify")
@@ -647,7 +654,7 @@ function caseResults(lines) {
 /** The result of every case stored in `cases/` of a process, in ascending order of the numbers, null for a case without one. */
 function storedCaseResults(folder, roundFolder) {
   const results = caseResults(fileLines(path.join(roundFolder, "simulation.md")) ?? [])
-  return folderNumbers(path.join(folder, "cases"), /^case-(\d+)\.md$/).map((number) => ({ case: number, result: results.get(number) ?? null }))
+  return caseNumbers(folder).map((number) => ({ case: number, result: results.get(number) ?? null }))
 }
 
 /** The reason to refuse a `simulation.md` whose results do not fit the stored cases and the verdict, or undefined. */
@@ -671,14 +678,9 @@ function regressedLines(cases, recorded) {
 }
 
 function recordRound(id) {
-  const processes = readProcessesOrPrintReason()
-  if (processes === null) return 1
-  if (!/^[a-z0-9-]+$/.test(id)) {
-    process.stderr.write(`process-factory: there is no process ${id}\n`)
-    return 1
-  }
-  const entry = findProcessOrPrintReason(processes, id)
-  if (entry === undefined) return 1
+  const found = readEntryOrPrintReason(id)
+  if (found === null) return 1
+  const { processes, entry } = found
   const cannot = `process-factory: cannot record a round of ${id}`
   if (entry.stage !== "review") {
     process.stderr.write(`${cannot}: it is in the stage ${entry.stage}, not in review\n`)
@@ -787,14 +789,9 @@ function setOwner(id, personArgument) {
 }
 
 function approveDraft(id, byArgument) {
-  const processes = readProcessesOrPrintReason()
-  if (processes === null) return 1
-  if (!/^[a-z0-9-]+$/.test(id)) {
-    process.stderr.write(`process-factory: there is no process ${id}\n`)
-    return 1
-  }
-  const entry = findProcessOrPrintReason(processes, id)
-  if (entry === undefined) return 1
+  const found = readEntryOrPrintReason(id)
+  if (found === null) return 1
+  const { entry } = found
   const cannot = `process-factory: cannot approve ${id}`
   if (entry.stage !== "approval") {
     process.stderr.write(`${cannot}: it is in the stage ${entry.stage}, not in approval\n`)
@@ -854,14 +851,9 @@ function roundFindings(roundFolder, reviewer) {
 }
 
 function respecProcess(id) {
-  const processes = readProcessesOrPrintReason()
-  if (processes === null) return 1
-  if (!/^[a-z0-9-]+$/.test(id)) {
-    process.stderr.write(`process-factory: there is no process ${id}\n`)
-    return 1
-  }
-  const entry = findProcessOrPrintReason(processes, id)
-  if (entry === undefined) return 1
+  const found = readEntryOrPrintReason(id)
+  if (found === null) return 1
+  const { processes, entry } = found
   const cannot = `process-factory: cannot send ${id} back to spec`
   if (entry.stage !== "rework" && entry.stage !== "approval") {
     process.stderr.write(`${cannot}: it is in the stage ${entry.stage}, not in rework or approval\n`)
@@ -915,14 +907,9 @@ function respecProcess(id) {
 }
 
 function sendBackDraft(id, file) {
-  const processes = readProcessesOrPrintReason()
-  if (processes === null) return 1
-  if (!/^[a-z0-9-]+$/.test(id)) {
-    process.stderr.write(`process-factory: there is no process ${id}\n`)
-    return 1
-  }
-  const entry = findProcessOrPrintReason(processes, id)
-  if (entry === undefined) return 1
+  const found = readEntryOrPrintReason(id)
+  if (found === null) return 1
+  const { entry } = found
   const cannot = `process-factory: cannot send ${id} back to rework`
   if (entry.stage !== "approval") {
     process.stderr.write(`${cannot}: it is in the stage ${entry.stage}, not in approval\n`)
@@ -934,13 +921,8 @@ function sendBackDraft(id, file) {
     process.stderr.write(`${cannot}: no round is recorded for it\n`)
     return 1
   }
-  let note
-  try {
-    note = readFileOrStandardInput(file)
-  } catch (error) {
-    process.stderr.write(`process-factory: cannot read ${file}: ${errorMessage(error)}\n`)
-    return 1
-  }
+  const note = readInputOrPrintReason(file)
+  if (note === null) return 1
   const findings = note.toString("utf8").split(/\r?\n/).map(oneLine).filter((line) => line !== "")
   if (findings.length === 0) {
     process.stderr.write(`${cannot}: the note is empty\n`)
@@ -980,24 +962,19 @@ function editedNames(entry) {
   return Array.isArray(entry.needsDraft) ? entry.needsDraft : []
 }
 
-/** The text of a file through `feedbackText`, or null when it cannot be read. */
+/** The text of a file through `cleanedText`, or null when it cannot be read. */
 function editableText(file) {
   try {
-    return feedbackText(readFileSync(file, "utf8"))
+    return cleanedText(readFileSync(file, "utf8"))
   } catch {
     return null
   }
 }
 
 function editProcessFile(id, name, file, byArgument) {
-  const processes = readProcessesOrPrintReason()
-  if (processes === null) return 1
-  if (!/^[a-z0-9-]+$/.test(id)) {
-    process.stderr.write(`process-factory: there is no process ${id}\n`)
-    return 1
-  }
-  const entry = findProcessOrPrintReason(processes, id)
-  if (entry === undefined) return 1
+  const found = readEntryOrPrintReason(id)
+  if (found === null) return 1
+  const { processes, entry } = found
   if (!isEditableName(name)) {
     process.stderr.write(`process-factory: cannot edit ${id}: ${name} is not spec.md or a case-<n>.md\n`)
     return 1
@@ -1029,14 +1006,9 @@ function editProcessFile(id, name, file, byArgument) {
     process.stderr.write(`${cannot}: ${by} is not named in organisation/roles.md\n`)
     return 1
   }
-  let posted
-  try {
-    posted = readFileOrStandardInput(file)
-  } catch (error) {
-    process.stderr.write(`process-factory: cannot read ${file}: ${errorMessage(error)}\n`)
-    return 1
-  }
-  const text = feedbackText(posted.toString("utf8"))
+  const posted = readInputOrPrintReason(file)
+  if (posted === null) return 1
+  const text = cleanedText(posted.toString("utf8"))
   if (text === "") {
     process.stderr.write(`${cannot}: the text is empty\n`)
     return 1
@@ -1555,8 +1527,8 @@ function readBody(request, limit) {
   })
 }
 
-/** The text of a post as it is stored: one kind of line break, no control character but the tab, without the whitespace at its ends. */
-function feedbackText(value) {
+/** A posted or a stored text as it is stored and compared: one kind of line break, no control character but the tab, without the whitespace at its ends. */
+function cleanedText(value) {
   return value
     .replace(/\r\n?/g, "\n")
     .replace(/(?![\n\t])\p{Cc}/gu, "")
@@ -1602,7 +1574,7 @@ async function storeFeedback(request, response, { entry, number }) {
     refuse(403, ["Feedback can only be sent from the reading view itself."])
     return
   }
-  const body = await readBody(request, feedbackBodyLimit)
+  const body = await readBody(request, formBodyLimit)
   if (body === null) {
     refuse(413, ["The feedback is too long."])
     return
@@ -1610,7 +1582,7 @@ async function storeFeedback(request, response, { entry, number }) {
   const posted = new URLSearchParams(body)
   const kind = posted.get("kind")
   const step = posted.get("step")
-  const text = feedbackText(posted.get("text") ?? "")
+  const text = cleanedText(posted.get("text") ?? "")
   const name = oneLine(posted.get("name") ?? "")
   const steps = documentSteps(fileLines(versionFile(entry.id, number, "process.md")) ?? [])
   const reasons = []
@@ -1676,7 +1648,7 @@ function dashboardPage(page) {
  */
 function openQuestions(id) {
   const folder = path.join(process.cwd(), "processes", id)
-  const number = newestNumber(folder, /^questions-(\d+)\.md$/)
+  const number = newestQuestionsNumber(folder)
   if (number === null || existsSync(path.join(folder, `answers-${number}.md`))) return { number: null, questions: [] }
   const lines = fileLines(path.join(folder, `questions-${number}.md`))
   const body = lines === null ? null : sectionLines(lines, "Questions")
@@ -1745,7 +1717,7 @@ function editLink(id, name) {
 
 /** Every case of a process in the panel: one article per file `case-<n>.md`, in ascending order of `<n>`, each with its edit link when `editId` names the process. */
 function panelCases(folder, editId) {
-  const numbers = folderNumbers(path.join(folder, "cases"), /^case-(\d+)\.md$/)
+  const numbers = caseNumbers(folder)
   if (numbers.length === 0) return "<p>No case yet.</p>"
   return numbers
     .map((number) => {
@@ -1904,7 +1876,7 @@ function decisionPart(entry, folder) {
   return null
 }
 
-/** The panel of one process: where it stands, links to its seven parts, and each part as the store has it at this moment. */
+/** The panel of one process: where it stands, links to the decision it waits for and to its seven parts, and each of them as the store has it at this moment. */
 function processPanel(entry) {
   const folder = path.join(process.cwd(), "processes", entry.id)
   const spec = fileLines(path.join(folder, "spec.md"))
@@ -1957,7 +1929,7 @@ function decisionTarget(pathname) {
   return entry === undefined ? null : { entry, action }
 }
 
-/** The page `Not done`: why a decision was not taken, with the way back to the process. */
+/** The page `Not done`: why a decision was not taken or an edit was not saved, with the way back to the process. */
 function notDonePage(id, reasons) {
   return reasonsPage("Not done", reasons, `<p><a href="/${id}">Back to the process</a></p>`)
 }
@@ -1979,7 +1951,7 @@ function runDecision(response, id, commands, input = "") {
 /** The answers of a post as the answers file of the open questions of a process, or null when no field holds an answer. */
 function answersFileText(id, posted) {
   const { number, questions } = openQuestions(id)
-  const answers = questions.map((question) => ({ ...question, answer: feedbackText(posted.get(`answer-${question.number}`) ?? "") }))
+  const answers = questions.map((question) => ({ ...question, answer: cleanedText(posted.get(`answer-${question.number}`) ?? "") }))
   if (answers.every((given) => given.answer === "")) return null
   const sections = answers.flatMap((given) => [`## ${given.number}. ${given.text}`, "", given.answer === "" ? "Not known." : given.answer, ""])
   return [`# Answers ${number}`, "", ...sections].join("\n")
@@ -1994,7 +1966,7 @@ async function takeDecision(request, response, { entry, action }) {
     refuse(403, "A decision can only be sent from the dashboard itself.")
     return
   }
-  const body = await readBody(request, feedbackBodyLimit)
+  const body = await readBody(request, formBodyLimit)
   if (body === null) {
     refuse(413, "The decision is too long.")
     return
@@ -2011,7 +1983,7 @@ async function takeDecision(request, response, { entry, action }) {
   else runDecision(response, id, [["move", id, "regenerate"]])
 }
 
-/** The process, the name and the stored text of the address `/<process-id>/<part>/<name>` of a file of a process on the board, or null for every other path. */
+/** The process and the name of the address `/<process-id>/<part>/<name>` of a file of a process on the board, or null for every other path. */
 function fileTarget(pathname, part) {
   const [id, found, name, ...rest] = pathname.slice(1).split("/")
   if (found !== part || rest.length > 0 || name === undefined || !isEditableName(name)) return null
@@ -2097,7 +2069,7 @@ function comparedItems(lines) {
 
 /** The page that shows line by line what an edit changes in a file and asks for the name of the person who saves it. */
 function checkPage({ entry, name, text }, newText) {
-  const cleaned = feedbackText(newText)
+  const cleaned = cleanedText(newText)
   const lines = comparedLines(text.split("\n"), cleaned.split("\n"))
   const title = `Check the edit of ${name}`
   const head = [`<p><a href="/${entry.id}">Back to the process</a></p>`, `<h1>${title}</h1>`, `<p>${boardText(entry.title)}, ${boardText(entry.id)}</p>`]
