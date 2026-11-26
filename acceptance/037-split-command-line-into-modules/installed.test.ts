@@ -61,12 +61,12 @@ async function openInstalledDashboard(): Promise<string> {
   return address === "" ? "" : organisationAddress(address)
 }
 
-describe("a copy of the package under node_modules with the ten files of bin, templates and package.json only", () => {
-  it("consists of bin, package.json and templates, with the ten files in bin", () => {
+describe("a copy of the package under node_modules with the twelve files of bin, templates and package.json only", () => {
+  it("consists of bin, package.json and templates, with the twelve files in bin", () => {
     const packageFolder = installPackage(project)
 
     expect(entries(packageFolder)).toEqual(["bin", "package.json", "templates"])
-    expect(entries(packageFolder, "bin")).toHaveLength(10)
+    expect(entries(packageFolder, "bin")).toHaveLength(12)
   })
 
   it("installs the skill with init from the templates of that copy and exits 0", () => {
