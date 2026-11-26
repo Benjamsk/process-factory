@@ -1,10 +1,10 @@
-import { runCommand } from "../006-process-state-machine/store.ts"
+import { organisationId, runCommand } from "../006-process-state-machine/store.ts"
 import { compact, laptopId } from "../026-reading-view-on-localhost/view.ts"
 
 /** The address of the reading view as employees reach it. */
 export const address = "https://intranet.example/processes"
-/** The link of the export of version 2 of the process of the acceptance criteria. */
-export const link = `${address}/${laptopId}/2`
+/** The link of the export of version 2 of the process of the acceptance criteria, in its organisation. */
+export const link = `${address}/${organisationId}/${laptopId}/2`
 export const htmlFile = `exports/${laptopId}-v2.html`
 export const markdownFile = `exports/${laptopId}-v2.md`
 export const linkRefusal = "process-factory: the link must be an address that starts with http:// or https://, without a user name, a query or a fragment\n"

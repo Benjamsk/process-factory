@@ -264,6 +264,7 @@ describe("POST /<process-id>/save/<name>", () => {
     expect(readFile(project, specFile)).toBe(text)
     expect(existsSync(path.join(project, "hacked.txt"))).toBe(false)
     expect(existsSync(path.join(project, "processes", "hacked.txt"))).toBe(false)
+    expect(existsSync(path.resolve(project, "../..", "hacked.txt"))).toBe(false)
   })
 })
 

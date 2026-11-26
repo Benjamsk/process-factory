@@ -1,6 +1,6 @@
 import { rmSync } from "node:fs"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { emptyFolder, historyStages, readFile, runCommand, usage, writeFile } from "../006-process-state-machine/store.ts"
+import { emptyFolder, historyStages, projectOf, readFile, runCommand, usage, writeFile } from "../006-process-state-machine/store.ts"
 import { processFolder, processId } from "../024-named-owner-and-approval/approval.ts"
 import { tree } from "../026-reading-view-on-localhost/view.ts"
 import { change, changeEntry, changeList, entry, firstChange, firstRound, move, notChanged, prepareRegenerating, reasonsFile, refusedMove, secondChange, writeDraft } from "../031-controlled-regeneration/regeneration.ts"
@@ -40,7 +40,7 @@ function expectOwnerFile(): void {
 describe("process-factory send-back <process-id> <file>", () => {
   it("stores every line of the note as a finding of the owner in owner.md of the newest recorded round, and prints the file and the stage rework", () => {
     prepareApproval(project)
-    writeFile(project, "note.md", note)
+    writeFile(projectOf(project), "note.md", note)
 
     const result = runCommand(project, ["send-back", processId, "note.md"])
 
@@ -52,7 +52,7 @@ describe("process-factory send-back <process-id> <file>", () => {
 
   it("moves the process to rework, with the stage in its history, and show prints it", () => {
     prepareApproval(project)
-    writeFile(project, "note.md", note)
+    writeFile(projectOf(project), "note.md", note)
 
     expect(runCommand(project, ["send-back", processId, "note.md"]).status).toBe(0)
 
@@ -68,8 +68,8 @@ describe("process-factory send-back <process-id> <file>", () => {
     ["a note with only empty lines", "approval", {}, processId, "empty.md", `${cannot}: the note is empty\n`],
   ])("refuses %s with its line, exits with 1 and changes no file", (_name, stage, more, id, file, line) => {
     prepareApproval(project, { stage, ...more })
-    writeFile(project, "note.md", note)
-    writeFile(project, "empty.md", "\n   \n\t\n")
+    writeFile(projectOf(project), "note.md", note)
+    writeFile(projectOf(project), "empty.md", "\n   \n\t\n")
     const before = tree(project)
 
     const result = runCommand(project, ["send-back", id, file])
@@ -82,7 +82,7 @@ describe("process-factory send-back <process-id> <file>", () => {
 
   it("refuses a file that is not there and a round folder that already holds owner.md, and changes no file", () => {
     prepareApproval(project)
-    writeFile(project, "note.md", note)
+    writeFile(projectOf(project), "note.md", note)
     const empty = tree(project)
 
     const missing = runCommand(project, ["send-back", processId, "missing.md"])
@@ -134,7 +134,7 @@ describe("the usage of process-factory", () => {
     ["send-back alone", ["send-back"]],
     ["send-back with one argument", ["send-back", processId]],
     ["send-back with three arguments", ["send-back", processId, "note.md", "extra"]],
-  ])("has seventeen lines, with send-back directly after respec and before edit, and is printed with %s", (_name, args) => {
+  ])("has nineteen lines, with send-back directly after respec and before edit, and is printed with %s", (_name, args) => {
     writeStore(project, "approval")
     const before = tree(project)
 
@@ -142,12 +142,12 @@ describe("the usage of process-factory", () => {
 
     expect(result.stderr).toBe(usage)
     const lines = result.stderr.trimEnd().split("\n")
-    expect(lines).toHaveLength(17)
+    expect(lines).toHaveLength(19)
     expect(lines.slice(9, 13)).toEqual([
-      "       process-factory respec <process-id>",
-      "       process-factory send-back <process-id> <file>",
-      '       process-factory edit <process-id> <name> <file> --by "<person>"',
-      "       process-factory org init",
+      "       process-factory respec <process-id> [--org <org-id>]",
+      "       process-factory send-back <process-id> <file> [--org <org-id>]",
+      '       process-factory edit <process-id> <name> <file> --by "<person>" [--org <org-id>]',
+      '       process-factory org new "<name>"',
     ])
     expect(result.stdout).toBe("")
     expect(result.status).toBe(1)

@@ -2,7 +2,8 @@ import { writeBoard, writeFile } from "../006-process-state-machine/store.ts"
 
 export const processId = "001-handle-a-lost-laptop"
 export const processFolder = `processes/${processId}`
-export const installedFolder = ".claude/skills/process"
+/** The folder of the skill in the project, from the folder `organisations/acme` of the organisation a test works in. */
+export const installedFolder = "../../.claude/skills/process"
 export const reviewerTemplate = "templates/skills/process/reviewer.md"
 export const draftWriterTemplate = "templates/skills/process/draft-writer.md"
 export const enteredReview = { at: "2026-11-20T15:40:02.456Z", stage: "review" }

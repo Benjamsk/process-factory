@@ -1,14 +1,13 @@
 import { rmSync } from "node:fs"
 import { describe, expect, it } from "vitest"
+import { emptyFolder, runCommand } from "../006-process-state-machine/store.ts"
 import {
-  emptyFolder,
   entries,
   headings,
   interviewerTemplate,
   organisationFiles,
   readFile,
   root,
-  runCommand,
   section,
   sectionLines,
   tableRows,

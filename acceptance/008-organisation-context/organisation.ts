@@ -1,27 +1,25 @@
-import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
+import { organisationFolder, runInProject } from "../006-process-state-machine/store.ts"
 
+export { usage } from "../006-process-state-machine/store.ts"
 export const root = path.resolve(import.meta.dirname, "../..")
 export const binFile = "bin/process-factory.mjs"
 export const templateFolder = "templates/organisation"
 /** The files of the organisation context, in the order the command line creates them. */
 export const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.md", "authority.md"]
-export const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory edit <process-id> <name> <file> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory export <process-id> --format html|markdown --link <address>\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
 
-/** A new empty folder outside the repository. */
+/** A new empty folder of an organisation, in a new project outside the repository. */
 export function emptyFolder(): string {
-  return mkdtempSync(path.join(tmpdir(), "process-factory-organisation-"))
+  return organisationFolder("process-factory-organisation-")
 }
 
-/** Runs `node <script> <args>` with `cwd` as the working directory. */
+/** Runs `node <script> <args>` in the project of `cwd`, the folder of an organisation; a relative script lies in `cwd`. */
 export function runNode(cwd: string, script: string, args: string[]) {
-  return spawnSync(process.execPath, [script, ...args], { cwd, encoding: "utf8" })
+  return runInProject(cwd, script, args)
 }
 
-/** Runs the repository's command line with `cwd` as the working directory. */
+/** Runs the repository's command line in the project of `cwd`, the folder of an organisation. */
 export function runCommand(cwd: string, args: string[]) {
   return runNode(cwd, path.join(root, binFile), args)
 }

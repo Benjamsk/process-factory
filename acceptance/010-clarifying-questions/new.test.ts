@@ -1,6 +1,7 @@
 import { rmSync } from "node:fs"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { emptyFolder, entries, firstProcess, readFile, runCommand, usage } from "./clarify.ts"
+import { emptyFolder, runCommand } from "../006-process-state-machine/store.ts"
+import { entries, firstProcess, readFile, usage } from "./clarify.ts"
 
 const id = "001-handle-a-breach"
 const title = "Handle a breach"

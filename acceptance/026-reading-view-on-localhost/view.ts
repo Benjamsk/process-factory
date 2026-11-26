@@ -2,7 +2,9 @@ import { spawn, spawnSync, type ChildProcess } from "node:child_process"
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import path from "node:path"
 import { expect } from "vitest"
-import { root, writeBoard, writeFile } from "../006-process-state-machine/store.ts"
+import { organisationId, projectOf, root, writeBoard, writeFile } from "../006-process-state-machine/store.ts"
+
+export { usage } from "../006-process-state-machine/store.ts"
 
 const commandFile = path.join(root, "bin/process-factory.mjs")
 const addressLine = /^Reading view on (http:\/\/127\.0\.0\.1:\d+)\n$/
@@ -16,17 +18,41 @@ export const olderId = "000-older-process"
 export const olderEntry = { id: olderId, title: "Older process", stage: "draft", owner: kari, history: [{ at: "2026-09-01T09:00:00.000Z", stage: "draft" }] }
 export const firstDocument = "# Handle a lost laptop\n\n## Steps\n\n1. IT manager (Ola Hansen): Call the police first.\n"
 export const secondDocument = "# Handle a lost laptop\n\n## Steps\n\n1. IT manager (Ola Hansen): Block the laptop in Intune.\n"
-export const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory edit <process-id> <name> <file> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory export <process-id> --format html|markdown --link <address>\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
 
-/** Runs `serve` with arguments that must make it exit at once. Gives up after fifteen seconds. */
-export function runServe(project: string, args: string[]) {
-  return spawnSync(process.execPath, [commandFile, "serve", ...args], { cwd: project, encoding: "utf8", timeout: 15_000 })
+/** The address of the one organisation of an earlier test on a server at `address`. */
+export function organisationAddress(address: string): string {
+  return `${address}/${organisationId}`
 }
 
-/** Starts `serve` and waits until it printed a line to standard output or ended. `isRunning` says whether it still runs when it is called. */
+/**
+ * An address on a page of the organisation as it is from inside it: `/acme/<rest>` as `/<rest>` and `/acme` as `/`.
+ * An address without `/acme` in front is marked `UNPREFIXED`, so that no test passes on it.
+ */
+export function insideAddress(address: string): string {
+  if (address === `/${organisationId}`) return "/"
+  return address.startsWith(`/${organisationId}/`) ? address.slice(organisationId.length + 1) : `UNPREFIXED${address}`
+}
+
+/**
+ * A page of the organisation as it is from inside it: without the line that names the organisation as the first
+ * element of the body, and with every address of a link and a form through `insideAddress`. A page without that
+ * line is marked `NO ORGANISATION LINE`, so that no test passes on it.
+ */
+export function insidePage(body: string): string {
+  if (body === "") return body
+  const line = /<body>\s*<p>Organisation: acme<\/p>\s*/
+  const named = line.test(body) ? body.replace(line, "<body>\n") : `NO ORGANISATION LINE\n${body}`
+  return named.replace(/(href|action)="(\/[^"]*)"/g, (_match, attribute: string, address: string) => `${attribute}="${insideAddress(address)}"`)
+}
+
+/** Runs `serve` in the project of `project`, the folder of an organisation, with arguments that must make it exit at once. Gives up after fifteen seconds. */
+export function runServe(project: string, args: string[]) {
+  return spawnSync(process.execPath, [commandFile, "serve", ...args], { cwd: projectOf(project), encoding: "utf8", timeout: 15_000 })
+}
+
+/** Starts `serve` in the project of `project`, the folder of an organisation, and waits until it printed a line to standard output or ended. `isRunning` says whether it still runs when it is called. */
 export async function startServe(project: string, args: string[]): Promise<{ stdout: string; stderr: string; isRunning: () => boolean }> {
-  const child = spawn(process.execPath, [commandFile, "serve", ...args], { cwd: project, stdio: ["ignore", "pipe", "pipe"] })
+  const child = spawn(process.execPath, [commandFile, "serve", ...args], { cwd: projectOf(project), stdio: ["ignore", "pipe", "pipe"] })
   running.push(child)
   let stdout = ""
   let stderr = ""
@@ -50,12 +76,12 @@ export async function startServe(project: string, args: string[]): Promise<{ std
   return { stdout, stderr, isRunning: () => child.exitCode === null && child.signalCode === null }
 }
 
-/** Starts the reading view of `project` on a free port and gives its address, such as `http://127.0.0.1:50123`. */
+/** Starts the reading view of the project of `project`, the folder of an organisation, on a free port and gives the address of that organisation, such as `http://127.0.0.1:50123/acme`. */
 export async function openView(project: string): Promise<string> {
   const started = await startServe(project, ["--port", "0"])
   expect(started.stdout).toMatch(addressLine)
   expect(started.stderr).toBe("")
-  return addressLine.exec(started.stdout)?.[1] ?? ""
+  return organisationAddress(addressLine.exec(started.stdout)?.[1] ?? "")
 }
 
 /** Stops every view the tests started and waits until each has ended. */
@@ -77,10 +103,25 @@ export async function stopViews(): Promise<void> {
   )
 }
 
-/** Requests a path of the view, without following a redirect. */
+/** The headers of an answer of the organisation, with the address of a redirect through `insideAddress`. */
+export function insideHeaders(headers: Headers): Headers {
+  const inside = new Headers(headers)
+  const location = headers.get("location")
+  if (location !== null) inside.set("location", insideAddress(location))
+  return inside
+}
+
+/**
+ * Requests a path of the view, without following a redirect. At the address of an organisation, such as
+ * `http://127.0.0.1:50123/acme`, the path is a path inside it, `/` is the organisation itself, and the answer is
+ * given through `insideHeaders` and `insidePage`.
+ */
 export async function request(address: string, pathname: string, method = "GET"): Promise<{ status: number; headers: Headers; body: string }> {
-  const response = await fetch(`${address}${pathname}`, { method, redirect: "manual" })
-  return { status: response.status, headers: response.headers, body: await response.text() }
+  const isInside = address.endsWith(`/${organisationId}`)
+  const isOrganisation = pathname === "/" || pathname.startsWith("/?")
+  const response = await fetch(`${address}${isInside && isOrganisation ? pathname.slice(1) : pathname}`, { method, redirect: "manual" })
+  if (!isInside) return { status: response.status, headers: response.headers, body: await response.text() }
+  return { status: response.status, headers: insideHeaders(response.headers), body: insidePage(await response.text()) }
 }
 
 /** The text of an approval file as `approve` writes it. */

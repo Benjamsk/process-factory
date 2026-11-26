@@ -214,7 +214,7 @@ describe("POST /<process-id>/send-back", () => {
     expect(sent.status).toBe(303)
     expect(readFile(project, ownerFile).endsWith(`\n- [high] ${quoted}\n- [high] ${substituted}\n`)).toBe(true)
     expect(existsSync(path.join(project, "hacked.txt"))).toBe(false)
-    expect(Object.keys(tree(project)).filter((file) => file.includes("hacked"))).toEqual([])
+    expect(Object.keys(tree(path.resolve(project, "../.."))).filter((file) => file.includes("hacked"))).toEqual([])
   })
 })
 

@@ -1,7 +1,8 @@
 import { readFileSync, rmSync } from "node:fs"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { boardFile, emptyFolder, entries, firstProcess, history, readFile, runCommand, writeBoard, writeFile } from "./clarify.ts"
+import { emptyFolder, projectOf, runCommand } from "../006-process-state-machine/store.ts"
+import { boardFile, entries, firstProcess, history, readFile, writeBoard, writeFile } from "./clarify.ts"
 
 const id = "001-handle-a-breach"
 const folder = `processes/${id}`
@@ -24,7 +25,7 @@ function prepare(stage: string, questionsFiles: string[]): void {
   for (const file of questionsFiles) {
     writeFile(project, `${folder}/${file}`, "# Questions\n\n## Questions\n\n1. Who reports a lost laptop?\n2. How fast?\n")
   }
-  writeFile(project, "my-answers.md", answers)
+  writeFile(projectOf(project), "my-answers.md", answers)
 }
 
 describe("process-factory answer for a process in clarify", () => {
@@ -41,12 +42,12 @@ describe("process-factory answer for a process in clarify", () => {
     expect(runCommand(project, ["answer", id, "my-answers.md"]).status).toBe(0)
     expect(entries(project, folder)).toEqual(["answers-1.md", "questions-1.md", "request.md"])
     expect(readFileSync(path.join(project, folder, "answers-1.md")).equals(Buffer.from(answers))).toBe(true)
-    expect(readFile(project, "my-answers.md")).toBe(answers)
+    expect(readFile(projectOf(project), "my-answers.md")).toBe(answers)
   })
 
   it("takes a file given by its absolute path", () => {
     prepare("clarify", ["questions-1.md"])
-    const result = runCommand(project, ["answer", id, path.join(project, "my-answers.md")])
+    const result = runCommand(project, ["answer", id, path.join(projectOf(project), "my-answers.md")])
     expect(result.status).toBe(0)
     expect(readFile(project, `${folder}/answers-1.md`)).toBe(answers)
   })
@@ -95,7 +96,8 @@ describe("process-factory answer that is refused", () => {
     expect(result.stdout).toBe("")
     expect(result.status).toBe(1)
     expect(readFile(project, boardFile)).toBe(before)
-    expect(entries(project)).toEqual(["my-answers.md", "processes"])
+    expect(entries(projectOf(project))).toEqual(["my-answers.md", "organisations"])
+    expect(entries(project)).toEqual(["processes"])
     expect(entries(project, "processes")).toEqual([id, "board.json"])
     expect(entries(project, folder)).toEqual(["questions-1.md", "request.md"])
   })
@@ -103,7 +105,7 @@ describe("process-factory answer that is refused", () => {
   it("refuses an id on the board that would leave the store", () => {
     writeBoard(project, "../outside", "clarify")
     writeFile(project, "outside/questions-1.md", "# Questions 1\n")
-    writeFile(project, "my-answers.md", answers)
+    writeFile(projectOf(project), "my-answers.md", answers)
     const result = runCommand(project, ["answer", "../outside", "my-answers.md"])
     expect(result.stderr).toBe("process-factory: there is no process ../outside\n")
     expect(result.stdout).toBe("")
@@ -120,7 +122,7 @@ describe("process-factory answer that is refused", () => {
       writeFile(project, `${folder}/request.md`, "# Handle a breach\n")
       writeFile(project, `${folder}/questions-one.md`, "not a questions file\n")
     }
-    writeFile(project, "my-answers.md", answers)
+    writeFile(projectOf(project), "my-answers.md", answers)
     const before = readFile(project, boardFile)
     const result = runCommand(project, ["answer", id, "my-answers.md"])
     expect(result.stderr).toBe(`process-factory: cannot answer ${id}: there is no questions file in ${folder}\n`)
@@ -143,7 +145,7 @@ describe("process-factory answer that is refused", () => {
 
   it("says the file is empty when it holds only whitespace, stores nothing and leaves the process in clarify", () => {
     prepare("clarify", ["questions-1.md"])
-    writeFile(project, "blank.md", " \n\t\n")
+    writeFile(projectOf(project), "blank.md", " \n\t\n")
     const result = runCommand(project, ["answer", id, "blank.md"])
     expect(result.stderr).toBe(`process-factory: cannot answer ${id}: blank.md is empty\n`)
     expect(result.stdout).toBe("")

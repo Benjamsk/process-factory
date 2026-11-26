@@ -7,20 +7,22 @@ import { cannot, changeEntry, findingsFile, prepareRespec } from "./respec.ts"
 
 const usageLines = [
   "Usage: process-factory init",
-  '       process-factory new "<title>" ["<prompt>"]',
-  "       process-factory move <process-id> <stage>",
-  "       process-factory show [<process-id>]",
-  "       process-factory answer <process-id> <file>",
-  "       process-factory accept-spec <process-id>",
-  "       process-factory round <process-id>",
-  '       process-factory owner <process-id> "<person>"',
-  '       process-factory approve <process-id> --by "<person>"',
-  "       process-factory respec <process-id>",
-  "       process-factory send-back <process-id> <file>",
-  '       process-factory edit <process-id> <name> <file> --by "<person>"',
-  "       process-factory org init",
-  "       process-factory check",
-  "       process-factory export <process-id> --format html|markdown --link <address>",
+  '       process-factory new "<title>" ["<prompt>"] [--org <org-id>]',
+  "       process-factory move <process-id> <stage> [--org <org-id>]",
+  "       process-factory show [<process-id>] [--org <org-id>]",
+  "       process-factory answer <process-id> <file> [--org <org-id>]",
+  "       process-factory accept-spec <process-id> [--org <org-id>]",
+  "       process-factory round <process-id> [--org <org-id>]",
+  '       process-factory owner <process-id> "<person>" [--org <org-id>]',
+  '       process-factory approve <process-id> --by "<person>" [--org <org-id>]',
+  "       process-factory respec <process-id> [--org <org-id>]",
+  "       process-factory send-back <process-id> <file> [--org <org-id>]",
+  '       process-factory edit <process-id> <name> <file> --by "<person>" [--org <org-id>]',
+  '       process-factory org new "<name>"',
+  "       process-factory org list",
+  "       process-factory org init [--org <org-id>]",
+  "       process-factory check [--org <org-id>]",
+  "       process-factory export <process-id> --format html|markdown --link <address> [--org <org-id>]",
   "       process-factory serve [--port <number>]",
   "       process-factory dashboard [--port <number>]",
 ]
@@ -118,7 +120,7 @@ describe("the usage of process-factory", () => {
     ["respec alone", ["respec"]],
     ["the arguments respec a b", ["respec", "a", "b"]],
     ["no argument", []],
-  ])("has seventeen lines, with respec directly after approve, and is printed with %s", (_name, args) => {
+  ])("has nineteen lines, with respec directly after approve, and is printed with %s", (_name, args) => {
     prepareRespec(project)
     const before = readFile(project, boardFile)
 

@@ -1,5 +1,5 @@
 import { request as httpRequest } from "node:http"
-import { laptopId } from "../026-reading-view-on-localhost/view.ts"
+import { insideAddress, insidePage, laptopId } from "../026-reading-view-on-localhost/view.ts"
 import type { Answer } from "./Answer.ts"
 
 export const laptopPath = `/${laptopId}`
@@ -9,23 +9,43 @@ export const feedbackFolder = `processes/${laptopId}/feedback`
 /** The post of the acceptance criteria. */
 export const fields = { kind: "document", step: "1", text: "I did not understand step one.", name: "Ola Hansen" }
 
-/** Sends a request with a body to the view, on a connection of its own. An answer that arrived counts, also when the server closes the connection early. */
+/** An `Origin` header as a browser sends it: the origin of an address, without its path. A value that is no address stays as it is. */
+function originOf(value: string): string {
+  try {
+    return new URL(value).origin
+  } catch {
+    return value
+  }
+}
+
+/**
+ * Sends a request with a body to the view, on a connection of its own. An answer that arrived counts, also when the
+ * server closes the connection early. At the address of an organisation, such as `http://127.0.0.1:50123/acme`, the
+ * path is a path inside it and the answer is given through `insideAddress` and `insidePage`.
+ */
 export function send(address: string, pathname: string, body: string, more: { method?: string; headers?: Record<string, string> } = {}): Promise<Answer> {
   const url = new URL(address)
+  const organisation = url.pathname === "/" ? "" : url.pathname
+  const headers = Object.fromEntries(Object.entries(more.headers ?? {}).map(([name, value]) => [name, name.toLowerCase() === "origin" ? originOf(value) : value]))
+  const inside = (answer: Answer): Answer => {
+    if (organisation === "") return answer
+    const location = answer.headers.location
+    return { ...answer, headers: location === undefined ? answer.headers : { ...answer.headers, location: insideAddress(location) }, body: insidePage(answer.body) }
+  }
   return new Promise<Answer>((resolve, reject) => {
     let answer: Answer | undefined
     const fail = (error: Error): void => {
       if (answer === undefined) reject(error)
-      else resolve(answer)
+      else resolve(inside(answer))
     }
     const sent = httpRequest(
       {
         host: url.hostname,
         port: url.port,
-        path: pathname,
+        path: `${organisation}${pathname}`,
         method: more.method ?? "POST",
         agent: false,
-        headers: { "Content-Type": "application/x-www-form-urlencoded", "Content-Length": String(Buffer.byteLength(body)), ...more.headers },
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "Content-Length": String(Buffer.byteLength(body)), ...headers },
       },
       (response) => {
         const received: Answer = { status: response.statusCode ?? 0, headers: response.headers, body: "" }
@@ -35,7 +55,7 @@ export function send(address: string, pathname: string, body: string, more: { me
           received.body += chunk
         })
         response.on("end", () => {
-          resolve(received)
+          resolve(inside(received))
         })
         response.on("error", fail)
       },

@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync } from "node:fs"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { emptyFolder, entries, processes, runCommand } from "../006-process-state-machine/store.ts"
+import { emptyFolder, entries, processes, projectOf, runCommand } from "../006-process-state-machine/store.ts"
 import { findings, processFolder, processId, writeDrafts, writeFindings, writeProcess } from "../017-review-rounds/rounds.ts"
 import { installedFolder } from "./readability.ts"
 
@@ -30,7 +30,7 @@ function prepareRound(readability?: string | null): void {
   writeProcess(project)
   writeDrafts(project, [1])
   mkdirSync(path.join(project, processFolder, "rounds/round-1"), { recursive: true })
-  const reviewers = entries(project, installedFolder)
+  const reviewers = entries(projectOf(project), installedFolder)
     .filter((name) => /^[a-z0-9-]+-reviewer\.md$/.test(name))
     .map((name) => name.replace("-reviewer.md", ""))
   for (const reviewer of new Set([...reviewers, "readability"])) {

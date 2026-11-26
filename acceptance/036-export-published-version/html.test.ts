@@ -95,7 +95,7 @@ describe("process-factory export with --format html", () => {
 
     runExport(project, "html", "http://10.0.0.5:4173")
 
-    const to = `http://10.0.0.5:4173/${laptopId}/2`
+    const to = `http://10.0.0.5:4173/acme/${laptopId}/2`
     expect(elementOf(readFile(project, htmlFile), "header")).toBe(htmlStamp(laptopTitle, 2, kari, kari, "2026-11-21", to))
   })
 
