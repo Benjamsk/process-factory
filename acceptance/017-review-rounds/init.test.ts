@@ -1,8 +1,8 @@
 import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { binFile, emptyFolder, entries, root, runCommand, runNode, skillFiles, writeFile } from "../010-clarifying-questions/clarify.ts"
-import { installedFolder, reviewerTemplate } from "./rounds.ts"
+import { binFile, emptyFolder, entries, installedFolder, root, runCommand, runNode, skillFiles, writeFile } from "../010-clarifying-questions/clarify.ts"
+import { reviewerTemplate } from "./rounds.ts"
 
 const templateFolder = "templates/skills/process"
 const eightFiles = ["SKILL.md", "interviewer.md", "questioner.md", "spec-writer.md", "case-writer.md", "draft-writer.md", "incident.md", "reviewer.md"]
