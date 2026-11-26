@@ -46,12 +46,15 @@ export function organisationAddress(...parts) {
   return `/${[currentOrganisation(), ...parts].join("/")}`
 }
 
-/** A page of the organisation the running code works on, with the line that names it as the first element of its body. */
+/**
+ * A page of the organisation the running code works on, with the line that names it as the first element of its
+ * body. The line is built in a replacement function, so that a `$` of the name stands for itself.
+ */
 export function organisationPage(page) {
   const listed = organisations()
   const name = escapeHtml(listed.find((other) => other.id === currentOrganisation())?.name ?? currentOrganisation())
   const others = listed.length > 1 ? ' (<a href="/">all organisations</a>)' : ""
-  return page.replace("<body>\n", `<body>\n<p>Organisation: ${name}${others}</p>\n`)
+  return page.replace("<body>\n", () => `<body>\n<p>Organisation: ${name}${others}</p>\n`)
 }
 
 /** The versions a board entry lists whose `process.md` is there, in ascending order. */
