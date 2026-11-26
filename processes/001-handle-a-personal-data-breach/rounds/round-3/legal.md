@@ -1,0 +1,6 @@
+# legal review of draft-3.md
+
+Verdict: CHANGES
+
+- [high] Step 18, and the first point of "Who must be told": Ingrid Solheim decides what the message to the affected school owners says without the advice of Kari Nordmann that the decision requires, and the draft names no role that advises her; the step must say that she decides what the message says after advice from Kari Nordmann, who also writes the part about the data. `spec.md` does not say it either. Rule: the section "Tell the school owners and the parents about a breach" of `organisation/authority.md`.
+- [high] Step 21, and the third point of "Who must be told": telling the affected people is left entirely to Ingrid Solheim's decision and the draft names no case in which they must be told, so an employee who follows it may leave people untold where the breach is likely to result in a high risk to them, which the law does not allow; the step must say that where the breach is likely to result in a high risk to the affected people they are told, and that the decision is whether the risk is that high. `spec.md` does not say it either: its section `Legal basis` says only that the company "must consider telling the people affected". Rule: the GDPR, article 34, which the section `Legal basis` and the line `- Law:` of `Dependencies` of `spec.md` name.

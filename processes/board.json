@@ -1,0 +1,3853 @@
+{
+  "processes": [
+    {
+      "id": "001-handle-a-personal-data-breach",
+      "title": "Handle a personal data breach",
+      "stage": "published",
+      "history": [
+        {
+          "at": "2026-11-22T01:56:56.956Z",
+          "stage": "intake"
+        },
+        {
+          "at": "2026-11-22T01:59:42.311Z",
+          "stage": "clarify"
+        },
+        {
+          "at": "2026-11-22T02:01:05.920Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-22T02:07:23.812Z",
+          "stage": "clarify"
+        },
+        {
+          "at": "2026-11-22T02:07:46.450Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-22T02:16:13.882Z",
+          "stage": "clarify"
+        },
+        {
+          "at": "2026-11-22T02:16:34.209Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-22T02:22:02.790Z",
+          "stage": "clarify"
+        },
+        {
+          "at": "2026-11-22T02:22:17.705Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-22T02:27:21.386Z",
+          "stage": "cases"
+        },
+        {
+          "at": "2026-11-22T02:32:32.260Z",
+          "stage": "draft"
+        },
+        {
+          "at": "2026-11-22T09:58:29.008Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-22T10:28:52.879Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-22T10:35:12.248Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-22T10:41:50.800Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-22T10:46:29.840Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-22T10:54:23.232Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-22T11:02:02.989Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-22T11:07:08.924Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-22T11:11:26.868Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-22T11:17:28.982Z",
+          "stage": "approval"
+        },
+        {
+          "at": "2026-11-23T00:50:44.163Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T00:57:31.367Z",
+          "stage": "clarify"
+        },
+        {
+          "at": "2026-11-23T00:58:43.266Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T01:13:45.870Z",
+          "stage": "cases"
+        },
+        {
+          "at": "2026-11-23T01:19:53.977Z",
+          "stage": "draft"
+        },
+        {
+          "at": "2026-11-23T01:26:17.483Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-23T01:33:09.348Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-23T01:51:03.381Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T01:58:13.104Z",
+          "stage": "clarify"
+        },
+        {
+          "at": "2026-11-23T01:58:56.221Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T02:04:02.774Z",
+          "stage": "cases"
+        },
+        {
+          "at": "2026-11-23T02:12:34.702Z",
+          "stage": "draft"
+        },
+        {
+          "at": "2026-11-23T02:17:48.508Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-23T02:28:18.354Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-23T02:34:53.072Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T02:40:38.653Z",
+          "stage": "clarify"
+        },
+        {
+          "at": "2026-11-23T02:41:07.010Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T02:46:50.554Z",
+          "stage": "cases"
+        },
+        {
+          "at": "2026-11-23T02:56:18.661Z",
+          "stage": "draft"
+        },
+        {
+          "at": "2026-11-23T03:07:12.217Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-23T03:20:09.526Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-23T03:26:57.609Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T03:33:09.152Z",
+          "stage": "clarify"
+        },
+        {
+          "at": "2026-11-23T03:33:27.541Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T03:42:00.249Z",
+          "stage": "cases"
+        },
+        {
+          "at": "2026-11-23T03:54:16.010Z",
+          "stage": "draft"
+        },
+        {
+          "at": "2026-11-23T03:59:51.494Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-23T04:14:41.795Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-23T04:25:00.278Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-23T04:38:51.792Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-23T04:47:32.821Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-23T05:03:28.051Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-23T05:10:49.511Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-23T05:24:25.579Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-23T05:31:58.953Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-23T05:46:33.752Z",
+          "stage": "approval"
+        },
+        {
+          "at": "2026-11-23T09:49:32.525Z",
+          "stage": "published"
+        }
+      ],
+      "rounds": [
+        {
+          "round": 1,
+          "draft": "draft-1.md",
+          "at": "2026-11-22T10:28:52.879Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "PASS"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "draft": "draft-2.md",
+          "at": "2026-11-22T10:41:50.800Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "PASS"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 3,
+          "draft": "draft-3.md",
+          "at": "2026-11-22T10:54:23.232Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "CHANGES"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "FAIL"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 4,
+          "draft": "draft-4.md",
+          "at": "2026-11-22T11:07:08.924Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "PASS"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 5,
+          "draft": "draft-5.md",
+          "at": "2026-11-22T11:17:28.982Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "PASS"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            }
+          ],
+          "stopped": "the limit of 5 rounds is reached and these reviewers still ask for changes: gdpr, legal, readability"
+        },
+        {
+          "round": 6,
+          "draft": "draft-6.md",
+          "at": "2026-11-23T01:33:09.348Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "PASS"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 7,
+          "draft": "draft-8.md",
+          "at": "2026-11-23T02:28:18.354Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "CHANGES"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "FAIL"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "FAIL"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            },
+            {
+              "case": 20,
+              "result": "PASS"
+            },
+            {
+              "case": 21,
+              "result": "PASS"
+            },
+            {
+              "case": 22,
+              "result": "PASS"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            },
+            {
+              "case": 24,
+              "result": "PASS"
+            },
+            {
+              "case": 25,
+              "result": "PASS"
+            },
+            {
+              "case": 26,
+              "result": "PASS"
+            },
+            {
+              "case": 27,
+              "result": "PASS"
+            },
+            {
+              "case": 28,
+              "result": "PASS"
+            },
+            {
+              "case": 29,
+              "result": "PASS"
+            },
+            {
+              "case": 30,
+              "result": "PASS"
+            },
+            {
+              "case": 31,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 8,
+          "draft": "draft-10.md",
+          "at": "2026-11-23T03:20:09.526Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "PASS"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            },
+            {
+              "case": 20,
+              "result": "PASS"
+            },
+            {
+              "case": 21,
+              "result": "PASS"
+            },
+            {
+              "case": 22,
+              "result": "PASS"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            },
+            {
+              "case": 24,
+              "result": "PASS"
+            },
+            {
+              "case": 25,
+              "result": "PASS"
+            },
+            {
+              "case": 26,
+              "result": "PASS"
+            },
+            {
+              "case": 27,
+              "result": "PASS"
+            },
+            {
+              "case": 28,
+              "result": "PASS"
+            },
+            {
+              "case": 29,
+              "result": "PASS"
+            },
+            {
+              "case": 30,
+              "result": "PASS"
+            },
+            {
+              "case": 31,
+              "result": "PASS"
+            },
+            {
+              "case": 32,
+              "result": "PASS"
+            },
+            {
+              "case": 33,
+              "result": "PASS"
+            },
+            {
+              "case": 34,
+              "result": "PASS"
+            },
+            {
+              "case": 35,
+              "result": "PASS"
+            },
+            {
+              "case": 36,
+              "result": "PASS"
+            },
+            {
+              "case": 37,
+              "result": "PASS"
+            },
+            {
+              "case": 38,
+              "result": "PASS"
+            },
+            {
+              "case": 39,
+              "result": "PASS"
+            },
+            {
+              "case": 40,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 9,
+          "draft": "draft-12.md",
+          "at": "2026-11-23T04:14:41.795Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "CHANGES"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            },
+            {
+              "case": 20,
+              "result": "PASS"
+            },
+            {
+              "case": 21,
+              "result": "PASS"
+            },
+            {
+              "case": 22,
+              "result": "PASS"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            },
+            {
+              "case": 24,
+              "result": "FAIL"
+            },
+            {
+              "case": 25,
+              "result": "PASS"
+            },
+            {
+              "case": 26,
+              "result": "FAIL"
+            },
+            {
+              "case": 27,
+              "result": "PASS"
+            },
+            {
+              "case": 28,
+              "result": "PASS"
+            },
+            {
+              "case": 29,
+              "result": "PASS"
+            },
+            {
+              "case": 30,
+              "result": "PASS"
+            },
+            {
+              "case": 31,
+              "result": "PASS"
+            },
+            {
+              "case": 32,
+              "result": "PASS"
+            },
+            {
+              "case": 33,
+              "result": "PASS"
+            },
+            {
+              "case": 34,
+              "result": "PASS"
+            },
+            {
+              "case": 35,
+              "result": "PASS"
+            },
+            {
+              "case": 36,
+              "result": "PASS"
+            },
+            {
+              "case": 37,
+              "result": "PASS"
+            },
+            {
+              "case": 38,
+              "result": "PASS"
+            },
+            {
+              "case": 39,
+              "result": "PASS"
+            },
+            {
+              "case": 40,
+              "result": "PASS"
+            },
+            {
+              "case": 41,
+              "result": "PASS"
+            },
+            {
+              "case": 42,
+              "result": "PASS"
+            },
+            {
+              "case": 43,
+              "result": "PASS"
+            },
+            {
+              "case": 44,
+              "result": "PASS"
+            },
+            {
+              "case": 45,
+              "result": "PASS"
+            },
+            {
+              "case": 46,
+              "result": "PASS"
+            },
+            {
+              "case": 47,
+              "result": "PASS"
+            },
+            {
+              "case": 48,
+              "result": "PASS"
+            },
+            {
+              "case": 49,
+              "result": "PASS"
+            },
+            {
+              "case": 50,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 10,
+          "draft": "draft-13.md",
+          "at": "2026-11-23T04:38:51.792Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "PASS"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "PASS"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "CHANGES"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "FAIL"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            },
+            {
+              "case": 20,
+              "result": "PASS"
+            },
+            {
+              "case": 21,
+              "result": "PASS"
+            },
+            {
+              "case": 22,
+              "result": "PASS"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            },
+            {
+              "case": 24,
+              "result": "PASS"
+            },
+            {
+              "case": 25,
+              "result": "PASS"
+            },
+            {
+              "case": 26,
+              "result": "PASS"
+            },
+            {
+              "case": 27,
+              "result": "PASS"
+            },
+            {
+              "case": 28,
+              "result": "PASS"
+            },
+            {
+              "case": 29,
+              "result": "PASS"
+            },
+            {
+              "case": 30,
+              "result": "PASS"
+            },
+            {
+              "case": 31,
+              "result": "PASS"
+            },
+            {
+              "case": 32,
+              "result": "PASS"
+            },
+            {
+              "case": 33,
+              "result": "PASS"
+            },
+            {
+              "case": 34,
+              "result": "PASS"
+            },
+            {
+              "case": 35,
+              "result": "PASS"
+            },
+            {
+              "case": 36,
+              "result": "PASS"
+            },
+            {
+              "case": 37,
+              "result": "PASS"
+            },
+            {
+              "case": 38,
+              "result": "PASS"
+            },
+            {
+              "case": 39,
+              "result": "PASS"
+            },
+            {
+              "case": 40,
+              "result": "PASS"
+            },
+            {
+              "case": 41,
+              "result": "PASS"
+            },
+            {
+              "case": 42,
+              "result": "PASS"
+            },
+            {
+              "case": 43,
+              "result": "PASS"
+            },
+            {
+              "case": 44,
+              "result": "PASS"
+            },
+            {
+              "case": 45,
+              "result": "PASS"
+            },
+            {
+              "case": 46,
+              "result": "PASS"
+            },
+            {
+              "case": 47,
+              "result": "PASS"
+            },
+            {
+              "case": 48,
+              "result": "PASS"
+            },
+            {
+              "case": 49,
+              "result": "PASS"
+            },
+            {
+              "case": 50,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 11,
+          "draft": "draft-14.md",
+          "at": "2026-11-23T05:03:28.051Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "PASS"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "PASS"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            },
+            {
+              "case": 20,
+              "result": "PASS"
+            },
+            {
+              "case": 21,
+              "result": "PASS"
+            },
+            {
+              "case": 22,
+              "result": "PASS"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            },
+            {
+              "case": 24,
+              "result": "PASS"
+            },
+            {
+              "case": 25,
+              "result": "PASS"
+            },
+            {
+              "case": 26,
+              "result": "PASS"
+            },
+            {
+              "case": 27,
+              "result": "PASS"
+            },
+            {
+              "case": 28,
+              "result": "PASS"
+            },
+            {
+              "case": 29,
+              "result": "PASS"
+            },
+            {
+              "case": 30,
+              "result": "PASS"
+            },
+            {
+              "case": 31,
+              "result": "PASS"
+            },
+            {
+              "case": 32,
+              "result": "PASS"
+            },
+            {
+              "case": 33,
+              "result": "PASS"
+            },
+            {
+              "case": 34,
+              "result": "PASS"
+            },
+            {
+              "case": 35,
+              "result": "PASS"
+            },
+            {
+              "case": 36,
+              "result": "PASS"
+            },
+            {
+              "case": 37,
+              "result": "PASS"
+            },
+            {
+              "case": 38,
+              "result": "PASS"
+            },
+            {
+              "case": 39,
+              "result": "PASS"
+            },
+            {
+              "case": 40,
+              "result": "PASS"
+            },
+            {
+              "case": 41,
+              "result": "PASS"
+            },
+            {
+              "case": 42,
+              "result": "PASS"
+            },
+            {
+              "case": 43,
+              "result": "PASS"
+            },
+            {
+              "case": 44,
+              "result": "PASS"
+            },
+            {
+              "case": 45,
+              "result": "PASS"
+            },
+            {
+              "case": 46,
+              "result": "PASS"
+            },
+            {
+              "case": 47,
+              "result": "PASS"
+            },
+            {
+              "case": 48,
+              "result": "PASS"
+            },
+            {
+              "case": 49,
+              "result": "PASS"
+            },
+            {
+              "case": 50,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 12,
+          "draft": "draft-15.md",
+          "at": "2026-11-23T05:24:25.579Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "PASS"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            },
+            {
+              "case": 20,
+              "result": "PASS"
+            },
+            {
+              "case": 21,
+              "result": "PASS"
+            },
+            {
+              "case": 22,
+              "result": "PASS"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            },
+            {
+              "case": 24,
+              "result": "PASS"
+            },
+            {
+              "case": 25,
+              "result": "PASS"
+            },
+            {
+              "case": 26,
+              "result": "PASS"
+            },
+            {
+              "case": 27,
+              "result": "PASS"
+            },
+            {
+              "case": 28,
+              "result": "PASS"
+            },
+            {
+              "case": 29,
+              "result": "PASS"
+            },
+            {
+              "case": 30,
+              "result": "PASS"
+            },
+            {
+              "case": 31,
+              "result": "PASS"
+            },
+            {
+              "case": 32,
+              "result": "PASS"
+            },
+            {
+              "case": 33,
+              "result": "PASS"
+            },
+            {
+              "case": 34,
+              "result": "PASS"
+            },
+            {
+              "case": 35,
+              "result": "PASS"
+            },
+            {
+              "case": 36,
+              "result": "PASS"
+            },
+            {
+              "case": 37,
+              "result": "PASS"
+            },
+            {
+              "case": 38,
+              "result": "PASS"
+            },
+            {
+              "case": 39,
+              "result": "PASS"
+            },
+            {
+              "case": 40,
+              "result": "PASS"
+            },
+            {
+              "case": 41,
+              "result": "PASS"
+            },
+            {
+              "case": 42,
+              "result": "PASS"
+            },
+            {
+              "case": 43,
+              "result": "PASS"
+            },
+            {
+              "case": 44,
+              "result": "PASS"
+            },
+            {
+              "case": 45,
+              "result": "PASS"
+            },
+            {
+              "case": 46,
+              "result": "PASS"
+            },
+            {
+              "case": 47,
+              "result": "PASS"
+            },
+            {
+              "case": 48,
+              "result": "PASS"
+            },
+            {
+              "case": 49,
+              "result": "PASS"
+            },
+            {
+              "case": 50,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 13,
+          "draft": "draft-16.md",
+          "at": "2026-11-23T05:46:33.752Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "PASS"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "PASS"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "PASS"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            },
+            {
+              "case": 20,
+              "result": "PASS"
+            },
+            {
+              "case": 21,
+              "result": "PASS"
+            },
+            {
+              "case": 22,
+              "result": "PASS"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            },
+            {
+              "case": 24,
+              "result": "PASS"
+            },
+            {
+              "case": 25,
+              "result": "PASS"
+            },
+            {
+              "case": 26,
+              "result": "PASS"
+            },
+            {
+              "case": 27,
+              "result": "PASS"
+            },
+            {
+              "case": 28,
+              "result": "PASS"
+            },
+            {
+              "case": 29,
+              "result": "PASS"
+            },
+            {
+              "case": 30,
+              "result": "PASS"
+            },
+            {
+              "case": 31,
+              "result": "PASS"
+            },
+            {
+              "case": 32,
+              "result": "PASS"
+            },
+            {
+              "case": 33,
+              "result": "PASS"
+            },
+            {
+              "case": 34,
+              "result": "PASS"
+            },
+            {
+              "case": 35,
+              "result": "PASS"
+            },
+            {
+              "case": 36,
+              "result": "PASS"
+            },
+            {
+              "case": 37,
+              "result": "PASS"
+            },
+            {
+              "case": 38,
+              "result": "PASS"
+            },
+            {
+              "case": 39,
+              "result": "PASS"
+            },
+            {
+              "case": 40,
+              "result": "PASS"
+            },
+            {
+              "case": 41,
+              "result": "PASS"
+            },
+            {
+              "case": 42,
+              "result": "PASS"
+            },
+            {
+              "case": 43,
+              "result": "PASS"
+            },
+            {
+              "case": 44,
+              "result": "PASS"
+            },
+            {
+              "case": 45,
+              "result": "PASS"
+            },
+            {
+              "case": 46,
+              "result": "PASS"
+            },
+            {
+              "case": 47,
+              "result": "PASS"
+            },
+            {
+              "case": 48,
+              "result": "PASS"
+            },
+            {
+              "case": 49,
+              "result": "PASS"
+            },
+            {
+              "case": 50,
+              "result": "PASS"
+            }
+          ],
+          "stopped": "the limit of 5 rounds is reached and these reviewers still ask for changes: readability"
+        }
+      ],
+      "respecs": [
+        {
+          "round": 5,
+          "at": "2026-11-23T00:50:44.163Z"
+        },
+        {
+          "round": 6,
+          "at": "2026-11-23T01:51:03.381Z"
+        },
+        {
+          "round": 7,
+          "at": "2026-11-23T02:34:53.072Z"
+        },
+        {
+          "round": 8,
+          "at": "2026-11-23T03:26:57.609Z"
+        }
+      ],
+      "specAcceptedAt": "2026-11-23T03:42:00.249Z",
+      "owner": "Ingrid Solheim",
+      "dependencies": [
+        {
+          "kind": "Role",
+          "name": "Managing director",
+          "hash": "4cb4c3a9225d08b71eba4fab3d63e3a9eb643c362e67ce3b6b854c179150e0ec"
+        },
+        {
+          "kind": "Role",
+          "name": "Head of product",
+          "hash": "d63906672451732cafaeb969b66fa2af193c6e6be83af81def7c374c5fe0e407"
+        },
+        {
+          "kind": "Role",
+          "name": "Head of customer success",
+          "hash": "9755ae1b515247c2b08d22e51933613fbea31d2d12f9dc99b6e192a6abbc5331"
+        },
+        {
+          "kind": "Role",
+          "name": "Support lead",
+          "hash": "393b38259787764edb713222c0b06c0db24aa527cf24c38272ba126c418f49d1"
+        },
+        {
+          "kind": "Role",
+          "name": "Data protection officer",
+          "hash": "0f3f18f1b0a7ab4b2ab6804c49145743160ba6ac434c582ab9043c3cb3fb8346"
+        },
+        {
+          "kind": "Role",
+          "name": "Head of IT",
+          "hash": "82142f67d7a12ece17be71d28123b15418c4adeba6e553a71d974fb6c95fbaeb"
+        },
+        {
+          "kind": "Role",
+          "name": "Head of finance",
+          "hash": "21e003f9fc332f14ed68a2498225d5e1685515490fe200aba9f7c3478b5d419f"
+        },
+        {
+          "kind": "Role",
+          "name": "Head of people",
+          "hash": "8df903fe6064487d88dd784df2c6bafdf135dae751ab77aba0cd4ba7aae0aae0"
+        },
+        {
+          "kind": "Role",
+          "name": "On-call developer",
+          "hash": "a2755c430926a7a963979d9cfa917e306f15db6c5fb781b2d7a5222c260cf898"
+        },
+        {
+          "kind": "Role",
+          "name": "Lead developer",
+          "hash": "e713bb4d360e1ad28f03f34b0cea318927096f007dd9e7f04897bab8869448c2"
+        },
+        {
+          "kind": "Role",
+          "name": "Support team",
+          "hash": "15151e430aab76b459737d9563b5482878c8999c1b83680e420466cf4e24671b"
+        },
+        {
+          "kind": "System",
+          "name": "Reading app",
+          "hash": "8b8f66783a57a6dd4ce202155a069aee51bcc90e11faced10f7225ca8f4c92da"
+        },
+        {
+          "kind": "System",
+          "name": "Nordsky Cloud",
+          "hash": "3be406d1ebdc5420e02075b947c0d14b41afbe7148b6b6b93ebc60de66e48e8e"
+        },
+        {
+          "kind": "System",
+          "name": "AI support assistant",
+          "hash": "fbecf408e2dd97074ad760e82081e56d45ef33baa95f708a8acee0d51e6ec8cc"
+        },
+        {
+          "kind": "System",
+          "name": "Support desk",
+          "hash": "c0be91ad2a3c8593fdf5f02e9035c06af8054c5235bf8d661b5b3444bf66d01e"
+        },
+        {
+          "kind": "System",
+          "name": "Payroll system",
+          "hash": "0ed0feb08a6dd51b27395f087fb660a879b1121853f0f7eae26438e9955a564d"
+        },
+        {
+          "kind": "System",
+          "name": "Hiring system",
+          "hash": "418a44a70f40d556acef3772f5158b6ec8bf867f0e05835957d291c6e1971f75"
+        },
+        {
+          "kind": "System",
+          "name": "Office suite",
+          "hash": "90ca196ee5a091cb1f5453fb3e86988446bb23263249b44e964db16811d79b24"
+        },
+        {
+          "kind": "System",
+          "name": "Contract archive",
+          "hash": "9252190735f1f5f9f310b50f93732b7c501a969b16725fb1baf39aa1887b4399"
+        },
+        {
+          "kind": "Agreement",
+          "name": "The school owners",
+          "hash": "e4d4523b68da6ebc199cfadd8071c1b359750f778580077e04d5844d9677bcf1"
+        },
+        {
+          "kind": "Agreement",
+          "name": "Nordsky AS",
+          "hash": "73aae964d16c1ff69bba9091ae257345298e5937de2e884d7416217221da65f3"
+        },
+        {
+          "kind": "Agreement",
+          "name": "Hjelpedesk AS",
+          "hash": "3f7d1f361ed4f4240079f415343411dd4d0f640041e2241bd78a8deea6687945"
+        },
+        {
+          "kind": "Agreement",
+          "name": "Anthropic",
+          "hash": "35b958788981c692f26792ffae3650996f35857f72c81f7ba363bbff507250be"
+        },
+        {
+          "kind": "Agreement",
+          "name": "Lønn Norge AS",
+          "hash": "901309cb6a62dfbf9ce765f5e759a933ba387acfbc3b946898a09f95b21330f0"
+        },
+        {
+          "kind": "Agreement",
+          "name": "Rekrutt AS",
+          "hash": "3c61f567e3f45e5e9d42684481549374c8de0227d846f0e29ae8bae3f818a951"
+        },
+        {
+          "kind": "Agreement",
+          "name": "Microsoft",
+          "hash": "7c1d13a88baff71dd2b815e8def7601b6fdb0bb831072b168f391f6801e8d2a9"
+        },
+        {
+          "kind": "Agreement",
+          "name": "Aas & Wold",
+          "hash": "d9afc0e79fa9b5488a625f281138a7b3b8b4615ad033058fcc2ed4d139164bbc"
+        },
+        {
+          "kind": "Policy",
+          "name": "Information security policy",
+          "hash": "f12802514f1bbd8b6fed2f1a26d00c17a6b30b5e3608e8ea0ed09b8378f940cd"
+        },
+        {
+          "kind": "Policy",
+          "name": "AI use policy",
+          "hash": "44cde8de209cf3f723b4ed0f0c21592e6e0f7ea90a75110d083d47f72662bc98"
+        },
+        {
+          "kind": "Policy",
+          "name": "Record of processing activities",
+          "hash": "263fde8b679a9fab7aa54fb4ddf24324358079f40e209e8dd54600c8a19a6dc5"
+        }
+      ],
+      "versions": [
+        {
+          "version": 1,
+          "draft": "draft-16.md",
+          "approvedBy": "Ingrid Solheim",
+          "at": "2026-11-23T09:49:32.525Z"
+        }
+      ]
+    },
+    {
+      "id": "002-report-a-lost-laptop",
+      "title": "Report a lost laptop",
+      "stage": "published",
+      "history": [
+        {
+          "at": "2026-11-23T14:08:24.466Z",
+          "stage": "intake"
+        },
+        {
+          "at": "2026-11-23T14:11:42.062Z",
+          "stage": "clarify"
+        },
+        {
+          "at": "2026-11-23T20:01:10.162Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T20:06:06.991Z",
+          "stage": "cases"
+        },
+        {
+          "at": "2026-11-23T20:15:56.440Z",
+          "stage": "draft"
+        },
+        {
+          "at": "2026-11-23T20:19:54.923Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-23T20:29:14.542Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-23T20:29:32.229Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T20:35:19.008Z",
+          "stage": "clarify"
+        },
+        {
+          "at": "2026-11-23T20:36:53.081Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T20:41:06.696Z",
+          "stage": "cases"
+        },
+        {
+          "at": "2026-11-23T20:47:38.617Z",
+          "stage": "draft"
+        },
+        {
+          "at": "2026-11-23T20:53:00.808Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-23T21:02:12.354Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-23T21:08:55.847Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T21:13:34.451Z",
+          "stage": "clarify"
+        },
+        {
+          "at": "2026-11-23T21:14:11.003Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T21:27:12.008Z",
+          "stage": "cases"
+        },
+        {
+          "at": "2026-11-23T21:35:11.955Z",
+          "stage": "draft"
+        },
+        {
+          "at": "2026-11-23T21:40:01.560Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-23T21:47:58.374Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-23T21:56:21.534Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-23T22:06:16.286Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-23T22:14:20.844Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T22:21:11.665Z",
+          "stage": "clarify"
+        },
+        {
+          "at": "2026-11-23T22:21:38.854Z",
+          "stage": "spec"
+        },
+        {
+          "at": "2026-11-23T22:28:28.460Z",
+          "stage": "cases"
+        },
+        {
+          "at": "2026-11-23T22:38:04.265Z",
+          "stage": "draft"
+        },
+        {
+          "at": "2026-11-23T22:43:35.579Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-23T22:54:21.978Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-23T23:53:44.582Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-24T00:04:05.984Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-24T00:13:10.232Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-24T00:22:40.656Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-24T00:30:12.133Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-24T00:43:48.383Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-24T00:50:34.808Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-24T01:02:17.200Z",
+          "stage": "rework"
+        },
+        {
+          "at": "2026-11-24T01:09:52.932Z",
+          "stage": "review"
+        },
+        {
+          "at": "2026-11-24T01:23:33.031Z",
+          "stage": "approval"
+        },
+        {
+          "at": "2026-11-24T01:39:56.624Z",
+          "stage": "published"
+        }
+      ],
+      "rounds": [
+        {
+          "round": 1,
+          "draft": "draft-1.md",
+          "at": "2026-11-23T20:29:14.542Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "PASS"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "CHANGES"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "FAIL"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "FAIL"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "FAIL"
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "draft": "draft-2.md",
+          "at": "2026-11-23T21:02:12.354Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "CHANGES"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "FAIL"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 3,
+          "draft": "draft-4.md",
+          "at": "2026-11-23T21:47:58.374Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "CHANGES"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "FAIL"
+            },
+            {
+              "case": 2,
+              "result": "FAIL"
+            },
+            {
+              "case": 3,
+              "result": "FAIL"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "FAIL"
+            },
+            {
+              "case": 6,
+              "result": "FAIL"
+            },
+            {
+              "case": 7,
+              "result": "FAIL"
+            },
+            {
+              "case": 8,
+              "result": "FAIL"
+            },
+            {
+              "case": 9,
+              "result": "FAIL"
+            },
+            {
+              "case": 10,
+              "result": "FAIL"
+            },
+            {
+              "case": 11,
+              "result": "FAIL"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "FAIL"
+            },
+            {
+              "case": 15,
+              "result": "FAIL"
+            },
+            {
+              "case": 16,
+              "result": "FAIL"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "FAIL"
+            },
+            {
+              "case": 19,
+              "result": "FAIL"
+            },
+            {
+              "case": 20,
+              "result": "PASS"
+            },
+            {
+              "case": 21,
+              "result": "FAIL"
+            },
+            {
+              "case": 22,
+              "result": "FAIL"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 4,
+          "draft": "draft-5.md",
+          "at": "2026-11-23T22:06:16.286Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "PASS"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "PASS"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            },
+            {
+              "case": 20,
+              "result": "PASS"
+            },
+            {
+              "case": 21,
+              "result": "PASS"
+            },
+            {
+              "case": 22,
+              "result": "PASS"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 5,
+          "draft": "draft-7.md",
+          "at": "2026-11-23T22:54:21.978Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "CHANGES"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            },
+            {
+              "case": 20,
+              "result": "PASS"
+            },
+            {
+              "case": 21,
+              "result": "PASS"
+            },
+            {
+              "case": 22,
+              "result": "FAIL"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            },
+            {
+              "case": 24,
+              "result": "PASS"
+            },
+            {
+              "case": 25,
+              "result": "PASS"
+            },
+            {
+              "case": 26,
+              "result": "PASS"
+            },
+            {
+              "case": 27,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 6,
+          "draft": "draft-8.md",
+          "at": "2026-11-24T00:04:05.984Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "PASS"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            },
+            {
+              "case": 20,
+              "result": "PASS"
+            },
+            {
+              "case": 21,
+              "result": "PASS"
+            },
+            {
+              "case": 22,
+              "result": "PASS"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            },
+            {
+              "case": 24,
+              "result": "PASS"
+            },
+            {
+              "case": 25,
+              "result": "PASS"
+            },
+            {
+              "case": 26,
+              "result": "PASS"
+            },
+            {
+              "case": 27,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 7,
+          "draft": "draft-9.md",
+          "at": "2026-11-24T00:22:40.656Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "PASS"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            },
+            {
+              "case": 20,
+              "result": "PASS"
+            },
+            {
+              "case": 21,
+              "result": "PASS"
+            },
+            {
+              "case": 22,
+              "result": "PASS"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            },
+            {
+              "case": 24,
+              "result": "PASS"
+            },
+            {
+              "case": 25,
+              "result": "PASS"
+            },
+            {
+              "case": 26,
+              "result": "PASS"
+            },
+            {
+              "case": 27,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 8,
+          "draft": "draft-10.md",
+          "at": "2026-11-24T00:43:48.383Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "PASS"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "PASS"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            },
+            {
+              "case": 20,
+              "result": "PASS"
+            },
+            {
+              "case": 21,
+              "result": "PASS"
+            },
+            {
+              "case": 22,
+              "result": "PASS"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            },
+            {
+              "case": 24,
+              "result": "PASS"
+            },
+            {
+              "case": 25,
+              "result": "PASS"
+            },
+            {
+              "case": 26,
+              "result": "PASS"
+            },
+            {
+              "case": 27,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 9,
+          "draft": "draft-11.md",
+          "at": "2026-11-24T01:02:17.200Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "CHANGES"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "FAIL"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            },
+            {
+              "case": 20,
+              "result": "FAIL"
+            },
+            {
+              "case": 21,
+              "result": "PASS"
+            },
+            {
+              "case": 22,
+              "result": "PASS"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            },
+            {
+              "case": 24,
+              "result": "PASS"
+            },
+            {
+              "case": 25,
+              "result": "PASS"
+            },
+            {
+              "case": 26,
+              "result": "PASS"
+            },
+            {
+              "case": 27,
+              "result": "PASS"
+            }
+          ]
+        },
+        {
+          "round": 10,
+          "draft": "draft-12.md",
+          "at": "2026-11-24T01:23:33.031Z",
+          "verdicts": [
+            {
+              "reviewer": "gdpr",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "legal",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "readability",
+              "verdict": "CHANGES"
+            },
+            {
+              "reviewer": "simulation",
+              "verdict": "PASS"
+            }
+          ],
+          "cases": [
+            {
+              "case": 1,
+              "result": "PASS"
+            },
+            {
+              "case": 2,
+              "result": "PASS"
+            },
+            {
+              "case": 3,
+              "result": "PASS"
+            },
+            {
+              "case": 4,
+              "result": "PASS"
+            },
+            {
+              "case": 5,
+              "result": "PASS"
+            },
+            {
+              "case": 6,
+              "result": "PASS"
+            },
+            {
+              "case": 7,
+              "result": "PASS"
+            },
+            {
+              "case": 8,
+              "result": "PASS"
+            },
+            {
+              "case": 9,
+              "result": "PASS"
+            },
+            {
+              "case": 10,
+              "result": "PASS"
+            },
+            {
+              "case": 11,
+              "result": "PASS"
+            },
+            {
+              "case": 12,
+              "result": "PASS"
+            },
+            {
+              "case": 13,
+              "result": "PASS"
+            },
+            {
+              "case": 14,
+              "result": "PASS"
+            },
+            {
+              "case": 15,
+              "result": "PASS"
+            },
+            {
+              "case": 16,
+              "result": "PASS"
+            },
+            {
+              "case": 17,
+              "result": "PASS"
+            },
+            {
+              "case": 18,
+              "result": "PASS"
+            },
+            {
+              "case": 19,
+              "result": "PASS"
+            },
+            {
+              "case": 20,
+              "result": "PASS"
+            },
+            {
+              "case": 21,
+              "result": "PASS"
+            },
+            {
+              "case": 22,
+              "result": "PASS"
+            },
+            {
+              "case": 23,
+              "result": "PASS"
+            },
+            {
+              "case": 24,
+              "result": "PASS"
+            },
+            {
+              "case": 25,
+              "result": "PASS"
+            },
+            {
+              "case": 26,
+              "result": "PASS"
+            },
+            {
+              "case": 27,
+              "result": "PASS"
+            }
+          ],
+          "stopped": "the limit of 5 rounds is reached and these reviewers still ask for changes: gdpr, legal, readability"
+        }
+      ],
+      "respecs": [
+        {
+          "round": 1,
+          "at": "2026-11-23T20:29:32.229Z"
+        },
+        {
+          "round": 2,
+          "at": "2026-11-23T21:08:55.847Z"
+        },
+        {
+          "round": 4,
+          "at": "2026-11-23T22:14:20.844Z"
+        }
+      ],
+      "specAcceptedAt": "2026-11-23T22:28:28.460Z",
+      "owner": "Marius Tangen",
+      "dependencies": [
+        {
+          "kind": "Role",
+          "name": "Head of IT",
+          "hash": "82142f67d7a12ece17be71d28123b15418c4adeba6e553a71d974fb6c95fbaeb"
+        },
+        {
+          "kind": "Role",
+          "name": "Lead developer",
+          "hash": "e713bb4d360e1ad28f03f34b0cea318927096f007dd9e7f04897bab8869448c2"
+        },
+        {
+          "kind": "Role",
+          "name": "On-call developer",
+          "hash": "a2755c430926a7a963979d9cfa917e306f15db6c5fb781b2d7a5222c260cf898"
+        },
+        {
+          "kind": "Role",
+          "name": "Data protection officer",
+          "hash": "0f3f18f1b0a7ab4b2ab6804c49145743160ba6ac434c582ab9043c3cb3fb8346"
+        },
+        {
+          "kind": "Role",
+          "name": "Head of people",
+          "hash": "8df903fe6064487d88dd784df2c6bafdf135dae751ab77aba0cd4ba7aae0aae0"
+        },
+        {
+          "kind": "Role",
+          "name": "Head of finance",
+          "hash": "21e003f9fc332f14ed68a2498225d5e1685515490fe200aba9f7c3478b5d419f"
+        },
+        {
+          "kind": "Role",
+          "name": "Managing director",
+          "hash": "4cb4c3a9225d08b71eba4fab3d63e3a9eb643c362e67ce3b6b854c179150e0ec"
+        },
+        {
+          "kind": "Role",
+          "name": "Reachability outside working hours",
+          "hash": "01250e9b3ebb5a615bb5ce8d9875cdcb36fa794e20c30bfa05258789622c1b62"
+        },
+        {
+          "kind": "System",
+          "name": "Device management",
+          "hash": "bea414bcb90755b090ddcb306a31003f02d1425ed103cfd33f4d13643ce519c0"
+        },
+        {
+          "kind": "System",
+          "name": "Equipment register",
+          "hash": "1f25b2a1921f9467c45cbea4152fedb8f9c6babb0d153f683cf2f7a06be825e9"
+        },
+        {
+          "kind": "System",
+          "name": "Office suite",
+          "hash": "90ca196ee5a091cb1f5453fb3e86988446bb23263249b44e964db16811d79b24"
+        },
+        {
+          "kind": "System",
+          "name": "Nordsky Cloud",
+          "hash": "3be406d1ebdc5420e02075b947c0d14b41afbe7148b6b6b93ebc60de66e48e8e"
+        },
+        {
+          "kind": "System",
+          "name": "Support desk",
+          "hash": "c0be91ad2a3c8593fdf5f02e9035c06af8054c5235bf8d661b5b3444bf66d01e"
+        },
+        {
+          "kind": "System",
+          "name": "Reading app",
+          "hash": "8b8f66783a57a6dd4ce202155a069aee51bcc90e11faced10f7225ca8f4c92da"
+        },
+        {
+          "kind": "System",
+          "name": "Staff handbook",
+          "hash": "84f407e6482b82ef7b620f433daa72f6138ea38358a5e7e09224aac90b58f1cc"
+        },
+        {
+          "kind": "System",
+          "name": "Employment files",
+          "hash": "4e75c0b12e3dae4d5f2d120661da4432e060a80e94b3ab09379f8852dc47081d"
+        },
+        {
+          "kind": "Agreement",
+          "name": "Microsoft",
+          "hash": "0ae7764d8a768ad8d214007a138e2da45af5e89fc7baa3284c0f97ae657df797"
+        },
+        {
+          "kind": "Agreement",
+          "name": "Nordsky AS",
+          "hash": "73aae964d16c1ff69bba9091ae257345298e5937de2e884d7416217221da65f3"
+        },
+        {
+          "kind": "Agreement",
+          "name": "Hjelpedesk AS",
+          "hash": "3f7d1f361ed4f4240079f415343411dd4d0f640041e2241bd78a8deea6687945"
+        },
+        {
+          "kind": "Agreement",
+          "name": "Aas & Wold",
+          "hash": "d9afc0e79fa9b5488a625f281138a7b3b8b4615ad033058fcc2ed4d139164bbc"
+        },
+        {
+          "kind": "Policy",
+          "name": "Lost or stolen equipment",
+          "hash": "bea9198b89b403ca142085fd927141c69f7a866a9d24980af16870c68ca533d3"
+        },
+        {
+          "kind": "Policy",
+          "name": "Information security policy",
+          "hash": "f12802514f1bbd8b6fed2f1a26d00c17a6b30b5e3608e8ea0ed09b8378f940cd"
+        },
+        {
+          "kind": "Policy",
+          "name": "AI use policy",
+          "hash": "44cde8de209cf3f723b4ed0f0c21592e6e0f7ea90a75110d083d47f72662bc98"
+        }
+      ],
+      "versions": [
+        {
+          "version": 1,
+          "draft": "draft-12.md",
+          "approvedBy": "Marius Tangen",
+          "at": "2026-11-24T01:39:56.624Z"
+        }
+      ]
+    }
+  ]
+}

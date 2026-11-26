@@ -1,0 +1,5 @@
+# gdpr review of draft-11.md
+
+Verdict: CHANGES
+
+- [medium] Steps 18 and 19, and the fifth point of step 16: Nora Lind sends the telling to the private email address or postal address the employment file holds and gives what that file holds about the person who had the device (who had it, when they left, what they handed back and what they said about it then), and this happens in every case, also where the loss is no personal data breach; the `Legal basis` section of `spec.md` gives no Article 6 basis for it, because its Article 6(1)(f) basis names only "the device's own entries in device management and the entries of that one account in the sign-in logs of the office suite and the access logs of Nordsky Cloud" and its Article 6(1)(c) basis runs only from the moment the loss is decided to be a personal data breach; the basis for the employment-file data is missing from `spec.md`, not from the draft, so `spec.md` must say that the same legitimate interest covers the private contact address and the facts the employment file holds about the person who had the device.

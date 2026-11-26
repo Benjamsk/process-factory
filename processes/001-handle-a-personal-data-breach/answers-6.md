@@ -1,0 +1,29 @@
+# Answers 6
+
+## 1. When the breach is stopped, are closing the access, revoking the token and locking the account all three done, or only the ones that fit the breach, and who decides which?
+
+Only the ones that fit the breach, and every one of them that fits is done. Marius Tangen decides which of the three fit, and Amina Farah decides when he is away. Outside working hours the on-call developer does at once, without waiting for that decision, every one of the three that the role can do in Nordsky Cloud, and then tells Marius Tangen what was done and when; Marius Tangen decides about anything the role cannot do. What was done, what was not done and why is written in the record.
+
+## 2. Who establishes the facts about employee and job applicant data for the fact page, such as the absence and sick leave in the payroll system and the data in the hiring system, when the lead developer does the work in the reading app and Nordsky Cloud and is not part of those systems?
+
+The person responsible for the system does the work in it and gives what they find to Marius Tangen, who still owns the fact page: Tomas Berg for the payroll system, Nora Lind for the hiring system, Marius Tangen himself for the office suite and the contract archive, Silje Haugland for the support desk, Petter Dahl for the AI support assistant, and Amina Farah for the reading app and Nordsky Cloud. Where that person is away, the person who steps in for them in `organisation/roles.md` does it. Each of them gives Marius Tangen what they found within 12 hours of being asked, so that the fact page can be finished within 24 hours of the report.
+
+## 3. Which words or signs in a support case make the AI support assistant hand it over to a human while a breach is running: are leak, hacked, data, privacy, Datatilsynet and a complaining parent the whole list, or does something else belong on it?
+
+That is the whole list of signs, written out as the words the assistant looks for in Norwegian and in English: lekkasje, leak, hacket, hacked, hack, brudd, breach, data, personopplysninger, personal data, personvern, privacy, GDPR, Datatilsynet. To them are added two signs that are not words: every case that comes from a parent rather than from a teacher or a school contact, and every case that names the system the breach is in. A case with any one of these signs goes to a human support person and the assistant answers nothing in it. Petter Dahl may add a word or a sign to the list while the case runs, and writes down what he added and when; he may take nothing off the list while the case runs. Outside working hours the on-call developer may add one, and tells Petter Dahl.
+
+## 4. Is the notification to Datatilsynet sent without undue delay as well as at the latest 72 hours after the company became aware, as the message to the school owners and the message to the people affected are, or is the 72 hours the only time it has to keep?
+
+Without undue delay as well, and at the latest 72 hours after the company became aware. The 72 hours is the outer limit and not a waiting time: the notification goes the moment the fact page carries enough to send it, and where something is still unestablished it goes with that said in it and a supplementary notification follows.
+
+## 5. What must the message to the people affected say, beyond the description of the data and what the person can do that Kari Nordmann writes?
+
+It must say, in clear and plain language: what happened, as the nature of the breach; the name and contact details of Kari Nordmann as the data protection officer, and of Henrik Aas of Aas & Wold when she is away; the likely consequences of the breach for that person; and the measures the company has taken or proposes to take, including what it has done to limit the harm. The message holds no personal data of anyone other than the person it is sent to, carries the date it was sent, and goes to each person separately. Ingrid Solheim decides the wording after advice from Kari Nordmann, and Kari Nordmann checks that these five things are in it before it goes out.
+
+## 6. Who does a person on a case turn to with a question this process does not answer, such as how long the reading app stays offline and who decides to put it back, or what is done about an answer the AI support assistant has already sent?
+
+Kari Nordmann, on the three days she works, and Henrik Aas of Aas & Wold on the firm's emergency number on the other days and at weekends. Three kinds of question go elsewhere first: anything about the systems, including how long the reading app stays offline and when it goes back, is decided by Marius Tangen, who tells Jonas Vikane and Silje Haugland at once when it goes back, and by Amina Farah when he is away; anything about an answer the AI support assistant has already sent is decided by Petter Dahl, who asks Kari Nordmann when the answer touches personal data, and by Silje Haugland when he is away; and a question nobody above can answer goes to Ingrid Solheim, and to Tomas Berg when she is away. Every such question and the answer given go into the record, so that the next version of this process covers it.
+
+## 7. In which company system is the secured copy of the Nordsky Cloud access logs kept, and who may open it there?
+
+In the office suite, in a folder Marius Tangen makes for the case and keeps beside the record. Only five people may open it: Marius Tangen, Amina Farah, Kari Nordmann, Henrik Aas of Aas & Wold while he stands in for her, and Ingrid Solheim. Marius Tangen sets those rights when he makes the folder and the record says that he did. The copy is never sent by email, never printed and never put on a private device, a private account or a memory stick, and no one else is given access to the folder without Kari Nordmann's agreement, which goes into the record.

@@ -1,0 +1,17 @@
+# Answers 8
+
+## 1. In working hours, who tells the support lead that the head of IT has confirmed a real breach and that support is now closed on the subject, so that he switches the AI support assistant into hand-over and puts the holding message in?
+
+Marius Tangen, in the same step and at the same moment as he decides that this is a real breach. He telephones Petter Dahl and says that it is a real breach and whether support is closed on the subject, and in the same step he tells Nora Lind when employee or applicant data is touched and Silje Haugland when pupil, teacher or school contact data is touched. Outside working hours the on-call developer does it, as the process already says. Amina Farah does it when Marius Tangen is away. Whom he told and at what time goes into the record. Nobody waits to be asked: these people are told, they do not find out.
+
+## 2. When a breach is reported by someone outside the company, such as a parent or a researcher, what must the answer to that person say about their name and their report being written in the record of the case, why they are written there and how long they are kept?
+
+The answer says four things in plain language: that their name and what they wrote are written in the record of the case; that this is because the company must be able to show how it handled the breach, which the GDPR requires of it; that the record is kept five years from the day the case is closed and is then deleted; and that Kari Nordmann is the data protection officer they can ask about this, with her contact details, and Henrik Aas of Aas & Wold when she is away. Where the person asks not to be named, their report is still recorded but Kari Nordmann decides what of their identity the record holds, and writes that decision in the record. The same four things are said to a parent, a researcher, a teacher or anyone else outside the company who reports a breach.
+
+## 3. Who is a school contact, and how is a school contact different from a school owner and from a teacher?
+
+A school owner is the municipality or the private body that subscribes to the reading app and is the controller for its own pupils: it is an organisation, not a person. A school contact is the person at that school owner whose name, work email address, telephone number and school are in the support desk as the one the company writes to and who signs for the school owner: 310 of them, one or more per school owner. A teacher is a person who uses the reading app to follow their pupils' reading: about 6,000 of them, and a teacher is not a school contact unless they are also named as one. When the process says the school owners are told, the message goes to the school contact of each affected school owner, and that is how a school owner is reached.
+
+## 4. Is the message that was sent to each affected teacher, school contact, employee or job applicant, and the time it was sent, written into the record of the case, as the message to the school owners is?
+
+Yes. Every message that goes out about the breach is in the record with the time it was sent and who sent it: the message to each school owner, the message to each affected teacher, school contact, employee and job applicant, the notification to Datatilsynet, and the sentences support used. Where the same wording went to many people, the record holds that wording once, how many people it went to, which kinds of person they were and the time it was sent, and not a copy per person. That is what lets Datatilsynet see that the people were told and when.

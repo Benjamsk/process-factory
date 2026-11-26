@@ -1,0 +1,7 @@
+# Conflicts of round 10
+
+## Conflict 1
+
+- Dropped: readability.md: [medium] Step 33: the step asks Nora Lind to prepare what managers may say to staff and only then says that it is for a breach where support is not closed on the subject, so a reader whose support is closed does the step before learning that it does not apply to them; put that condition before the action.
+- Followed: simulation.md: [high] step 33: the step ties Nora Lind's preparation of what managers may say to staff who ask to a breach where support is not closed on the subject, and step 25 sends the reader to step 33 only in that case, so where support is closed on the subject and employees are affected nobody prepares those sentences and managers answer staff by improvising; the draft must say that Nora Lind prepares what managers may say to staff who ask whenever employee or applicant data is touched, whether or not support is closed on the subject, which is the duty `spec.md` gives the head of people under Roles. (case 5)
+- Reason: the readability finding wants the condition that support is not closed on the subject to stand before Nora Lind's action, so that the step does not apply to a reader whose support is closed; the simulation finding requires that her preparation no longer depend on that condition at all, so that it does apply to that reader. The condition cannot both gate the step and not gate it.

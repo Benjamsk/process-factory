@@ -1,0 +1,23 @@
+# Case 37: The managing director wants the risk written down a step
+
+Kind: Conflicting rules
+
+## Situation
+
+On a Tuesday at 22:00 an unexplained access in the Nordsky Cloud logs is reported, and by the Wednesday evening the facts are in place: a table with the names, work email addresses and schools of all 6,000 teachers of the reading app was downloaded from outside the company. No pupil, employee or applicant data is involved. Kari Nordmann writes on the fact page that the breach is likely to result in a high risk for the teachers, with her reason in two sentences. On the Thursday at 08:30, 34 hours after the report, Ingrid Solheim reads the page and asks her to write that it is likely to result in a risk instead, because a high risk means a message to 6,000 teachers and the school owners will hear of it from their own teachers.
+
+## Who acts
+
+Data protection officer, Kari Nordmann.
+
+## What the person knows
+
+She has the fact page, what Marius Tangen says the systems show and what Amina Farah says the data is, and she has asked both. She judges, for every kind of person affected separately, whether the breach is unlikely to result in a risk, is likely to result in a risk, or is likely to result in a high risk, and writes that judgement on the fact page as a sentence with the reason. She knows that Thursday is one of her three working days. She does not know what Ingrid Solheim will decide about the wording of the message to the teachers or about Datatilsynet, because those are not her decisions.
+
+## What should happen
+
+Two rules of the specification pull in different directions. Ingrid Solheim decides whether Datatilsynet is notified, whether the people affected are told and what that message says, and she is the one the fact page is written for. At the same time the risk for each kind of person affected is judged by Kari Nordmann and written by her on the fact page. The specification settles it: Ingrid Solheim does not change her judgement, and Ingrid Solheim decides what is done about it. So the sentence on the fact page stays as Kari Nordmann wrote it, with her reason, and the page is not finished until she says she has what she needs. Because the fact page shows a high risk for the teachers, they are told, and the decision is only about the wording and the way they are reached: Ingrid Solheim decides that wording after advice from Kari Nordmann, and Tomas Berg when she is away; Silje Haugland tells the teachers; Kari Nordmann writes the part of the message that describes the data and what the person can do, and checks before it goes out that the message says what happened, names her with her contact details as the data protection officer, gives the likely consequences for that person and the measures the company has taken or proposes to take. The message holds no personal data of anyone other than the person it is sent to, carries the date it was sent and goes to each person separately, and it goes out within 24 hours of Ingrid Solheim's decision and at the latest 72 hours after the fact page shows the high risk. The company is the controller for teacher data, so Ingrid Solheim also decides whether Datatilsynet is notified at the latest 48 hours after the report, which is 22:00 on the Thursday, after advice from Kari Nordmann and after asking Marius Tangen what happened in the systems, and the notification goes at the latest 72 hours after the report. The decision whether the people affected are told goes into the record with its reason, the name of the person who took it and the time, whether the answer was yes or no. No school owner is told, because no pupil data of the reading app is involved.
+
+## Pass
+
+The fact page carries Kari Nordmann's sentence, unchanged, that the breach is likely to result in a high risk for the teachers, with her reason, and no sentence written by anyone else in its place. The record holds the decision whether the teachers are told, with its reason, Ingrid Solheim's name and the time. The teachers were told within 24 hours of that decision and at the latest 72 hours after the fact page showed the high risk, by Silje Haugland, each teacher receiving a message of their own that carries the date it was sent, holds no personal data of any other person, names Kari Nordmann with her contact details, and says what happened, the likely consequences for that teacher and what the company has done, with the part about the data and what the person can do written by Kari Nordmann and checked by her before it went out. Ingrid Solheim's decision on Datatilsynet stands in the record with its reason, her name and the time by 22:00 on the Thursday. No message went to a school owner.

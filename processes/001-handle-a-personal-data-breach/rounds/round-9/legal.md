@@ -1,0 +1,6 @@
+# legal review of draft-12.md
+
+Verdict: CHANGES
+
+- [high] Step 45: the deadline for telling the affected school owners is given only as "within 24 hours of the company becoming aware" and leaves out "without undue delay", so the step lets Silje Haugland wait almost a day where the message could go in the first hours; the step must say without undue delay and at the latest 24 hours after the company became aware, as the duty under `Who must be told` already says it. Rule: the data processing annex to the subscription contract with each of the 310 school owners, as `Legal basis` and `Deadlines` of `spec.md` name it.
+- [medium] Step 13: the step gives Henrik Aas of Aas & Wold the right to open the case folder, which holds the secured access logs and the other case data, while he stands in for Kari Nordmann, but no step takes that right away again or has the case data returned or deleted when his stand-in on the case ends; a step must say who takes his access away and that the case data is returned or deleted at that point. `spec.md` does not say it either: it names the obligation in `Legal basis` but gives no step for it. Rule: the data processor agreement with Aas & Wold, which obliges the firm to delete or return the case data when the stand-in on that case ends, as `Legal basis` of `spec.md` names it.

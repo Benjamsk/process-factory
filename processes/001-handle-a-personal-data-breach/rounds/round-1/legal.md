@@ -1,0 +1,7 @@
+# legal review of draft-1.md
+
+Verdict: CHANGES
+
+- [high] Step 15: the draft lets Ingrid Solheim decide freely whether Datatilsynet is notified and records only her reason, while the law makes the notification obligatory and allows the answer "no" only when the breach is unlikely to result in a risk to the rights and freedoms of the people affected; the step must say that the answer is "no" only on that ground and that this is the reason that goes into the record (`spec.md` does not say this either). Rule: the GDPR, as `Legal basis` of `spec.md` names it.
+- [high] Step 17 and the third bullet of `Who must be told`: the draft makes telling the affected people a free decision by Ingrid Solheim, while the law obliges the controller to tell them without undue delay whenever the breach is likely to result in a high risk for them; the step must say that where the risk is high they are told and the decision is only about how, not whether (`spec.md` does not say this either; its `Legal basis` says only that the company must consider telling them). Rule: the GDPR, as `Legal basis` of `spec.md` names it.
+- [high] Step 14 and the first bullet of `Who must be told`: the draft has Ingrid Solheim decide what the message to the school owners says without the advice of Kari Nordmann that the decision requires; the step must say that she decides after advice from Kari Nordmann, as it does for Datatilsynet in step 15. Rule: the section `Tell the school owners and the parents about a breach` of `organisation/authority.md`.

@@ -1,0 +1,148 @@
+# Report a lost laptop
+
+## When this applies
+
+Start this process the moment a device cannot be accounted for. A device that is only missing counts as lost from the first minute: a laptop left on a train, a laptop that may be in the other jacket at home and a laptop taken in a burglary all start the process the same way. Do not wait to see whether it turns up. A device nobody has reported missing is treated exactly like one an employee reported.
+
+Whoever notices tells head of IT Marius Tangen the same hour. That can be the person who had the device, a colleague who notices it is gone, Marius Tangen finding a device that nobody can account for in the equipment register, which is the list of which laptop, work phone and other equipment each employee has, or a report from outside the company such as a hotel, a train company, the police or a finder. Outside working hours telephone the on-call developer, Erik Moen, on the on-call telephone number, and do not send an email. The number is on the card you were given when you started and in the staff handbook in the office suite, which is Microsoft 365.
+
+The process covers every device that held company data or could sign in to a company system: the company laptops, work phones and tablets in the equipment register, and any memory stick or external disk with company data on it.
+
+A private device the person used for work is covered only for what the company can do in its own systems: end the person's sessions, change their password and revoke their tokens, exactly as for a company device. The company does not locate, lock or wipe a device it does not own, does not claim on its insurer for it and does not replace it. The person claims on their own insurance and reports a theft to the police themselves, and Marius Tangen helps them with what the company knows. Where they need a device to work, Marius Tangen gives them a company laptop within 2 working days.
+
+A company device that device management, which is Microsoft Intune, cannot reach, such as a memory stick or an external disk, is covered too, and the steps on the device fall away because there is nothing to reach. Treat the data on it as exposed from the first minute, unless the person who had it says the disk was encrypted and Marius Tangen can confirm from the equipment register or the purchase that it was an encrypted device. Where that cannot be confirmed, it counts as unencrypted. Where any password, key or token was stored on the device, change or revoke it in every system it could reach, beyond the person's own sessions and tokens.
+
+This process covers getting the person working again: a replacement laptop and their access back. It ends when they are working again, the record is complete and the decision whether the loss was a personal data breach stands in the record.
+
+This process does not cover Datatilsynet, which is the Norwegian data protection authority, the school owners or the people affected, nor anything else that belongs to `Handle a personal data breach`. Where the loss is a personal data breach the two processes run alongside each other, with one record and one timeline. This process keeps the device, the accounts, the police, the insurer and the replacement.
+
+Every time in this process counts from the moment the loss reached the company. Every time runs around the clock, through every evening, every weekend and every public holiday, except the two counted in working days: the insurer told within 3 working days, and the replacement laptop and the access back within 2 working days.
+
+## Who does what
+
+- Head of IT: Marius Tangen. He takes the report, carries out the measures on the device and on the accounts, establishes the facts, decides the wipe, tells the person what is read about them, keeps the record, reports a theft where there is no person behind the device, gives the replacement and the access back, keeps the equipment register, and holds both processes where the loss is also a personal data breach. Lead developer Amina Farah steps in when he is away.
+- Lead developer: Amina Farah. She steps in for Marius Tangen and administers device management when he is away. Jonas Vikane steps in when she is away.
+- On-call developer: Erik Moen holds the week beginning 23 November 2026. He takes the report outside working hours, locates and locks the device at once, revokes an access token and locks the account in Nordsky Cloud, which is the cloud platform that Nordsky AS supplies and that the reading app, the product the company sells, runs on, writes the time of the call and what was done into the record, and telephones Marius Tangen. Lise Berntsen is the stand-in for that week.
+- Data protection officer: Kari Nordmann. She is told about every lost device, advises on the wipe where the device held personal data, decides whether the loss is a personal data breach and starts `Handle a personal data breach`, and decides what is looked at where more than the window of this process is needed. She works Tuesday, Wednesday and Thursday. Lawyer Henrik Aas of Aas & Wold steps in on the other days and at weekends, on the firm's emergency number, and may decide whether a case is a personal data breach.
+- Head of people: Nora Lind. She is told that the person could not work and for how long, gives what the company knows in place of a person who has left or cannot be reached, and writes to a person who has left to tell them what the company reads about them. Ingrid Solheim steps in when she is away.
+- Head of finance: Tomas Berg. He tells the insurer where the lost equipment was worth more than 10,000 kroner. Ingrid Solheim steps in when he is away.
+- Managing director: Ingrid Solheim. She takes the report where neither the on-call developer nor Marius Tangen can be reached, holds the case until someone with access to the systems takes it, and is told when the loss is a personal data breach. Tomas Berg steps in when she is away.
+- The person who had the device: the person the lost device was given to. They report the loss the same hour, give the facts only they can give, say what exists only on the device, and report a theft to the police with Marius Tangen's help, or themselves where the device was their own. Where they have left the company or cannot be reached, Marius Tangen answers for the device in their place and Nora Lind gives what the company knows.
+
+## Steps
+
+1. Whoever notices that the device cannot be accounted for: tell head of IT Marius Tangen the same hour you notice it. Outside working hours telephone the on-call developer, Erik Moen, on the on-call telephone number from your card or the staff handbook, and do not send an email. Where he cannot be reached, telephone Marius Tangen on his mobile, and managing director Ingrid Solheim where he cannot be reached either, with head of finance Tomas Berg in her place.
+2. Head of IT (Marius Tangen): open the record of the case, which is the folder you make for the case in the office suite, and write into it the time the report reached the company, who reported it and what they said.
+3. Head of IT (Marius Tangen): locate the device in device management within 1 hour of the report. Do this for every lost device and ask nobody first. Do not do it where the device is the person's own. Outside working hours the on-call developer (Erik Moen) locates it at once, without asking anyone. Where device management cannot reach the device, locating it, locking it, blocking it and wiping it all fall away: write into the record that the device cannot be reached from device management and why.
+4. Head of IT (Marius Tangen): lock the device in device management, within 1 hour of the report. Do not do it where the device is the person's own. Outside working hours the on-call developer (Erik Moen) locks it at once, without asking anyone.
+5. Head of IT (Marius Tangen): end the person's sessions in the office suite, in Nordsky Cloud and in the support desk, which Hjelpedesk AS supplies, within 2 hours of the report. Outside working hours the on-call developer (Erik Moen) locks the person's account in Nordsky Cloud at once; the office suite and the support desk wait for Marius Tangen, or for Amina Farah.
+6. Head of IT (Marius Tangen): change the person's password in those three systems, within 2 hours of the report. Outside working hours this waits for Marius Tangen, or for Amina Farah.
+7. Head of IT (Marius Tangen): revoke the person's access tokens in those three systems, within 2 hours of the report. Outside working hours the on-call developer (Erik Moen) revokes an access token in Nordsky Cloud at once; the office suite and the support desk wait for Marius Tangen, or for Amina Farah. Where the person has left the company and their account was already closed, write into the record that it was closed and when.
+8. Head of IT (Marius Tangen): block the device itself in device management, within 2 hours of the report, so that it cannot sign in again even with a new password. Not where the device is the person's own.
+9. Head of IT (Marius Tangen): tell head of people Nora Lind that the person's accounts and access are blocked, as soon as they are.
+10. Head of IT (Marius Tangen): where a password, key or token was stored on a device that device management cannot reach, change or revoke that password, key or token in every system it could reach, within 2 hours of the report.
+11. Head of IT (Marius Tangen): tell data protection officer Kari Nordmann about the lost device at the same time as you start establishing the facts, even when you are sure what her answer will be. Tell Henrik Aas of Aas & Wold when she is away.
+12. Head of IT (Marius Tangen): get from device management the model and serial number, whether the disk was encrypted, whether the screen was locked, and when and from where the device last contacted the company. Read only the device's own entries, and only for the window from when the device went missing until its access was blocked.
+13. Head of IT (Marius Tangen): tell the person who had the device, within 4 hours of the report, in plain language:
+    - that you look at where and when the device last contacted the company and at the entries of their account in the sign-in logs of the office suite and the access logs of Nordsky Cloud, for the window from when the device went missing until its access was blocked;
+    - that this is to find out what could have been reached, and nothing else;
+    - that it is not used to judge how they work;
+    - that what you find goes into the record of the case, which is kept 3 years, or 5 years where the loss was also a personal data breach;
+    - that Kari Nordmann is the data protection officer they can ask about it.
+
+    Where the person is still at the company but cannot be reached in time, send them the same thing at their work email within those 4 hours so that it is waiting for them, and say it again when you first speak to them. The routine for lost or stolen equipment in the staff handbook says the same.
+14. Head of IT (Marius Tangen): ask the person who had the device, in the same answer, where and when it went missing, whether it was taken or mislaid, whether anyone else could have seen the screen or the password, and what was stored on it that exists nowhere else.
+15. Head of IT (Marius Tangen): get from the sign-in logs of the office suite and the access logs of Nordsky Cloud which systems the device was signed in to, with which account, and whether anything was reached from it after the time it went missing. Read only the entries of that one account, and only for the window from when the device went missing until its access was blocked.
+16. Head of IT (Marius Tangen): write each of the facts from steps 12, 14 and 15 into the record within 4 hours of the report, with `not established` and the reason where one cannot be established.
+17. Head of IT (Marius Tangen): do not use what you read in device management and those logs to see how the person works, what they worked on or where they were at other times, and draw no conclusion about their performance or conduct from it. Where you need more than the window from when the device went missing until its access was blocked, Kari Nordmann decides what is looked at and why, and that goes into the record.
+18. Head of IT (Marius Tangen): where there is no person behind the device, for example a laptop that someone who has left the company never handed back, answer for the device in their place and ask head of people Nora Lind for what the company knows in place of the facts only that person could give. Where the person has not left the company but cannot be reached, handle the device the same way, ask them for the facts as soon as they can be reached and add what they say to the record.
+19. Head of people (Nora Lind): give Marius Tangen what the company knows in place of the facts only that person could give: who had the device, when they left, what they handed back and what they said about it then.
+20. Head of people (Nora Lind): where the person who had the device has left the company, send them the same thing in writing within 24 hours of the report, at the private email address or private postal address the company holds for them in the employment files. Where the company holds no address that reaches them, write that into the record with what was tried. Do not drop the telling: send it at the first address the company later has.
+21. Head of IT (Marius Tangen): where the device held personal data, ask Kari Nordmann before you decide the wipe, or Henrik Aas when she is away; her answer is advice on the wipe and not permission for it, and you decide.
+22. Head of IT (Marius Tangen): decide within 4 hours of the report whether the device is wiped. Wipe the device where any of these is true: it cannot be located; it was not encrypted; the screen was not locked when it went missing; it was signed in to the reading app, Nordsky Cloud or the support desk; or it was taken rather than mislaid. Not where the device is the person's own. Where neither Kari Nordmann nor Henrik Aas can be reached within those 4 hours, decide the wipe alone where a ground for a wipe is met; Amina Farah decides where you are away.
+23. Head of IT (Marius Tangen): where none of those grounds is true, wait with the wipe, and write into the record who decided to wait and why.
+24. Head of IT (Marius Tangen): where you could reach neither Kari Nordmann nor Henrik Aas, write into the record that you could not reach either of them, what you tried and when.
+25. Head of IT (Marius Tangen): where you could reach neither of them, tell Kari Nordmann, or Henrik Aas, at the first hour one of them is reachable.
+26. Head of IT (Marius Tangen): before the wipe, reach the person who had the device. Do not hold the wipe back longer than 1 hour because they cannot be reached. Where there is no person behind the device, there is nobody to reach: wipe it at once rather than after any waiting time.
+27. Head of IT (Marius Tangen): tell them that the device will be wiped.
+28. Head of IT (Marius Tangen): ask them what exists only on the device.
+29. Head of IT (Marius Tangen): write their answer into the record.
+30. Head of IT (Marius Tangen): wipe the device in device management. Wipe a device that has not been recovered within 72 hours of the report whether or not a ground for an earlier wipe was met, and do it without asking again; that is an outer limit and not a question to be reopened. Not where the device is the person's own.
+31. Head of IT (Marius Tangen): write into the record what work was lost because it existed only on the device.
+32. Data protection officer (Kari Nordmann): decide within 4 hours of the report whether the loss is a personal data breach, from the established facts; Henrik Aas of Aas & Wold decides when she is away.
+33. Data protection officer (Kari Nordmann): where it is a personal data breach, start `Handle a personal data breach` in the same hour you decide it, by telling Marius Tangen and Ingrid Solheim that it is a personal data breach and that the breach process now runs.
+34. Data protection officer (Kari Nordmann): where it is not a personal data breach, write that line into the record with your name, the reason and the time, and this process runs on to its end on its own.
+35. Head of IT (Marius Tangen): where it is a personal data breach, hold both processes and keep one record and one timeline for the two, and write into the record both the moment the loss reached the company and the moment of the decision. The 72 hours of `Handle a personal data breach` count from the moment the loss reached the company and not from the decision that the loss was a personal data breach.
+36. Head of IT (Marius Tangen): where neither Kari Nordmann nor Henrik Aas can be reached within the 4 hours, decide the breach question yourself within those same 4 hours; Amina Farah decides where you are away. Decide it one way: the loss counts as a personal data breach unless you can establish that it is not one.
+37. Head of IT (Marius Tangen): where you decide that it is a personal data breach, `Handle a personal data breach` starts at once. Its 72 hours count from the moment the loss reached the company and not from your decision.
+38. Head of IT (Marius Tangen): write into the record that you decided the breach question yourself, whom you tried to reach and when, and what you based it on.
+39. Head of IT (Marius Tangen): tell Kari Nordmann, or Henrik Aas, at the first hour one of them is reachable. Kari Nordmann looks at it again then and may decide that it is not a personal data breach after all; she writes that line into the record with her name, her reason and the time, the breach process stops with that line in its own record, and she does not undo what was already done.
+40. The person who had the device: where the device was taken rather than mislaid, report the theft to the police within 24 hours of the report, with Marius Tangen's help. Where the device was your own, report it yourself.
+41. Head of IT (Marius Tangen): where there is no person behind the device, report the theft to the police yourself within 24 hours of the report, with the serial number from the equipment register.
+42. Head of IT (Marius Tangen): write the police case number into the record.
+43. Head of finance (Tomas Berg): tell the insurer within 3 working days of the report where the lost equipment was worth more than 10,000 kroner. Do not do this where the device was the person's own.
+44. Head of IT (Marius Tangen): give the person a replacement laptop within 2 working days of the report. Where the device was the person's own, give them a company laptop only where they need one to work. Give no replacement where there is no person behind the device.
+45. Head of IT (Marius Tangen): give the person their access back within 2 working days of the report.
+46. Head of IT (Marius Tangen): tell Nora Lind that the person could not work and for how long.
+47. Head of IT (Marius Tangen): put the replacement device into the equipment register.
+48. Head of IT (Marius Tangen): mark the lost device in the equipment register as lost, with the date.
+49. Head of IT (Marius Tangen): where the device is found again, write into the record when and where it was found and whether anyone else could have used it in the meantime.
+50. Head of IT (Marius Tangen): do not wipe a device recovered within the 72 hours.
+51. Head of IT (Marius Tangen): undo nothing that was already done until you have checked the device and said that it is safe to use again.
+52. Head of IT (Marius Tangen): tell the person not to use the device until you have said so.
+53. Head of IT (Marius Tangen): write into the record that the case is closed, once the person is working again, the record is complete and the decision whether the loss was a personal data breach stands in the record.
+
+## Who must be told
+
+- Whoever notices that a device cannot be accounted for tells head of IT Marius Tangen the same hour, by telephone to the on-call developer, Erik Moen, outside working hours.
+- The on-call developer (Erik Moen) tells Marius Tangen at once what was done, by telephone on his mobile.
+- Marius Tangen tells head of people Nora Lind that the person's accounts and access are blocked, as soon as they are.
+- Marius Tangen tells data protection officer Kari Nordmann about every lost device, whatever he thinks her answer will be, at the same time as he starts establishing the facts. Henrik Aas of Aas & Wold is told when she is away.
+- Marius Tangen tells the person who had the device, within 4 hours, what he reads about them and why, in the same answer in which he asks them for the facts; where they cannot be reached he sends it to their work email within those 4 hours. Nora Lind tells a person who has left the company, in writing within 24 hours, at the private address the company holds for them in the employment files.
+- Marius Tangen tells the person who had the device, before the wipe, that the device will be wiped, and asks them what exists only on it.
+- Marius Tangen tells Nora Lind that the person could not work and for how long.
+- Where he decided the wipe or the breach question without the data protection officer, Marius Tangen tells Kari Nordmann, or Henrik Aas, at the first hour one of them is reachable.
+- Where it is decided that the loss is a personal data breach, Kari Nordmann tells Marius Tangen and managing director Ingrid Solheim in the same hour, and `Handle a personal data breach` runs from then. Its 72 hours count from the moment the loss reached the company and not from the decision.
+- The theft is reported to the police within 24 hours: by the person who had the device with Marius Tangen's help, by Marius Tangen where there is no person behind the device, and by the person themselves where the device was their own.
+- Head of finance Tomas Berg tells the insurer within 3 working days where the lost equipment was worth more than 10,000 kroner.
+- The one who took the report and is holding it tells the person who reported the loss that the case is held and that someone will come back to them.
+- Datatilsynet, the school owners and the people affected are not told in this process: they belong to `Handle a personal data breach`.
+
+## When to hand over
+
+- Where head of IT Marius Tangen is away, lead developer Amina Farah takes his decisions and administers device management; Jonas Vikane steps in for her.
+- Outside working hours the report goes to the on-call developer, Erik Moen. He locates and locks the device at once, revokes an access token and locks the account in Nordsky Cloud, writes the time of the call and what was done into the record, and telephones Marius Tangen on his mobile, who can be reached around the clock. Everything beyond revoking an access token and locking the account in Nordsky Cloud goes to Marius Tangen, or to Amina Farah. Marius Tangen then does the rest himself or decides what waits until working hours, and says so in the record.
+- Where Erik Moen cannot be reached, the one who noticed the loss telephones Marius Tangen directly, and managing director Ingrid Solheim where he cannot be reached either, with head of finance Tomas Berg in her place.
+- The one who took the report and has no access to device management does four things and nothing in the systems: opens the record and writes into it the time the report reached the company, who reported it, what they said and that they are holding it; telephones, in this order and not by email, Erik Moen on the on-call number, then Marius Tangen on his mobile, then Amina Farah, and keeps trying every 30 minutes until one of them answers, writing each attempt and its time into the record; tells the person who reported the loss that the case is held and that someone will come back to them; and asks the person who had the device for the facts only insofar as they are on the telephone anyway, writing what they say into the record. They hold the case until Marius Tangen or Amina Farah writes in the record that they have taken it, and that person then carries on from the step the process has reached rather than starting again from the beginning, with the record as it stands: the time of the report, the attempts and their times, whatever the person who had the device said, and what was not done.
+- The deadlines keep running while nobody with access to the systems can be reached.
+- Where four hours pass with nobody who has access to the systems reachable, Ingrid Solheim, or Tomas Berg in her place, telephones data protection officer Kari Nordmann, or Henrik Aas of Aas & Wold, so that the breach question is in someone's hands, and writes that into the record.
+- Where Kari Nordmann is away, Henrik Aas of Aas & Wold advises on the wipe, decides the breach question and starts `Handle a personal data breach`. Where neither of them can be reached within the 4 hours, Marius Tangen decides the wipe alone where a ground for a wipe is met, and decides the breach question himself within those same 4 hours; Amina Farah decides where he is away. He writes into the record that he could not reach either of them, what he tried and when, and tells one of them at the first hour one is reachable. Kari Nordmann may then say in the record that she would have advised otherwise on the wipe, and nothing that was done is undone; on the breach question she may decide that the loss was not a personal data breach after all, and writes that line into the record with her name, her reason and the time.
+- Where more than the window from when the device went missing until its access was blocked is needed, Kari Nordmann decides what is looked at and why.
+
+## What to record
+
+One record per lost device, kept for every loss including the harmless ones. Head of IT Marius Tangen keeps it in the office suite, in the folder he makes for the case. Where the loss is also a personal data breach, `Handle a personal data breach` and this process share this one record and one timeline. The record holds:
+
+- who reported the loss and when they noticed it, and the time the report reached the company;
+- the device, its model and its serial number from the equipment register, and, where the device was the person's own, that it was private, what they say was on it and that the company could not reach it;
+- that the device cannot be reached from device management and why, where it cannot;
+- where and when the device went missing, and whether it was taken or mislaid;
+- the established facts, with `not established` and the reason where one could not be established;
+- what Kari Nordmann decided to look at beyond the window from when the device went missing until its access was blocked, and why;
+- what was done to the device and to the accounts and at what time, among it what the on-call developer did and the time of the call, and that an account was already closed and when;
+- who decided to wipe or to wait, with the reason and the time; what the person said existed only on the device; and what work was lost;
+- the decision whether the loss was a personal data breach, with the name of the one who decided, the reason and the time, whether the answer was yes or no, and, where Marius Tangen decided it himself, whom he tried to reach and when and what he based it on;
+- the attempts to reach someone with access to the systems and their times, and which deadline was missed and why;
+- where no address reaches a person who has left the company, that the telling could not be sent and what was tried;
+- the police case number where there was a theft, and whether the insurer was told;
+- when the replacement was given and the access restored;
+- where the device was found again, when and where it was found, whether anyone else could have used it in the meantime, and that Marius Tangen has said it is safe to use again;
+- the line that closes the case.
+
+The record is kept 3 years from the day the case is closed, and 5 years where the loss was also a personal data breach.
+
+The entry in the equipment register that says which person had the lost device, which replacement they were given and the date the lost device was marked as lost is kept as long as the record: 3 years from the day the case is closed, and 5 years where the loss was also a personal data breach. Marius Tangen then deletes the personal part of the entry, which is which person had the device, and keeps the device, its serial number and the dates without a name for as long as the company needs them for its accounts and its insurance. The entry for a device that was returned rather than lost is kept 3 years after the return.
+
+## If something does not fit
+
+No one is named to turn to when this document does not cover the situation.

@@ -1,0 +1,23 @@
+# Case 41: The person who reported it asks not to be named
+
+Kind: Conflicting rules
+
+## Situation
+
+On a Tuesday at 10:00 a researcher outside the company writes to the general address: an address of the reading app returns a pupil's read-aloud recording to anyone who knows it, without logging in, and he gives one such address as an example. He writes that he found it while testing on his own account, that he does not want his name written down anywhere and that he will not write again if it is. The employee who reads the general address forwards the email to Marius Tangen at 10:05 and telephones him.
+
+## Who acts
+
+Head of IT, Marius Tangen.
+
+## What the person knows
+
+He has the forwarded email and the example address, and he knows the recordings are pupil data of the reading app, so the company is the processor and the school owners are the controllers. He knows that Tuesday is one of Kari Nordmann's three working days. He knows nothing about the researcher beyond the email address he wrote from, and he does not know how many recordings can be reached that way, which school owners the pupils belong to or whether anyone has fetched them; the Nordsky Cloud access logs have to be read for that.
+
+## What should happen
+
+Two rules of the specification pull in different directions. The record holds when the breach was reported and by whom and what they said, and the answer to a person outside the company says in plain language that their name and what they wrote are written in the record. At the same time, where the person asks not to be named, their report is still recorded and Kari Nordmann decides what of their identity the record holds and writes that decision in the record, and Henrik Aas of Aas & Wold decides when she is away. The specification settles it on the second rule: the report is not turned away and is not left out of the record, and it is Kari Nordmann, not Marius Tangen and not the researcher, who decides what of his identity the record holds; Tuesday is a day she works, so the decision does not wait. Marius Tangen answers the person who reported it within 1 hour of the report, so that they know the case is held and by whom, and because that person is outside the company the answer says that their name and what they wrote are written in the record of the case; that this is because the company must be able to show how it handled the breach, which the GDPR requires of it; that the record is kept five years from the day the case is closed and is then deleted; and that Kari Nordmann is the data protection officer they can ask about this, with her contact details, and Henrik Aas of Aas & Wold when she is away. The clock starts at 10:00, when the report reached the company, not when someone got round to reading it. Marius Tangen opens the record of the case and writes in it the time the report reached the company, who reported it, what they said and that he has taken the case, and he does steps 5 to 8 within 1 hour, so by 11:00. He exports and copies the Nordsky Cloud access logs out of the normal 90-day retention within 4 hours and before anything is fixed in production, and the breach is stopped within 4 hours. Kari Nordmann and Ingrid Solheim have the case within 4 hours, and at the same time Silje Haugland is told, because pupil data is touched. Pupils and school owners are affected, so support is closed on the subject. Every affected school owner is told within 24 hours of 10:00, before Datatilsynet is notified, and the school owner then notifies Datatilsynet about its own pupils and decides whether the parents are told.
+
+## Pass
+
+The researcher received Marius Tangen's answer by 11:00 on the Tuesday, and that answer says the four things: that his name and what he wrote are written in the record, why, that the record is kept five years from the day the case is closed and is then deleted, and who the data protection officer is, with her contact details and Henrik Aas's where she is away. The record names 10:00 on the Tuesday as the time the report reached the company and holds what the researcher said. The record holds Kari Nordmann's decision on what of his identity it holds, in her name, with her reason and the time, and the record holds no more of his identity than that decision allows. The Nordsky Cloud access logs were secured by 14:00 and before any fix went to production, and the breach was stopped by 14:00. Kari Nordmann, Ingrid Solheim and Silje Haugland had the case by 14:00. Every affected school owner was told by 10:00 on the Wednesday, at the same time as the others and before any notification to Datatilsynet.
