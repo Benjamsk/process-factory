@@ -1,0 +1,22 @@
+[
+  "Bash(pnpm factory doctor:*)",
+  "Bash(pnpm -s factory doctor:*)",
+  "PowerShell(pnpm factory doctor:*)",
+  "PowerShell(pnpm -s factory doctor:*)",
+  "Bash(pnpm factory show:*)",
+  "Bash(pnpm -s factory show:*)",
+  "PowerShell(pnpm factory show:*)",
+  "PowerShell(pnpm -s factory show:*)",
+  "Bash(pnpm factory log:*)",
+  "Bash(pnpm -s factory log:*)",
+  "PowerShell(pnpm factory log:*)",
+  "PowerShell(pnpm -s factory log:*)",
+  "Bash(pnpm factory queue)",
+  "Bash(pnpm -s factory queue)",
+  "PowerShell(pnpm factory queue)",
+  "PowerShell(pnpm -s factory queue)",
+  "Bash(pnpm factory queue-remove:*)",
+  "Bash(pnpm -s factory queue-remove:*)",
+  "PowerShell(pnpm factory queue-remove:*)",
+  "PowerShell(pnpm -s factory queue-remove:*)"
+]

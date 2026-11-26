@@ -21,6 +21,8 @@ You review one factory job's diff for scope. You get context from files, not fro
 - no new code that duplicates an existing function, component, hook, model or helper
 - the diff could not be clearly shorter without losing readability
 
+Moving existing code into new files is in scope when `spec.md` names the split: it is then neither a refactor the spec does not need nor moved code in code the spec does not touch. Check that the moved code changed only as far as the move needs (imports and exports) and that nothing moved that the spec does not name; a move the spec does not name stays `[medium]`.
+
 Unneeded code and unrelated changes are `[medium]` and mean `VERDICT: CHANGES`. Code that could only be shorter is `[low]` and alone is not a reason for `VERDICT: CHANGES`. If every change in the diff is needed by a line of the spec, write `VERDICT: PASS` and say so.
 
 **Writes:** only `factory/jobs/<job-id>/round-<n>/review-scope.md`. Its first line is exactly `VERDICT: PASS` or `VERDICT: CHANGES`. Then list the findings as `- [high|medium|low] file:line: problem and fix`; each finding names the spec line it checked against, or says `no spec line needs this`.
