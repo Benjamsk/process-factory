@@ -1,14 +1,13 @@
 import { cpSync, existsSync, mkdirSync, rmSync, statSync } from "node:fs"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { usage } from "../006-process-state-machine/store.ts"
 import { binFile, board, boardFile, boardText, emptyFolder, entries, readFile, root, runCommand, runNode, withoutTimes, writeFile } from "./store.ts"
 
 const breachId = "001-handle-a-personal-data-breach"
 const breachTitle = "Handle a personal data breach"
 const created = [{ stage: "intake" }]
 const breachEntry = { id: breachId, title: breachTitle, stage: "intake", history: created }
-const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory edit <process-id> <name> <file> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory export <process-id> --format html|markdown --link <address>\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
 const titleError = "process-factory: the title must be one line with at least one letter or digit\n"
 
 let project = ""

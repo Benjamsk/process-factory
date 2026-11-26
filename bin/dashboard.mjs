@@ -1,7 +1,25 @@
 import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import path from "node:path"
-import { boardProcesses, documentHtml, errorPage, escapeHtml, formBodyLimit, htmlPage, isOwnOrigin, numberedItem, readBody, reasonsPage, sendPage } from "./reading-view.mjs"
+import { organisations } from "./organisation.mjs"
+import {
+  answerOutsideOrganisation,
+  boardProcesses,
+  documentHtml,
+  errorPage,
+  escapeHtml,
+  formBodyLimit,
+  htmlPage,
+  isOwnOrigin,
+  numberedItem,
+  organisationAddress,
+  organisationOfPath,
+  organisationPage,
+  readBody,
+  reasonsPage,
+  sendAnswer,
+  sendPage,
+} from "./reading-view.mjs"
 import {
   allowedMoves,
   caseNumbers,
@@ -16,7 +34,20 @@ import {
   roundFindings,
   stagesThatMoveToDraft,
 } from "./state-machine.mjs"
-import { editedNames, feedbackAbout, feedbackTextLine, fileLines, labelledValue, newestDraftNumber, notRecorded, openFeedbackFiles, sectionLines } from "./store.mjs"
+import {
+  currentOrganisation,
+  editedNames,
+  feedbackAbout,
+  feedbackTextLine,
+  fileLines,
+  inOrganisation,
+  labelledValue,
+  newestDraftNumber,
+  notRecorded,
+  openFeedbackFiles,
+  sectionLines,
+  storePath,
+} from "./store.mjs"
 
 /** The port the dashboard listens on when `--port` names none. */
 export const dashboardPort = "4174"
@@ -53,7 +84,7 @@ function dashboardPage(page) {
  * number and the text of every numbered item under `## Questions` of that file. The number is null when there is none.
  */
 function openQuestions(id) {
-  const folder = path.join(process.cwd(), "processes", id)
+  const folder = storePath("processes", id)
   const number = newestQuestionsNumber(folder)
   if (number === null || existsSync(path.join(folder, `answers-${number}.md`))) return { number: null, questions: [] }
   const lines = fileLines(path.join(folder, `questions-${number}.md`))
@@ -78,7 +109,7 @@ function processCard(entry) {
   const questions = openQuestions(entry.id).questions.map((question) => `<li value="${question.number}">${escapeHtml(question.text)}</li>`)
   return [
     "<article>",
-    `<h3><a href="/${entry.id}">${escapeHtml(entry.title)}</a></h3>`,
+    `<h3><a href="${organisationAddress(entry.id)}">${escapeHtml(entry.title)}</a></h3>`,
     `<p>${escapeHtml(entry.id)}</p>`,
     ...needsDraftMark(entry),
     "<dl>",
@@ -118,7 +149,7 @@ function panelTimeline(entry) {
 
 /** The link of the panel that opens the edit page of a file of a process. */
 function editLink(id, name) {
-  return `<p><a href="/${id}/edit/${name}">Edit ${name}</a></p>`
+  return `<p><a href="${organisationAddress(id, "edit", name)}">Edit ${name}</a></p>`
 }
 
 /** Every case of a process in the panel: one article per file `case-<n>.md`, in ascending order of `<n>`, each with its edit link when `editId` names the process. */
@@ -208,7 +239,7 @@ function answerForm(id, questions) {
       `<p><label for="answer-${number}">${number}. ${escapeHtml(text)}</label>\n<textarea id="answer-${number}" name="answer-${number}" rows="4"></textarea></p>`,
   )
   return [
-    `<form method="post" action="/${id}/answer">`,
+    `<form method="post" action="${organisationAddress(id, "answer")}">`,
     ...fields,
     "<p>A field left empty is stored as Not known.</p>",
     '<p><button type="submit">Store the answers</button></p>',
@@ -219,7 +250,7 @@ function answerForm(id, questions) {
 /** The form of the panel that accepts the specification of a process in `spec`. */
 function acceptForm(id) {
   return [
-    `<form method="post" action="/${id}/accept-spec">`,
+    `<form method="post" action="${organisationAddress(id, "accept-spec")}">`,
     "<p>Every section of the specification is decided. Read it under Specification before you accept it.</p>",
     '<p><button type="submit">Accept the specification</button></p>',
     "</form>",
@@ -229,7 +260,7 @@ function acceptForm(id) {
 /** The form of the panel in which the owner of a process in `approval` approves its newest draft and publishes it. */
 function approveForm(id) {
   return [
-    `<form method="post" action="/${id}/approve">`,
+    `<form method="post" action="${organisationAddress(id, "approve")}">`,
     '<p><label for="by">Your full name</label>',
     '<input id="by" name="by" required></p>',
     '<p><button type="submit">Approve and publish</button></p>',
@@ -240,7 +271,7 @@ function approveForm(id) {
 /** The form of the panel that sends the draft of a process in `approval` back for one more round, with a note. */
 function sendBackForm(id) {
   return [
-    `<form method="post" action="/${id}/send-back">`,
+    `<form method="post" action="${organisationAddress(id, "send-back")}">`,
     '<p><label for="note">What must change in the draft</label>',
     '<textarea id="note" name="note" rows="6" required></textarea></p>',
     '<p><button type="submit">Send back for one more round</button></p>',
@@ -251,7 +282,7 @@ function sendBackForm(id) {
 /** The form of the panel that starts a regeneration of a published process. */
 function regenerateForm(id) {
   return [
-    `<form method="post" action="/${id}/regenerate">`,
+    `<form method="post" action="${organisationAddress(id, "regenerate")}">`,
     "<p>A regeneration writes the published document again with only the changes that open feedback, new cases and changed dependencies ask for. The command line refuses it when there is none of these.</p>",
     '<p><button type="submit">Start a regeneration</button></p>',
     "</form>",
@@ -265,7 +296,7 @@ function approvalPart(entry, folder) {
   if (existsSync(path.join(folder, "versions", `approval-draft-${number}.md`))) {
     return `<p>draft-${number}.md is already approved. /process next ${entry.id} in Claude Code publishes it.</p>`
   }
-  const changes = entry.regeneration === undefined ? null : fileLines(path.join(process.cwd(), changeListFile(entry.id, number)))
+  const changes = entry.regeneration === undefined ? null : fileLines(storePath(changeListFile(entry.id, number)))
   const shown = changes === null ? [] : [`<p>changes-${number}.md</p>`, documentHtml(changes, 3)]
   return [...shown, approveForm(entry.id)].join("\n")
 }
@@ -284,7 +315,7 @@ function decisionPart(entry, folder) {
 
 /** The panel of one process: where it stands, links to the decision it waits for and to its seven parts, and each of them as the store has it at this moment. */
 function processPanel(entry) {
-  const folder = path.join(process.cwd(), "processes", entry.id)
+  const folder = storePath("processes", entry.id)
   const spec = fileLines(path.join(folder, "spec.md"))
   const decision = decisionPart(entry, folder)
   const waits = `<p>After a decision the process waits in its new stage until /process next ${entry.id} is run in Claude Code.</p>`
@@ -302,7 +333,7 @@ function processPanel(entry) {
   ]
   return [
     "<aside>",
-    '<p><a href="/">Close</a></p>',
+    `<p><a href="${organisationAddress()}">Close</a></p>`,
     `<h2>${boardText(entry.title)}</h2>`,
     `<p>${boardText(entry.id)}</p>`,
     "<p>The dashboard does not reload while a process is open. Load the page again to see what has changed.</p>",
@@ -337,20 +368,21 @@ function decisionTarget(pathname) {
 
 /** The page `Not done`: why a decision was not taken or an edit was not saved, with the way back to the process. */
 function notDonePage(id, reasons) {
-  return reasonsPage("Not done", reasons, `<p><a href="/${id}">Back to the process</a></p>`)
+  return reasonsPage("Not done", reasons, `<p><a href="${organisationAddress(id)}">Back to the process</a></p>`)
 }
 
-/** Runs the commands of a decision one after the other and answers the browser: the panel after the last, or the lines of the one that refused. */
+/** Runs the commands of a decision one after the other, each on the organisation of the request, and answers the browser: the panel after the last, or the lines of the one that refused. */
 function runDecision(response, id, commands, input = "") {
+  const command = path.join(import.meta.dirname, "process-factory.mjs")
   for (const args of commands) {
-    const run = spawnSync(process.execPath, [path.join(import.meta.dirname, "process-factory.mjs"), ...args], { cwd: process.cwd(), input, encoding: "utf8" })
+    const run = spawnSync(process.execPath, [command, ...args, "--org", currentOrganisation()], { cwd: process.cwd(), input, encoding: "utf8" })
     if (run.status !== 0) {
       const lines = run.stderr.split("\n").filter((line) => line !== "")
-      sendPage(response, 409, notDonePage(id, lines.map(escapeHtml)))
+      sendPage(response, 409, organisationPage(notDonePage(id, lines.map(escapeHtml))))
       return
     }
   }
-  response.writeHead(303, { Location: `/${id}` })
+  response.writeHead(303, { Location: organisationAddress(id) })
   response.end()
 }
 
@@ -366,7 +398,7 @@ function answersFileText(id, posted) {
 /** Reads a post of a decision and runs the command line for it, which takes the decision or refuses it. */
 async function takeDecision(request, response, { entry, action }) {
   const refuse = (status, reason) => {
-    sendPage(response, status, notDonePage(entry.id, [reason]))
+    sendPage(response, status, organisationPage(notDonePage(entry.id, [reason])))
   }
   if (!isOwnOrigin(request)) {
     refuse(403, "A decision can only be sent from the dashboard itself.")
@@ -401,7 +433,7 @@ function fileTarget(pathname, part) {
 function editTarget(pathname) {
   const target = fileTarget(pathname, "edit")
   if (target === null || !isEditable(target.entry)) return null
-  const text = editableText(path.join(process.cwd(), "processes", target.entry.id, editedPath(target.name)))
+  const text = editableText(storePath("processes", target.entry.id, editedPath(target.name)))
   return text === null ? null : { ...target, text }
 }
 
@@ -417,10 +449,10 @@ function editPostTarget(pathname) {
 function editPage({ entry, name, text }) {
   const title = `Edit ${name}`
   const body = [
-    `<p><a href="/${entry.id}">Back to the process</a></p>`,
+    `<p><a href="${organisationAddress(entry.id)}">Back to the process</a></p>`,
     `<h1>${title}</h1>`,
     `<p>${boardText(entry.title)}, ${boardText(entry.id)}</p>`,
-    `<form method="post" action="/${entry.id}/edit/${name}">`,
+    `<form method="post" action="${organisationAddress(entry.id, "edit", name)}">`,
     `<p><label for="text">The text of ${name}</label>`,
     `<textarea id="text" name="text" rows="30" required>\n${escapeHtml(text)}</textarea></p>`,
     "<p>Nothing is saved yet. The next page shows what changes.</p>",
@@ -478,7 +510,7 @@ function checkPage({ entry, name, text }, newText) {
   const cleaned = cleanedText(newText)
   const lines = comparedLines(text.split("\n"), cleaned.split("\n"))
   const title = `Check the edit of ${name}`
-  const head = [`<p><a href="/${entry.id}">Back to the process</a></p>`, `<h1>${title}</h1>`, `<p>${boardText(entry.title)}, ${boardText(entry.id)}</p>`]
+  const head = [`<p><a href="${organisationAddress(entry.id)}">Back to the process</a></p>`, `<h1>${title}</h1>`, `<p>${boardText(entry.title)}, ${boardText(entry.id)}</p>`]
   const marked = (mark) => lines.filter((line) => line.mark === mark).length
   if (marked("-") + marked("+") === 0) return htmlPage(title, [...head, `<p>Nothing changes in ${name}.</p>`].join("\n"))
   const movesBack = stagesThatMoveToDraft.includes(entry.stage)
@@ -489,7 +521,7 @@ function checkPage({ entry, name, text }, newText) {
     `<p>Lines removed: ${marked("-")}. Lines added: ${marked("+")}. A line that starts with - is removed, a line that starts with + is added.</p>`,
     `<ul>\n${comparedItems(lines).join("\n")}\n</ul>`,
     ...movesBack,
-    `<form method="post" action="/${entry.id}/save/${name}">`,
+    `<form method="post" action="${organisationAddress(entry.id, "save", name)}">`,
     `<input type="hidden" name="text" value="${escapeHtml(cleaned)}">`,
     '<p><label for="by">Your full name</label>',
     '<input id="by" name="by" required></p>',
@@ -503,7 +535,7 @@ function checkPage({ entry, name, text }, newText) {
 async function takeEdit(request, response, target) {
   const id = target.entry.id
   const refuse = (status, reason) => {
-    sendPage(response, status, notDonePage(id, [reason]))
+    sendPage(response, status, organisationPage(notDonePage(id, [reason])))
   }
   if (!isOwnOrigin(request)) {
     refuse(403, "An edit can only be sent from the dashboard itself.")
@@ -517,28 +549,33 @@ async function takeEdit(request, response, target) {
   const posted = new URLSearchParams(body)
   const newText = posted.get("text") ?? ""
   if (target.text === null) runDecision(response, id, [["edit", id, target.name, "-", "--by", posted.get("by") ?? ""]], newText)
-  else sendPage(response, 200, checkPage(target, newText))
+  else sendPage(response, 200, organisationPage(checkPage(target, newText)))
 }
 
-export function answerDashboardRequest(request, response) {
-  const pathname = request.url.split("?")[0]
-  if (request.method === "GET" || request.method === "HEAD") {
-    const notFound = '<h1>Not found</h1>\n<p>There is nothing at this address.</p>\n<p><a href="/">Dashboard</a></p>'
-    let answer
-    try {
-      const processes = boardProcesses()
-      const open = /^\/[a-z0-9-]+$/.test(pathname) ? processes.find((entry) => entry.id === pathname.slice(1)) : undefined
-      const edit = open === undefined ? editTarget(pathname) : null
-      if (pathname === "/") answer = { status: 200, page: dashboardMainPage(processes) }
-      else if (open !== undefined) answer = { status: 200, page: dashboardProcessPage(processes, open) }
-      else if (edit !== null) answer = { status: 200, page: editPage(edit) }
-      else answer = { status: 404, page: dashboardPage(htmlPage("Not found", notFound)) }
-    } catch {
-      answer = { status: 500, page: dashboardPage(errorPage("The dashboard cannot read the processes.")) }
-    }
-    sendPage(response, answer.status, request.method === "HEAD" ? undefined : answer.page)
-    return
+/** The page `Not found` of the dashboard, with the way to the board of `to`. */
+function dashboardNotFoundPage(to) {
+  return dashboardPage(htmlPage("Not found", `<h1>Not found</h1>\n<p>There is nothing at this address.</p>\n<p><a href="${to}">Dashboard</a></p>`))
+}
+
+/** The status and the page of a GET of the dashboard inside an organisation, with the line that names it. */
+function answerInsideOrganisation(pathname) {
+  let answer
+  try {
+    const processes = boardProcesses()
+    const open = /^\/[a-z0-9-]+$/.test(pathname) ? processes.find((entry) => entry.id === pathname.slice(1)) : undefined
+    const edit = open === undefined ? editTarget(pathname) : null
+    if (pathname === "/") answer = { status: 200, page: dashboardMainPage(processes) }
+    else if (open !== undefined) answer = { status: 200, page: dashboardProcessPage(processes, open) }
+    else if (edit !== null) answer = { status: 200, page: editPage(edit) }
+    else answer = { status: 404, page: dashboardNotFoundPage(organisationAddress()) }
+  } catch {
+    answer = { status: 500, page: dashboardPage(errorPage("The dashboard cannot read the processes.")) }
   }
+  return { status: answer.status, page: organisationPage(answer.page) }
+}
+
+/** Answers a post of a decision or of an edit inside an organisation, or says which methods its address allows. */
+function answerDashboardPost(request, response, pathname) {
   let decision = null
   let edit = null
   try {
@@ -547,7 +584,7 @@ export function answerDashboardRequest(request, response) {
       if (decision === null) edit = editPostTarget(pathname)
     }
   } catch {
-    sendPage(response, 500, errorPage("The dashboard cannot read the processes."))
+    sendPage(response, 500, organisationPage(errorPage("The dashboard cannot read the processes.")))
     return
   }
   if (decision !== null) takeDecision(request, response, decision)
@@ -556,4 +593,26 @@ export function answerDashboardRequest(request, response) {
     response.writeHead(405, { Allow: "GET, HEAD" })
     response.end()
   }
+}
+
+export function answerDashboardRequest(request, response) {
+  const pathname = request.url.split("?")[0]
+  const listed = organisations()
+  const target = organisationOfPath(pathname, listed)
+  if (request.method === "GET" || request.method === "HEAD") {
+    const answer =
+      target === null
+        ? answerOutsideOrganisation(pathname, listed, dashboardNotFoundPage("/"))
+        : inOrganisation(target.organisation, () => answerInsideOrganisation(target.pathname))
+    sendAnswer(response, answer, request.method)
+    return
+  }
+  if (target === null) {
+    response.writeHead(405, { Allow: "GET, HEAD" })
+    response.end()
+    return
+  }
+  inOrganisation(target.organisation, () => {
+    answerDashboardPost(request, response, target.pathname)
+  })
 }

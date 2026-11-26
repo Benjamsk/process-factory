@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, rmSync } from "node:fs"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { processes } from "../006-process-state-machine/store.ts"
+import { organisationFolder, processes, projectOf, runCommand as runInOrganisation } from "../006-process-state-machine/store.ts"
 import { emptyFolder, entries, installedFolder, root, runCommand } from "../010-clarifying-questions/clarify.ts"
 import { findings, processId, writeDrafts, writeFindings, writeProcess } from "../017-review-rounds/rounds.ts"
 import { gdprInstalled, gdprTemplate } from "./gdpr.ts"
@@ -47,20 +47,22 @@ describe("the copy that Claude Code loads in this repository", () => {
 
 describe("process-factory round in a project where init ran", () => {
   it("records the verdict of the gdpr reviewer when every installed reviewer wrote a findings file with PASS", () => {
-    expect(runCommand(project, ["init"]).status).toBe(0)
-    writeProcess(project)
-    writeDrafts(project, [1])
-    const reviewers = entries(project, installedFolder)
+    const organisation = organisationFolder("process-factory-gdpr-")
+    expect(runCommand(projectOf(organisation), ["init"]).status).toBe(0)
+    writeProcess(organisation)
+    writeDrafts(organisation, [1])
+    const reviewers = entries(projectOf(organisation), installedFolder)
       .filter((name) => /^[a-z0-9-]+-reviewer\.md$/.test(name))
       .map((name) => name.replace("-reviewer.md", ""))
-    for (const reviewer of reviewers) writeFindings(project, 1, `${reviewer}.md`, findings(reviewer, "PASS", []))
+    for (const reviewer of reviewers) writeFindings(organisation, 1, `${reviewer}.md`, findings(reviewer, "PASS", []))
 
-    const result = runCommand(project, ["round", processId])
+    const result = runInOrganisation(organisation, ["round", processId])
+    const rounds: unknown = processes(organisation)[1]?.rounds
+    rmSync(projectOf(organisation), { recursive: true, force: true })
 
     expect(result.stderr).toBe("")
     expect(result.status).toBe(0)
     expect(result.stdout.split("\n")).toContain("  gdpr  PASS  0 high, 0 medium, 0 low")
-    const rounds: unknown = processes(project)[1]?.rounds
     const recorded: unknown = Array.isArray(rounds) ? rounds[0] : undefined
     expect(rounds).toHaveLength(1)
     expect(recorded).toMatchObject({ round: 1, draft: "draft-1.md" })

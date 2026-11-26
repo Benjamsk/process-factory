@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs"
 import path from "node:path"
 import { beforeEach, describe, expect, it } from "vitest"
-import { approveDraft, boardFile, emptyFolder, entries, processes, readFile, runCommand, writeBoard, writeFile, writeRegeneratedDraft } from "../006-process-state-machine/store.ts"
+import { approveDraft, boardFile, emptyFolder, entries, processes, readFile, runCommand, usage, writeBoard, writeFile, writeRegeneratedDraft } from "../006-process-state-machine/store.ts"
 import {
   boardEntry,
   breachId,
@@ -25,8 +25,6 @@ import {
   writeOrganisation,
 } from "./dependencies.ts"
 
-const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory edit <process-id> <name> <file> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory export <process-id> --format html|markdown --link <address>\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
 const newOfficer = "## Data protection officer\n\nOla Hansen is the data protection officer. Kari Nordmann steps in when he is away.\n"
 
 /** Runs `check` and expects it to succeed with nothing on standard error; gives what it printed. */
@@ -229,11 +227,11 @@ describe("the usage of process-factory", () => {
     ["no argument", []],
     ["an unknown command", ["publish"]],
     ["org check", ["org", "check"]],
-  ])("has seventeen lines, with check after org init and before export, and is printed with %s", (_name, args) => {
+  ])("has nineteen lines, with check after org init and before export, and is printed with %s", (_name, args) => {
     const result = runCommand(project, args)
 
     expect(result.stderr).toBe(usage)
-    expect(result.stderr.endsWith("       process-factory org init\n       process-factory check\n       process-factory export <process-id> --format html|markdown --link <address>\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n")).toBe(true)
+    expect(result.stderr.endsWith("       process-factory org init [--org <org-id>]\n       process-factory check [--org <org-id>]\n       process-factory export <process-id> --format html|markdown --link <address> [--org <org-id>]\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n")).toBe(true)
     expect(result.stdout).toBe("")
     expect(result.status).toBe(1)
     expect(entries(project)).toEqual([])

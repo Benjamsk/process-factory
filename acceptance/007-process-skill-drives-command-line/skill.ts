@@ -1,7 +1,6 @@
-import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
+import { organisationFolder, runCommand } from "../006-process-state-machine/store.ts"
 
 export const root = path.resolve(import.meta.dirname, "../..")
 
@@ -74,16 +73,13 @@ export function tableStages(): string[] {
   return tableRows("Run the stage").map((row) => (row.split("|")[1] ?? "").trim().replace(/`/g, ""))
 }
 
-/** A new folder outside the repository whose board holds one process in `stage`. */
+/** A new folder of an organisation, in a new project outside the repository, whose board holds one process in `stage`. */
 export function folderWithProcess(id: string, stage: string): string {
-  const folder = mkdtempSync(path.join(tmpdir(), "process-factory-skill-"))
+  const folder = organisationFolder("process-factory-skill-")
   mkdirSync(path.join(folder, "processes"))
   const processes = [{ id, title: "Handle a breach", stage, history: [{ at: "2026-11-18T17:02:11.123Z", stage }] }]
   writeFileSync(path.join(folder, "processes/board.json"), `${JSON.stringify({ processes }, null, 2)}\n`)
   return folder
 }
 
-/** Runs the repository's command line with `cwd` as the working directory. */
-export function runCommand(cwd: string, args: string[]) {
-  return spawnSync(process.execPath, [path.join(root, "bin/process-factory.mjs"), ...args], { cwd, encoding: "utf8" })
-}
+export { runCommand }

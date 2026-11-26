@@ -1,7 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs"
-import path from "node:path"
 import { boardProcesses, documentHtml, escapeHtml, htmlPage, publishedVersions, versionApproval, versionFile } from "./reading-view.mjs"
-import { errorMessage, fileLines, findProcessOrPrintReason, labelledValue, notRecorded, readProcessesOrPrintReason } from "./store.mjs"
+import { currentOrganisation, errorMessage, fileLines, findProcessOrPrintReason, labelledValue, notRecorded, printedPath, readProcessesOrPrintReason, storePath } from "./store.mjs"
 
 /** The address of the reading view without the slashes at the end of its path, or null when it is not an address an export can link to. */
 function readingViewAddress(address) {
@@ -95,19 +94,19 @@ export function exportVersion(id, format, address) {
   }
   const lines = fileLines(versionFile(id, number, "process.md"))
   if (lines === null) {
-    process.stderr.write(`process-factory: cannot export ${id}: cannot read processes/${id}/versions/${number}/process.md\n`)
+    process.stderr.write(`process-factory: cannot export ${id}: cannot read ${printedPath("processes", id, "versions", String(number), "process.md")}\n`)
     return 1
   }
   const asHtml = format === "html"
   const name = `${id}-v${number}.${asHtml ? "html" : "md"}`
-  const stamp = exportStamp(entry, number, `${viewAddress}/${id}/${number}`)
+  const stamp = exportStamp(entry, number, `${viewAddress}/${currentOrganisation()}/${id}/${number}`)
   try {
-    mkdirSync(path.join(process.cwd(), "exports"), { recursive: true })
-    writeFileSync(path.join(process.cwd(), "exports", name), asHtml ? htmlExport(stamp, lines) : markdownExport(stamp, lines))
+    mkdirSync(storePath("exports"), { recursive: true })
+    writeFileSync(storePath("exports", name), asHtml ? htmlExport(stamp, lines) : markdownExport(stamp, lines))
   } catch (error) {
-    process.stderr.write(`process-factory: cannot write exports/${name}: ${errorMessage(error)}\n`)
+    process.stderr.write(`process-factory: cannot write ${printedPath("exports", name)}: ${errorMessage(error)}\n`)
     return 1
   }
-  process.stdout.write(`exports/${name}\n`)
+  process.stdout.write(`${printedPath("exports", name)}\n`)
   return 0
 }

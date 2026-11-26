@@ -14,9 +14,11 @@ import {
   newestNumber,
   oneLine,
   openFeedbackFiles,
+  printedPath,
   readInputOrPrintReason,
   readProcessesOrPrintReason,
   sectionLines,
+  storePath,
   writeBoard,
 } from "./store.mjs"
 
@@ -56,11 +58,11 @@ function readEntryOrPrintReason(id) {
 
 /** Copies the approved draft, the spec, the cases and the approval of a process into a new version folder, and returns the version for the board, or null after printing why it cannot be written. */
 function writeVersion(id, entry, draftNumber, at) {
-  const processFolder = path.join(process.cwd(), "processes", id)
+  const processFolder = storePath("processes", id)
   const listed = (entry.versions ?? []).map((stored) => stored.version)
   const number = Math.max(0, ...folderNumbers(path.join(processFolder, "versions"), /^(\d+)$/), ...listed) + 1
   const folder = `processes/${id}/versions/${number}`
-  const versionFolder = path.join(process.cwd(), folder)
+  const versionFolder = storePath(folder)
   const approvalFile = path.join(processFolder, "versions", `approval-draft-${draftNumber}.md`)
   try {
     mkdirSync(versionFolder)
@@ -72,28 +74,28 @@ function writeVersion(id, entry, draftNumber, at) {
       copyFileSync(path.join(processFolder, "cases", name), path.join(versionFolder, "cases", name))
     }
     copyFileSync(approvalFile, path.join(versionFolder, "approval.md"))
-    if (entry.regeneration !== undefined) copyFileSync(path.join(process.cwd(), changeListFile(id, draftNumber)), path.join(versionFolder, "changes.md"))
+    if (entry.regeneration !== undefined) copyFileSync(storePath(changeListFile(id, draftNumber)), path.join(versionFolder, "changes.md"))
   } catch (error) {
-    process.stderr.write(`process-factory: cannot write ${folder}: ${errorMessage(error)}\n`)
+    process.stderr.write(`process-factory: cannot write ${printedPath(folder)}: ${errorMessage(error)}\n`)
     return null
   }
   const approved = labelledValue(approvalFile, "Approved by")
   return { version: number, draft: `draft-${draftNumber}.md`, ...(approved === undefined ? {} : { approvedBy: approved }), at }
 }
 
-/** The path of the change list of `draft-<n>.md` of a process, from the project's folder. */
+/** The path of the change list of `draft-<n>.md` of a process, from the folder of its organisation. */
 export function changeListFile(id, draftNumber) {
   return `processes/${id}/drafts/changes-${draftNumber}.md`
 }
 
-/** The path of the file that holds the reasons of a regeneration of a version, from the project's folder. */
+/** The path of the file that holds the reasons of a regeneration of a version, from the folder of its organisation. */
 function reasonsFile(id, version) {
   return `processes/${id}/regeneration-${version}.md`
 }
 
 /** The names of the reasons of a regeneration: the texts after `- ` under `## Reasons` of its reasons file. */
 function recordedReasons(id, version) {
-  const lines = fileLines(path.join(process.cwd(), reasonsFile(id, version)))
+  const lines = fileLines(storePath(reasonsFile(id, version)))
   const body = lines === null ? null : sectionLines(lines, "Reasons")
   return (body ?? []).filter((line) => line.startsWith("- ")).map((line) => line.slice(2))
 }
@@ -132,7 +134,7 @@ function isRoundReason(entry, reason) {
   if (named === null) return false
   const round = (entry.rounds ?? []).find((recorded) => recorded.round === Number(named[1]))
   if (round === undefined || round.round <= entry.regeneration.round) return false
-  if (named[2] === "owner") return existsSync(path.join(process.cwd(), "processes", entry.id, "rounds", `round-${named[1]}`, "owner.md"))
+  if (named[2] === "owner") return existsSync(storePath("processes", entry.id, "rounds", `round-${named[1]}`, "owner.md"))
   return (round.verdicts ?? []).some((given) => given.reviewer === named[2])
 }
 
@@ -152,24 +154,24 @@ function problemOfChangeList(lines, entry) {
   const named = [...changes.flatMap((change) => listedValues(change.body, "Reason")), ...notChanged.map((changed) => changed.reason)]
   const reasons = recordedReasons(entry.id, version)
   const unknown = named.find((reason) => !reasons.includes(reason) && !isRoundReason(entry, reason))
-  if (unknown !== undefined) return `names a reason that is not in ${reasonsFile(entry.id, version)}: ${unknown}`
+  if (unknown !== undefined) return `names a reason that is not in ${printedPath(reasonsFile(entry.id, version))}: ${unknown}`
   const silent = notChanged.find((changed) => changed.body.every((line) => line === ""))
   if (silent !== undefined) return `gives no reason why ${silent.reason} is not changed`
   const left = reasons.filter((reason) => !named.includes(reason))
-  if (left.length > 0) return `does not name these reasons of ${reasonsFile(entry.id, version)}: ${left.join(", ")}`
+  if (left.length > 0) return `does not name these reasons of ${printedPath(reasonsFile(entry.id, version))}: ${left.join(", ")}`
   return undefined
 }
 
 /** The change list of the newest draft of a process that is being regenerated with its problem, or undefined when it has none. */
 function changeListProblem(entry) {
-  const file = changeListFile(entry.id, newestDraftNumber(path.join(process.cwd(), "processes", entry.id)))
-  const problem = problemOfChangeList(fileLines(path.join(process.cwd(), file)), entry)
-  return problem === undefined ? undefined : `${file} ${problem}`
+  const file = changeListFile(entry.id, newestDraftNumber(storePath("processes", entry.id)))
+  const problem = problemOfChangeList(fileLines(storePath(file)), entry)
+  return problem === undefined ? undefined : `${printedPath(file)} ${problem}`
 }
 
 /** The names of the reasons to regenerate a process: its open feedback, its cases that version `<v>` does not hold, and its changed dependencies. */
 function regenerationReasons(entry, version) {
-  const folder = path.join(process.cwd(), "processes", entry.id)
+  const folder = storePath("processes", entry.id)
   const newCases = caseNumbers(folder).filter(
     (number) => !existsSync(path.join(folder, "versions", String(version), "cases", `case-${number}.md`)),
   )
@@ -196,9 +198,9 @@ function startRegeneration(entry, at) {
   const file = reasonsFile(entry.id, version)
   const head = [`# Regeneration of version ${version}`, "", `Process: ${entry.id}`, `Version: ${version}`, `Started at: ${at}`, "", "## Reasons", ""]
   try {
-    writeFileSync(path.join(process.cwd(), file), `${[...head, ...reasons.map((reason) => `- ${reason}`)].join("\n")}\n`)
+    writeFileSync(storePath(file), `${[...head, ...reasons.map((reason) => `- ${reason}`)].join("\n")}\n`)
   } catch (error) {
-    process.stderr.write(`process-factory: cannot write ${file}: ${errorMessage(error)}\n`)
+    process.stderr.write(`process-factory: cannot write ${printedPath(file)}: ${errorMessage(error)}\n`)
     return false
   }
   entry.regeneration = { version, round: (entry.rounds ?? []).at(-1)?.round ?? 0, at }
@@ -222,7 +224,7 @@ function closeAnsweredFeedback(id, lines, version) {
       )
       writeFileSync(open.file, text.join("\n"))
     } catch (error) {
-      process.stderr.write(`process-factory: cannot write processes/${id}/feedback/feedback-${open.number}.md: ${errorMessage(error)}\n`)
+      process.stderr.write(`process-factory: cannot write ${printedPath("processes", id, "feedback", `feedback-${open.number}.md`)}: ${errorMessage(error)}\n`)
       return false
     }
   }
@@ -260,8 +262,8 @@ export function moveProcess(id, stage) {
   let version
   if (publishing) {
     const folder = `processes/${id}`
-    const draftNumber = newestDraftNumber(path.join(process.cwd(), folder))
-    if (draftNumber === null || !existsSync(path.join(process.cwd(), folder, "versions", `approval-draft-${draftNumber}.md`))) {
+    const draftNumber = newestDraftNumber(storePath(folder))
+    if (draftNumber === null || !existsSync(storePath(folder, "versions", `approval-draft-${draftNumber}.md`))) {
       process.stderr.write(
         `process-factory: cannot move ${id} from ${entry.stage} to published: the newest draft has no approval: only approve ${id} --by "<person>" records one\n`,
       )
@@ -274,13 +276,13 @@ export function moveProcess(id, stage) {
     }
     version = writeVersion(id, entry, draftNumber, at)
     if (version === null) return 1
-    const changes = regenerating ? fileLines(path.join(process.cwd(), changeListFile(id, draftNumber))) : null
+    const changes = regenerating ? fileLines(storePath(changeListFile(id, draftNumber))) : null
     if (changes !== null && !closeAnsweredFeedback(id, changes, version.version)) return 1
   }
   entry.stage = stage
   entry.history = [...(entry.history ?? []), { at, stage }]
   if (publishing) {
-    entry.dependencies = specDependencies(path.join(process.cwd(), "processes", id)).map((dependency) => ({
+    entry.dependencies = specDependencies(storePath("processes", id)).map((dependency) => ({
       ...dependency,
       hash: dependencyHash(dependency.kind, dependency.name),
     }))
@@ -312,9 +314,9 @@ export function answerProcess(id, file) {
     return 1
   }
   const folder = `processes/${id}`
-  const number = newestQuestionsNumber(path.join(process.cwd(), folder))
+  const number = newestQuestionsNumber(storePath(folder))
   if (number === null) {
-    process.stderr.write(`process-factory: cannot answer ${id}: there is no questions file in ${folder}\n`)
+    process.stderr.write(`process-factory: cannot answer ${id}: there is no questions file in ${printedPath(folder)}\n`)
     return 1
   }
   const answers = readInputOrPrintReason(file)
@@ -325,12 +327,12 @@ export function answerProcess(id, file) {
   }
   const answersFile = `${folder}/answers-${number}.md`
   try {
-    writeFileSync(path.join(process.cwd(), answersFile), answers, { flag: "wx" })
+    writeFileSync(storePath(answersFile), answers, { flag: "wx" })
   } catch (error) {
-    process.stderr.write(`process-factory: cannot write ${answersFile}: ${errorMessage(error)}\n`)
+    process.stderr.write(`process-factory: cannot write ${printedPath(answersFile)}: ${errorMessage(error)}\n`)
     return 1
   }
-  process.stdout.write(`Stored ${answersFile}\n`)
+  process.stdout.write(`Stored ${printedPath(answersFile)}\n`)
   return moveProcess(id, "spec")
 }
 
@@ -357,13 +359,13 @@ export function acceptSpec(id) {
     return 1
   }
   const folder = `processes/${id}`
-  const open = openSpecSections(path.join(process.cwd(), folder))
+  const open = openSpecSections(storePath(folder))
   if (open.length > 0) {
-    process.stderr.write(`process-factory: cannot accept the spec of ${id}: these sections of ${folder}/spec.md are open\n`)
+    process.stderr.write(`process-factory: cannot accept the spec of ${id}: these sections of ${printedPath(folder)}/spec.md are open\n`)
     for (const name of open) process.stderr.write(`  ${name}\n`)
-    const number = newestQuestionsNumber(path.join(process.cwd(), folder))
-    if (number !== null && !existsSync(path.join(process.cwd(), folder, `answers-${number}.md`))) {
-      process.stderr.write(`process-factory: ${folder}/questions-${number}.md has no answers yet: ${id} moves to clarify\n`)
+    const number = newestQuestionsNumber(storePath(folder))
+    if (number !== null && !existsSync(storePath(folder, `answers-${number}.md`))) {
+      process.stderr.write(`process-factory: ${printedPath(folder)}/questions-${number}.md has no answers yet: ${id} moves to clarify\n`)
       moveProcess(id, "clarify")
       return 1
     }
@@ -375,7 +377,7 @@ export function acceptSpec(id) {
   entry.history = [...(entry.history ?? []), { at, stage: "cases" }]
   entry.specAcceptedAt = at
   writeBoard(processes)
-  process.stdout.write(`Accepted ${folder}/spec.md\ncases\n`)
+  process.stdout.write(`Accepted ${printedPath(folder)}/spec.md\ncases\n`)
   return 0
 }
 
@@ -454,9 +456,9 @@ export function recordRound(id) {
     return 1
   }
   const folder = `processes/${id}`
-  const round = newestNumber(path.join(process.cwd(), folder, "rounds"), /^round-(\d+)$/)
+  const round = newestNumber(storePath(folder, "rounds"), /^round-(\d+)$/)
   if (round === null) {
-    process.stderr.write(`${cannot}: there is no round folder in ${folder}/rounds\n`)
+    process.stderr.write(`${cannot}: there is no round folder in ${printedPath(folder)}/rounds\n`)
     return 1
   }
   const recorded = entry.rounds ?? []
@@ -464,22 +466,22 @@ export function recordRound(id) {
     process.stderr.write(`${cannot}: round ${round} is already recorded\n`)
     return 1
   }
-  const draftNumber = newestDraftNumber(path.join(process.cwd(), folder))
+  const draftNumber = newestDraftNumber(storePath(folder))
   if (draftNumber === null) {
-    process.stderr.write(`${cannot}: there is no draft in ${folder}/drafts\n`)
+    process.stderr.write(`${cannot}: there is no draft in ${printedPath(folder)}/drafts\n`)
     return 1
   }
   const roundFolder = `${folder}/rounds/round-${round}`
-  const read = reviewers.map((reviewer) => ({ reviewer, ...readFindingsFile(path.join(process.cwd(), roundFolder, `${reviewer}.md`)) }))
+  const read = reviewers.map((reviewer) => ({ reviewer, ...readFindingsFile(storePath(roundFolder, `${reviewer}.md`)) }))
   const simulationFile = read.find((file) => file.reviewer === "simulation")
   let cases = null
   if (simulationFile !== undefined && simulationFile.reason === undefined) {
-    cases = storedCaseResults(path.join(process.cwd(), folder), path.join(process.cwd(), roundFolder))
+    cases = storedCaseResults(storePath(folder), storePath(roundFolder))
     simulationFile.reason = caseReason(cases, simulationFile.verdict)
   }
   const refused = read.filter((file) => file.reason !== undefined)
   if (refused.length > 0) {
-    process.stderr.write(`process-factory: cannot record round ${round} of ${id}: these findings files in ${roundFolder} are missing or malformed\n`)
+    process.stderr.write(`process-factory: cannot record round ${round} of ${id}: these findings files in ${printedPath(roundFolder)} are missing or malformed\n`)
     for (const file of refused) process.stderr.write(`  ${file.reviewer}.md: ${file.reason}\n`)
     process.stderr.write(`process-factory: ${id} stays in review: /process next ${id} runs a new round\n`)
     return 1
@@ -503,7 +505,7 @@ export function recordRound(id) {
   writeBoard(processes)
   const counted = read.map((file) => `  ${file.reviewer}  ${file.verdict}  ${file.counts.map((count, index) => `${count} ${findingTags[index]}`).join(", ")}`)
   const stoppedLine = stopped === undefined ? [] : [`Stopped: ${stopped}`]
-  process.stdout.write(`${[`Recorded ${roundFolder} for ${draft}`, ...counted, ...regressed, ...stoppedLine, entry.stage].join("\n")}\n`)
+  process.stdout.write(`${[`Recorded ${printedPath(roundFolder)} for ${draft}`, ...counted, ...regressed, ...stoppedLine, entry.stage].join("\n")}\n`)
   return 0
 }
 
@@ -518,7 +520,7 @@ export function setOwner(id, personArgument) {
   const entry = findProcessOrPrintReason(processes, id)
   if (entry === undefined) return 1
   if (!isNamedInRoles(person)) {
-    process.stderr.write(`process-factory: cannot set the owner of ${id}: ${person} is not named in organisation/roles.md\n`)
+    process.stderr.write(`process-factory: cannot set the owner of ${id}: ${person} is not named in ${printedPath("organisation", "roles.md")}\n`)
     return 1
   }
   entry.owner = person
@@ -545,18 +547,18 @@ export function approveDraft(id, byArgument) {
     return 1
   }
   if (!isNamedInRoles(entry.owner)) {
-    process.stderr.write(`${cannot}: its owner ${entry.owner} is not named in organisation/roles.md\n`)
+    process.stderr.write(`${cannot}: its owner ${entry.owner} is not named in ${printedPath("organisation", "roles.md")}\n`)
     return 1
   }
   const folder = `processes/${id}`
-  const draftNumber = newestDraftNumber(path.join(process.cwd(), folder))
+  const draftNumber = newestDraftNumber(storePath(folder))
   if (draftNumber === null) {
-    process.stderr.write(`${cannot}: there is no draft in ${folder}/drafts\n`)
+    process.stderr.write(`${cannot}: there is no draft in ${printedPath(folder)}/drafts\n`)
     return 1
   }
   const draft = `draft-${draftNumber}.md`
   const approvalFile = `${folder}/versions/approval-draft-${draftNumber}.md`
-  if (existsSync(path.join(process.cwd(), approvalFile))) {
+  if (existsSync(storePath(approvalFile))) {
     process.stderr.write(`${cannot}: ${draft} is already approved\n`)
     return 1
   }
@@ -569,23 +571,23 @@ export function approveDraft(id, byArgument) {
   }
   const changes = entry.regeneration === undefined ? "" : `Changes: changes-${draftNumber}.md\n`
   try {
-    mkdirSync(path.join(process.cwd(), folder, "versions"), { recursive: true })
+    mkdirSync(storePath(folder, "versions"), { recursive: true })
     writeFileSync(
-      path.join(process.cwd(), approvalFile),
+      storePath(approvalFile),
       `# Approval of ${draft}\n\nProcess: ${id}\nDraft: ${draft}\n${changes}Approved by: ${entry.owner}\nApproved at: ${new Date().toISOString()}\n`,
     )
   } catch (error) {
-    process.stderr.write(`process-factory: cannot write ${approvalFile}: ${errorMessage(error)}\n`)
+    process.stderr.write(`process-factory: cannot write ${printedPath(approvalFile)}: ${errorMessage(error)}\n`)
     return 1
   }
-  process.stdout.write(`Stored ${approvalFile}\n`)
+  process.stdout.write(`Stored ${printedPath(approvalFile)}\n`)
   return 0
 }
 
 /** The findings of a reviewer's file of a round, each line as it is in the file, or null when the file cannot be read. */
 export function roundFindings(roundFolder, reviewer) {
   if (!/^[a-z0-9-]+$/.test(reviewer)) return null
-  const lines = fileLines(path.join(process.cwd(), roundFolder, `${reviewer}.md`))
+  const lines = fileLines(storePath(roundFolder, `${reviewer}.md`))
   return lines === null ? null : lines.filter((line) => findingTags.some((tag) => line.startsWith(`- [${tag}] `)))
 }
 
@@ -614,7 +616,7 @@ export function respecProcess(id) {
   for (const given of newest.verdicts ?? []) {
     const found = roundFindings(roundFolder, given.reviewer)
     if (found === null) {
-      process.stderr.write(`${cannot}: ${roundFolder}/${given.reviewer}.md is missing\n`)
+      process.stderr.write(`${cannot}: ${printedPath(roundFolder)}/${given.reviewer}.md is missing\n`)
       return 1
     }
     sections.push({ reviewer: given.reviewer, verdict: given.verdict, found })
@@ -630,10 +632,10 @@ export function respecProcess(id) {
   )
   const findingsFile = `${folder}/feedback/findings-round-${round}.md`
   try {
-    mkdirSync(path.join(process.cwd(), folder, "feedback"), { recursive: true })
-    writeFileSync(path.join(process.cwd(), findingsFile), `${[head, ...written].join("\n\n")}\n`, { flag: "wx" })
+    mkdirSync(storePath(folder, "feedback"), { recursive: true })
+    writeFileSync(storePath(findingsFile), `${[head, ...written].join("\n\n")}\n`, { flag: "wx" })
   } catch (error) {
-    process.stderr.write(`process-factory: cannot write ${findingsFile}: ${errorMessage(error)}\n`)
+    process.stderr.write(`process-factory: cannot write ${printedPath(findingsFile)}: ${errorMessage(error)}\n`)
     return 1
   }
   entry.stage = "spec"
@@ -641,7 +643,7 @@ export function respecProcess(id) {
   entry.respecs = [...(entry.respecs ?? []), { round, at }]
   delete entry.specAcceptedAt
   writeBoard(processes)
-  process.stdout.write(`Stored ${findingsFile}\nspec\n`)
+  process.stdout.write(`Stored ${printedPath(findingsFile)}\nspec\n`)
   return 0
 }
 
@@ -671,13 +673,13 @@ export function sendBackDraft(id, file) {
   const findingsFile = `${roundFolder}/owner.md`
   const head = ["# Findings of the owner", "", `Process: ${id}`, `Round: ${round}`, `Draft: ${newest.draft}`, `Sent back at: ${new Date().toISOString()}`, "", "Verdict: CHANGES", ""]
   try {
-    mkdirSync(path.join(process.cwd(), roundFolder), { recursive: true })
-    writeFileSync(path.join(process.cwd(), findingsFile), `${[...head, ...findings.map((line) => `- [high] ${line}`)].join("\n")}\n`, { flag: "wx" })
+    mkdirSync(storePath(roundFolder), { recursive: true })
+    writeFileSync(storePath(findingsFile), `${[...head, ...findings.map((line) => `- [high] ${line}`)].join("\n")}\n`, { flag: "wx" })
   } catch (error) {
-    process.stderr.write(`process-factory: cannot write ${findingsFile}: ${errorMessage(error)}\n`)
+    process.stderr.write(`process-factory: cannot write ${printedPath(findingsFile)}: ${errorMessage(error)}\n`)
     return 1
   }
-  process.stdout.write(`Stored ${findingsFile}\n`)
+  process.stdout.write(`Stored ${printedPath(findingsFile)}\n`)
   return moveProcess(id, "rework")
 }
 
@@ -731,8 +733,8 @@ export function editProcessFile(id, name, file, byArgument) {
     return 1
   }
   const stored = `processes/${id}/${editedPath(name)}`
-  if (!existsSync(path.join(process.cwd(), stored))) {
-    process.stderr.write(`${cannot}: ${stored} is not there\n`)
+  if (!existsSync(storePath(stored))) {
+    process.stderr.write(`${cannot}: ${printedPath(stored)} is not there\n`)
     return 1
   }
   const by = byArgument.trim()
@@ -745,7 +747,7 @@ export function editProcessFile(id, name, file, byArgument) {
     return 1
   }
   if (!isNamedInRoles(by)) {
-    process.stderr.write(`${cannot}: ${by} is not named in organisation/roles.md\n`)
+    process.stderr.write(`${cannot}: ${by} is not named in ${printedPath("organisation", "roles.md")}\n`)
     return 1
   }
   const posted = readInputOrPrintReason(file)
@@ -755,8 +757,8 @@ export function editProcessFile(id, name, file, byArgument) {
     process.stderr.write(`${cannot}: the text is empty\n`)
     return 1
   }
-  if (text === editableText(path.join(process.cwd(), stored))) {
-    process.stderr.write(`${cannot}: the text is the same as ${stored}\n`)
+  if (text === editableText(storePath(stored))) {
+    process.stderr.write(`${cannot}: the text is the same as ${printedPath(stored)}\n`)
     return 1
   }
   const open = name === "spec.md" && entry.stage !== "spec" ? openSections(text.split("\n").map((line) => line.trimEnd())) : []
@@ -766,18 +768,18 @@ export function editProcessFile(id, name, file, byArgument) {
     return 1
   }
   try {
-    writeFileSync(path.join(process.cwd(), stored), `${text}\n`)
+    writeFileSync(storePath(stored), `${text}\n`)
   } catch (error) {
-    process.stderr.write(`process-factory: cannot write ${stored}: ${errorMessage(error)}\n`)
+    process.stderr.write(`process-factory: cannot write ${printedPath(stored)}: ${errorMessage(error)}\n`)
     return 1
   }
   if (stagesThatMoveToDraft.includes(entry.stage)) entry.stage = "draft"
   entry.history = [...(entry.history ?? []), { at: new Date().toISOString(), stage: entry.stage, edited: name, by }]
-  if (newestDraftNumber(path.join(process.cwd(), "processes", id)) !== null) {
+  if (newestDraftNumber(storePath("processes", id)) !== null) {
     const marked = editedNames(entry)
     entry.needsDraft = marked.includes(name) ? marked : [...marked, name]
   }
   writeBoard(processes)
-  process.stdout.write(`Stored ${stored}\n${entry.stage}\n`)
+  process.stdout.write(`Stored ${printedPath(stored)}\n${entry.stage}\n`)
   return 0
 }

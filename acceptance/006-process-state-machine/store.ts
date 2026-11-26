@@ -6,7 +6,7 @@ import path from "node:path"
 export const root = path.resolve(import.meta.dirname, "../..")
 export const boardFile = "processes/board.json"
 export const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory edit <process-id> <name> <file> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory export <process-id> --format html|markdown --link <address>\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"] [--org <org-id>]\n       process-factory move <process-id> <stage> [--org <org-id>]\n       process-factory show [<process-id>] [--org <org-id>]\n       process-factory answer <process-id> <file> [--org <org-id>]\n       process-factory accept-spec <process-id> [--org <org-id>]\n       process-factory round <process-id> [--org <org-id>]\n       process-factory owner <process-id> "<person>" [--org <org-id>]\n       process-factory approve <process-id> --by "<person>" [--org <org-id>]\n       process-factory respec <process-id> [--org <org-id>]\n       process-factory send-back <process-id> <file> [--org <org-id>]\n       process-factory edit <process-id> <name> <file> --by "<person>" [--org <org-id>]\n       process-factory org new "<name>"\n       process-factory org list\n       process-factory org init [--org <org-id>]\n       process-factory check [--org <org-id>]\n       process-factory export <process-id> --format html|markdown --link <address> [--org <org-id>]\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
 
 /** The ten stages, each with the stages a process may move to from it, in the order of the spec's table. */
 export const moves: [string, string[]][] = [
@@ -22,14 +22,49 @@ export const moves: [string, string[]][] = [
   ["regenerate", ["review", "published"]],
 ]
 
-/** A new empty folder outside the repository. */
-export function emptyFolder(): string {
-  return mkdtempSync(path.join(tmpdir(), "process-factory-machine-"))
+/** The id of the one organisation of the project of an earlier test. */
+export const organisationId = "acme"
+
+/**
+ * The empty folder `organisations/acme` of a new project outside the repository: the folder of the one organisation
+ * of that project. Every path an earlier test names is a path in this folder, and its commands run in the project.
+ */
+export function organisationFolder(prefix: string): string {
+  const folder = path.join(mkdtempSync(path.join(tmpdir(), prefix)), "organisations", organisationId)
+  mkdirSync(folder, { recursive: true })
+  return folder
 }
 
-/** Runs the repository's command line with `cwd` as the working directory. */
+/** The project the folder of an organisation lies in. */
+export function projectOf(folder: string): string {
+  return path.resolve(folder, "../..")
+}
+
+/**
+ * What the command line printed, with every path of the store as it is from the folder of the organisation:
+ * `organisations/acme/processes/...` as `processes/...`. A path of the store that is printed without
+ * `organisations/acme/` in front is marked `UNPREFIXED-`, so that no test passes on it.
+ */
+export function inside(text: string): string {
+  return text.replace(/(organisations\/acme\/)?\b(processes|organisation|exports)\//g, (_match, prefix: string | undefined, name: string) =>
+    prefix === undefined ? `UNPREFIXED-${name}/` : `${name}/`,
+  )
+}
+
+/** Runs `node <script> <args>` in the project of the folder of an organisation, and gives what it printed through `inside`. */
+export function runInProject(folder: string, script: string, args: string[], input?: string) {
+  const result = spawnSync(process.execPath, [path.resolve(folder, script), ...args], { cwd: projectOf(folder), encoding: "utf8", input, timeout: 60_000 })
+  return { ...result, stdout: inside(result.stdout), stderr: inside(result.stderr) }
+}
+
+/** A new empty folder of an organisation, in a new project outside the repository. */
+export function emptyFolder(): string {
+  return organisationFolder("process-factory-machine-")
+}
+
+/** Runs the repository's command line in the project of `cwd`, the folder of an organisation. */
 export function runCommand(cwd: string, args: string[]) {
-  return spawnSync(process.execPath, [path.join(root, "bin/process-factory.mjs"), ...args], { cwd, encoding: "utf8" })
+  return runInProject(cwd, path.join(root, "bin/process-factory.mjs"), args)
 }
 
 /** The content of a file in `folder`, or an empty string when it does not exist. */

@@ -2,6 +2,8 @@
 
 This file is for the agent that `/process next <process-id>` starts for a process in the stage `cases`. You read the specification of one process and the organisation context, and write simulation cases: situations in which a later draft of the process is tried out. You write them from the specification alone, never from a draft, so that they test a draft instead of following it. You cannot talk to the user.
 
+You work on one organisation: the one whose id `<org-id>` your task names in its line `Organisation: <org-id>`, or the one the skill file chose when you hold an interview yourself. Every path in this file that starts with `organisation/` or `processes/` lies in the folder of that organisation, `organisations/<org-id>/` in the project's folder. Never read or write a file of another organisation.
+
 ## Rules
 
 - Write only new files `processes/<process-id>/cases/case-<n>.md`. Create no other file, and change or delete no file, also no case that is already there.

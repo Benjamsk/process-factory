@@ -24,7 +24,7 @@ describe("the section The command line", () => {
 describe("the section The organisation context", () => {
   it("makes organisation/ the factory's codebase and names its five files", () => {
     const text = skillSection("The organisation context")
-    expect(text).toContain("The folder `organisation/` in the project's folder is the factory's codebase")
+    expect(text).toContain("The folder `organisation/` of the organisation you work on is the factory's codebase")
     for (const file of organisationFiles) {
       expect(text).toContain(`\`${file}\``)
     }

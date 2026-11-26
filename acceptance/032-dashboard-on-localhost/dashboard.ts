@@ -1,8 +1,8 @@
 import { spawn, spawnSync, type ChildProcess } from "node:child_process"
 import path from "node:path"
 import { expect } from "vitest"
-import { root, writeFile } from "../006-process-state-machine/store.ts"
-import { compact } from "../026-reading-view-on-localhost/view.ts"
+import { projectOf, root, writeFile } from "../006-process-state-machine/store.ts"
+import { compact, organisationAddress } from "../026-reading-view-on-localhost/view.ts"
 
 const commandFile = path.join(root, "bin/process-factory.mjs")
 const addressLine = /^Dashboard on (http:\/\/127\.0\.0\.1:\d+)\n$/
@@ -20,14 +20,14 @@ export const secondQuestion = "How long may the laptop stay unblocked?"
 export const answeredQuestion = "Who reports a lost laptop?"
 export const missingFact = "The name of the insurer, in organisation/processors.md"
 
-/** Runs `dashboard` with arguments that must make it exit at once. Gives up after fifteen seconds. */
+/** Runs `dashboard` in the project of `project`, the folder of an organisation, with arguments that must make it exit at once. Gives up after fifteen seconds. */
 export function runDashboard(project: string, args: string[]) {
-  return spawnSync(process.execPath, [commandFile, "dashboard", ...args], { cwd: project, encoding: "utf8", timeout: 15_000 })
+  return spawnSync(process.execPath, [commandFile, "dashboard", ...args], { cwd: projectOf(project), encoding: "utf8", timeout: 15_000 })
 }
 
-/** Starts `dashboard` and waits until it printed a line to standard output or ended. `isRunning` says whether it still runs when it is called. */
+/** Starts `dashboard` in the project of `project`, the folder of an organisation, and waits until it printed a line to standard output or ended. `isRunning` says whether it still runs when it is called. */
 export async function startDashboard(project: string, args: string[]): Promise<{ stdout: string; stderr: string; isRunning: () => boolean }> {
-  const child = spawn(process.execPath, [commandFile, "dashboard", ...args], { cwd: project, stdio: ["ignore", "pipe", "pipe"] })
+  const child = spawn(process.execPath, [commandFile, "dashboard", ...args], { cwd: projectOf(project), stdio: ["ignore", "pipe", "pipe"] })
   running.push(child)
   let stdout = ""
   let stderr = ""
@@ -51,12 +51,12 @@ export async function startDashboard(project: string, args: string[]): Promise<{
   return { stdout, stderr, isRunning: () => child.exitCode === null && child.signalCode === null }
 }
 
-/** Starts the dashboard of `project` on a free port and gives its address, such as `http://127.0.0.1:50123`. */
+/** Starts the dashboard of the project of `project`, the folder of an organisation, on a free port and gives the address of that organisation, such as `http://127.0.0.1:50123/acme`. */
 export async function openDashboard(project: string): Promise<string> {
   const started = await startDashboard(project, ["--port", "0"])
   expect(started.stdout).toMatch(addressLine)
   expect(started.stderr).toBe("")
-  return addressLine.exec(started.stdout)?.[1] ?? ""
+  return organisationAddress(addressLine.exec(started.stdout)?.[1] ?? "")
 }
 
 /** Stops every dashboard the tests started and waits until each has ended. */

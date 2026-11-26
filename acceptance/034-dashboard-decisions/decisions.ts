@@ -1,6 +1,5 @@
-import { spawnSync } from "node:child_process"
 import path from "node:path"
-import { processes, root, writeBoard, writeFile } from "../006-process-state-machine/store.ts"
+import { processes, root, runInProject, writeBoard, writeFile } from "../006-process-state-machine/store.ts"
 import { kari, ownEntry, processFolder, processId, rolesFile, rolesText, writeDrafts } from "../024-named-owner-and-approval/approval.ts"
 import { compact } from "../026-reading-view-on-localhost/view.ts"
 import { answeredQuestion, firstQuestion, questionsText, round, secondQuestion } from "../032-dashboard-on-localhost/dashboard.ts"
@@ -86,7 +85,7 @@ export function ownProcess(project: string): Record<string, unknown> {
   return processes(project).find((entry) => entry.id === processId) ?? {}
 }
 
-/** Runs the repository's command line with a text on standard input. Gives up after fifteen seconds. */
+/** Runs the repository's command line in the project of `project`, the folder of an organisation, with a text on standard input. */
 export function runWithInput(project: string, args: string[], input: string) {
-  return spawnSync(process.execPath, [path.join(root, "bin/process-factory.mjs"), ...args], { cwd: project, encoding: "utf8", input, timeout: 15_000 })
+  return runInProject(project, path.join(root, "bin/process-factory.mjs"), args, input)
 }

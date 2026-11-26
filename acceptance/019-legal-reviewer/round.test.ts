@@ -1,6 +1,6 @@
 import { rmSync } from "node:fs"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { emptyFolder, entries, processes, runCommand } from "../006-process-state-machine/store.ts"
+import { emptyFolder, entries, processes, projectOf, runCommand } from "../006-process-state-machine/store.ts"
 import { findings, processId, writeDrafts, writeFindings, writeProcess } from "../017-review-rounds/rounds.ts"
 import { exampleFinding, installedFolder } from "./legal.ts"
 
@@ -22,7 +22,7 @@ function prepareRound(legal?: string): void {
   expect(runCommand(project, ["init"]).status).toBe(0)
   writeProcess(project)
   writeDrafts(project, [1])
-  const reviewers = entries(project, installedFolder)
+  const reviewers = entries(projectOf(project), installedFolder)
     .filter((name) => /^[a-z0-9-]+-reviewer\.md$/.test(name))
     .map((name) => name.replace("-reviewer.md", ""))
   for (const reviewer of reviewers.filter((name) => name !== "legal")) {

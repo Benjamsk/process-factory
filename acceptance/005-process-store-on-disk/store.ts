@@ -1,23 +1,22 @@
-import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
+import { organisationFolder, runInProject } from "../006-process-state-machine/store.ts"
 
 export const root = path.resolve(import.meta.dirname, "../..")
 export const binFile = "bin/process-factory.mjs"
 export const boardFile = "processes/board.json"
 
-/** A new empty folder outside the repository. */
+/** A new empty folder of an organisation, in a new project outside the repository. */
 export function emptyFolder(): string {
-  return mkdtempSync(path.join(tmpdir(), "process-factory-store-"))
+  return organisationFolder("process-factory-store-")
 }
 
-/** Runs `node <script> <args>` with `cwd` as the working directory. */
+/** Runs `node <script> <args>` in the project of `cwd`, the folder of an organisation; a relative script lies in `cwd`. */
 export function runNode(cwd: string, script: string, args: string[]) {
-  return spawnSync(process.execPath, [script, ...args], { cwd, encoding: "utf8" })
+  return runInProject(cwd, script, args)
 }
 
-/** Runs the repository's command line with `cwd` as the working directory. */
+/** Runs the repository's command line in the project of `cwd`, the folder of an organisation. */
 export function runCommand(cwd: string, args: string[]) {
   return runNode(cwd, path.join(root, binFile), args)
 }

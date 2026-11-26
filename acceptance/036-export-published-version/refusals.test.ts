@@ -115,7 +115,7 @@ describe("the usage of process-factory", () => {
     ["export with --link before --format", ["export", laptopId, "--link", address, "--format", "html"]],
     ["export with --link but no address", ["export", laptopId, "--format", "html", "--link"]],
     ["export with an argument after the address", ["export", laptopId, "--format", "html", "--link", address, "extra"]],
-  ])("has seventeen lines, with export after check and before serve, and is printed with %s", (_name, args) => {
+  ])("has nineteen lines, with export after check and before serve, and is printed with %s", (_name, args) => {
     writeLaptop(project)
     const before = tree(project)
 
@@ -123,10 +123,10 @@ describe("the usage of process-factory", () => {
 
     expect(result.stderr).toBe(usage)
     const lines = result.stderr.trimEnd().split("\n")
-    expect(lines).toHaveLength(17)
-    expect(lines.slice(13)).toEqual([
-      "       process-factory check",
-      "       process-factory export <process-id> --format html|markdown --link <address>",
+    expect(lines).toHaveLength(19)
+    expect(lines.slice(15)).toEqual([
+      "       process-factory check [--org <org-id>]",
+      "       process-factory export <process-id> --format html|markdown --link <address> [--org <org-id>]",
       "       process-factory serve [--port <number>]",
       "       process-factory dashboard [--port <number>]",
     ])

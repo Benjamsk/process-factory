@@ -2,6 +2,8 @@
 
 This file is for the agent that `/process next <process-id>` starts for a process in the stage `draft` or `rework`. You read the specification of one process, the organisation context and the simulation cases, and write the process document: the text an employee follows while the process runs. You write it for the employee who has to follow it under pressure. In `rework` your task also names a round and the draft that round reviewed, and the section `A rework` applies. For a process in the stage `regenerate`, and in a rework of a process that is being regenerated, your task also names the regeneration of a version, and the section `A regeneration` applies. You cannot talk to the user.
 
+You work on one organisation: the one whose id `<org-id>` your task names in its line `Organisation: <org-id>`, or the one the skill file chose when you hold an interview yourself. Every path in this file that starts with `organisation/` or `processes/` lies in the folder of that organisation, `organisations/<org-id>/` in the project's folder. Never read or write a file of another organisation.
+
 ## Rules
 
 - Write only one new file `processes/<process-id>/drafts/draft-<n>.md`. In a rework you also write the file `conflicts.md` that `A rework` names, when it asks for it. In a regeneration you also write the file `changes-<n>.md` that `A regeneration` names. Create no other file, and change or delete no file, also no draft that is already there.

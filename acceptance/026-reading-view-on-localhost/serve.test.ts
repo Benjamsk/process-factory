@@ -2,7 +2,7 @@ import { rmSync } from "node:fs"
 import { createServer, type Server } from "node:net"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { emptyFolder, entries } from "../006-process-state-machine/store.ts"
-import { openView, request, runServe, startServe, stopViews, usage, writeLaptop } from "./view.ts"
+import { openView, organisationAddress, request, runServe, startServe, stopViews, usage, writeLaptop } from "./view.ts"
 
 let project = ""
 let blocker: Server | undefined
@@ -35,12 +35,12 @@ async function takePort(): Promise<number> {
 }
 
 describe("process-factory serve", () => {
-  it("prints one line with the address on 127.0.0.1 and the port it listens on, keeps running and answers GET / with 200", async () => {
+  it("prints one line with the address on 127.0.0.1 and the port it listens on, keeps running and answers GET of the organisation with 200", async () => {
     const started = await startServe(project, ["--port", "0"])
 
     expect(started.stdout).toMatch(/^Reading view on http:\/\/127\.0\.0\.1:[1-9]\d*\n$/)
     expect(started.stderr).toBe("")
-    const address = started.stdout.trim().replace("Reading view on ", "")
+    const address = organisationAddress(started.stdout.trim().replace("Reading view on ", ""))
     const front = await request(address, "/")
     expect(front.status).toBe(200)
     expect(started.isRunning()).toBe(true)
@@ -59,7 +59,7 @@ describe("process-factory serve", () => {
 
     expect(started.stdout).toBe(`Reading view on http://127.0.0.1:${String(port)}\n`)
     expect(started.isRunning()).toBe(true)
-    expect((await request(`http://127.0.0.1:${String(port)}`, "/")).status).toBe(200)
+    expect((await request(organisationAddress(`http://127.0.0.1:${String(port)}`), "/")).status).toBe(200)
   })
 
   it("starts in a folder without processes and creates nothing there", async () => {
@@ -95,12 +95,12 @@ describe("the usage of process-factory", () => {
     ["serve --port", ["--port"]],
     ["serve --host 0.0.0.0", ["--host", "0.0.0.0"]],
     ["serve --port 0 extra", ["--port", "0", "extra"]],
-  ])("has seventeen lines, with serve after export and before dashboard, and is printed with %s", (_name, args) => {
+  ])("has nineteen lines, with serve after export and before dashboard, and is printed with %s", (_name, args) => {
     const result = runServe(project, args)
 
     expect(result.stderr).toBe(usage)
-    expect(result.stderr.trimEnd().split("\n")).toHaveLength(17)
-    expect(result.stderr.endsWith("       process-factory check\n       process-factory export <process-id> --format html|markdown --link <address>\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n")).toBe(true)
+    expect(result.stderr.trimEnd().split("\n")).toHaveLength(19)
+    expect(result.stderr.endsWith("       process-factory check [--org <org-id>]\n       process-factory export <process-id> --format html|markdown --link <address> [--org <org-id>]\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n")).toBe(true)
     expect(result.stdout).toBe("")
     expect(result.status).toBe(1)
     expect(entries(project)).toEqual([])

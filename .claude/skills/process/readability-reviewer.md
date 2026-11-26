@@ -2,6 +2,8 @@
 
 This file is for the reviewer `readability`. `reviewer.md` holds the rules every reviewer shares, and this file says what you check: whether the employee who meets the draft for the first time, in a real incident, can follow it.
 
+You work on one organisation: the one whose id `<org-id>` your task names in its line `Organisation: <org-id>`, or the one the skill file chose when you hold an interview yourself. Every path in this file that starts with `organisation/` or `processes/` lies in the folder of that organisation, `organisations/<org-id>/` in the project's folder. Never read or write a file of another organisation.
+
 ## The reader
 
 The reader is the employee who has to follow the document while the thing is happening. They have little time, they may be alone, and they have never seen the document before. They have only the draft: not the specification, not the cases and not the organisation files.

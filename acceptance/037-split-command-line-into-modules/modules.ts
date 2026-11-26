@@ -1,7 +1,6 @@
-import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs"
 import path from "node:path"
-import { root } from "../006-process-state-machine/store.ts"
+import { projectOf, root, runInProject } from "../006-process-state-machine/store.ts"
 
 export const entryFile = "process-factory.mjs"
 /** The files of `bin/` in the order of the spec's section 3.2, lowest level first. */
@@ -90,11 +89,12 @@ export function exportedNames(name: string): string[] {
 }
 
 /**
- * Builds the package as it is installed in `project`: `node_modules/process-factory` with the ten files of `bin/`,
- * `templates/` and `package.json`, and nothing else. Gives the folder of the copy.
+ * Builds the package as it is installed in the project of `project`, the folder of an organisation:
+ * `node_modules/process-factory` with the ten files of `bin/`, `templates/` and `package.json`, and nothing else.
+ * Gives the folder of the copy.
  */
 export function installPackage(project: string): string {
-  const packageFolder = path.join(project, "node_modules", "process-factory")
+  const packageFolder = path.join(projectOf(project), "node_modules", "process-factory")
   mkdirSync(path.join(packageFolder, "bin"), { recursive: true })
   for (const name of binFiles) cpSync(path.join(root, "bin", name), path.join(packageFolder, "bin", name))
   cpSync(path.join(root, "templates"), path.join(packageFolder, "templates"), { recursive: true })
@@ -102,12 +102,12 @@ export function installPackage(project: string): string {
   return packageFolder
 }
 
-/** The command file of the copy of the package in `project`. */
+/** The command file of the copy of the package in the project of `project`, the folder of an organisation. */
 export function installedCommand(project: string): string {
-  return path.join(project, "node_modules", "process-factory", "bin", entryFile)
+  return path.join(projectOf(project), "node_modules", "process-factory", "bin", entryFile)
 }
 
-/** Runs the command line of the copy of the package in `project`, with `project` as the working directory. Gives up after fifteen seconds. */
+/** Runs the command line of the copy of the package in the project of `project`, the folder of an organisation, with that project as the working directory. */
 export function runInstalled(project: string, args: string[]) {
-  return spawnSync(process.execPath, [installedCommand(project), ...args], { cwd: project, encoding: "utf8", timeout: 15_000 })
+  return runInProject(project, installedCommand(project), args)
 }

@@ -2,9 +2,10 @@ import { spawn, type ChildProcess } from "node:child_process"
 import { appendFileSync, rmSync } from "node:fs"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { emptyFolder, entries, processes, readFile, usage, writeFile } from "../006-process-state-machine/store.ts"
+import { emptyFolder, entries, processes, projectOf, readFile, usage, writeFile } from "../006-process-state-machine/store.ts"
 import { specText } from "../012-spec-completeness-gate/gate.ts"
 import { processFolder, processId } from "../024-named-owner-and-approval/approval.ts"
+import { organisationAddress } from "../026-reading-view-on-localhost/view.ts"
 import { post } from "../027-reader-feedback/feedback.ts"
 import { ownProcess, writeStore } from "../034-dashboard-decisions/decisions.ts"
 import { installedCommand, installPackage, runInstalled } from "./modules.ts"
@@ -35,12 +36,12 @@ afterEach(async () => {
         }),
     ),
   )
-  rmSync(project, { recursive: true, force: true, maxRetries: 5 })
+  rmSync(projectOf(project), { recursive: true, force: true, maxRetries: 5 })
 })
 
-/** Starts the dashboard of the copy of the package on a free port and gives its address, or an empty string when it printed none. */
+/** Starts the dashboard of the copy of the package on a free port and gives the address of the organisation there, or an empty string when it printed none. */
 async function openInstalledDashboard(): Promise<string> {
-  const child = spawn(process.execPath, [installedCommand(project), "dashboard", "--port", "0"], { cwd: project, stdio: ["ignore", "pipe", "pipe"] })
+  const child = spawn(process.execPath, [installedCommand(project), "dashboard", "--port", "0"], { cwd: projectOf(project), stdio: ["ignore", "pipe", "pipe"] })
   running.push(child)
   let stdout = ""
   child.stdout.setEncoding("utf8")
@@ -56,7 +57,8 @@ async function openInstalledDashboard(): Promise<string> {
     })
     child.on("close", finish)
   })
-  return addressLine.exec(stdout)?.[1] ?? ""
+  const address = addressLine.exec(stdout)?.[1] ?? ""
+  return address === "" ? "" : organisationAddress(address)
 }
 
 describe("a copy of the package under node_modules with the ten files of bin, templates and package.json only", () => {
@@ -76,8 +78,8 @@ describe("a copy of the package under node_modules with the ten files of bin, te
     expect(result.stderr).toBe("")
     expect(result.status).toBe(0)
     expect(result.stdout).toContain("Installed .claude/skills/process/SKILL.md\n")
-    expect(readFile(project, ".claude/skills/process/SKILL.md")).toBe(readFile(packageFolder, "templates/skills/process/SKILL.md"))
-    expect(readFile(project, ".claude/skills/process/SKILL.md").endsWith("\nFrom the installed copy.\n")).toBe(true)
+    expect(readFile(projectOf(project), ".claude/skills/process/SKILL.md")).toBe(readFile(packageFolder, "templates/skills/process/SKILL.md"))
+    expect(readFile(projectOf(project), ".claude/skills/process/SKILL.md").endsWith("\nFrom the installed copy.\n")).toBe(true)
   })
 
   it("creates the organisation context with org init from the templates of that copy and exits 0", () => {
