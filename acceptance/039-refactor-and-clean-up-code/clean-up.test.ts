@@ -1,10 +1,16 @@
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 
-const source = readFileSync(path.resolve(import.meta.dirname, "../../bin/process-factory.mjs"), "utf8").replaceAll("\r\n", "\n")
+const bin = path.resolve(import.meta.dirname, "../../bin")
+/** The text of every file of `bin/` together, in the order of the file names: the command line is one file or several modules. */
+const source = readdirSync(bin)
+  .filter((name) => name.endsWith(".mjs"))
+  .sort()
+  .map((name) => readFileSync(path.join(bin, name), "utf8").replaceAll("\r\n", "\n"))
+  .join("\n")
 
-/** How many times a text stands in the command line's file. */
+/** How many times a text stands in the files of the command line together. */
 function count(text: string): number {
   return source.split(text).length - 1
 }
@@ -14,7 +20,7 @@ function calls(name: string, argument: string): number {
   return count(`${name}(${argument})`) - count(`function ${name}(${argument})`)
 }
 
-describe("the helpers of bin/process-factory.mjs", () => {
+describe("the helpers of the files of bin", () => {
   it.each(["readEntryOrPrintReason", "readInputOrPrintReason", "folderNames", "caseNumbers", "newestQuestionsNumber", "cleanedText"])(
     "declares the function %s",
     (name) => {
