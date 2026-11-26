@@ -23,29 +23,50 @@ const skillFiles = [
 ]
 const boardPath = "processes/board.json"
 const usage =
-  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"]\n       process-factory move <process-id> <stage>\n       process-factory show [<process-id>]\n       process-factory answer <process-id> <file>\n       process-factory accept-spec <process-id>\n       process-factory round <process-id>\n       process-factory owner <process-id> "<person>"\n       process-factory approve <process-id> --by "<person>"\n       process-factory respec <process-id>\n       process-factory send-back <process-id> <file>\n       process-factory edit <process-id> <name> <file> --by "<person>"\n       process-factory org init\n       process-factory check\n       process-factory export <process-id> --format html|markdown --link <address>\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
+  'Usage: process-factory init\n       process-factory new "<title>" ["<prompt>"] [--org <org-id>]\n       process-factory move <process-id> <stage> [--org <org-id>]\n       process-factory show [<process-id>] [--org <org-id>]\n       process-factory answer <process-id> <file> [--org <org-id>]\n       process-factory accept-spec <process-id> [--org <org-id>]\n       process-factory round <process-id> [--org <org-id>]\n       process-factory owner <process-id> "<person>" [--org <org-id>]\n       process-factory approve <process-id> --by "<person>" [--org <org-id>]\n       process-factory respec <process-id> [--org <org-id>]\n       process-factory send-back <process-id> <file> [--org <org-id>]\n       process-factory edit <process-id> <name> <file> --by "<person>" [--org <org-id>]\n       process-factory org new "<name>"\n       process-factory org list\n       process-factory org init [--org <org-id>]\n       process-factory check [--org <org-id>]\n       process-factory export <process-id> --format html|markdown --link <address> [--org <org-id>]\n       process-factory serve [--port <number>]\n       process-factory dashboard [--port <number>]\n'
 const organisationFiles = ["roles.md", "systems.md", "processors.md", "policies.md", "authority.md"]
 const timeForm = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+/** The id of the one organisation the tests of one store work in. */
+const organisationId = "acme"
 
+/** The folder `organisations/acme` of a new project: the folder of the organisation every path below is a path in. */
 let workingDirectory = ""
 
 beforeEach(() => {
-  workingDirectory = mkdtempSync(path.join(tmpdir(), "process-factory-unit-"))
+  workingDirectory = path.join(mkdtempSync(path.join(tmpdir(), "process-factory-unit-")), "organisations", organisationId)
+  mkdirSync(workingDirectory, { recursive: true })
 })
 
 afterEach(() => {
-  rmSync(workingDirectory, { recursive: true, force: true })
+  rmSync(projectDirectory(), { recursive: true, force: true })
 })
 
+/** The project the folder of the organisation lies in: the working directory of every command and of every server. */
+function projectDirectory(): string {
+  return path.resolve(workingDirectory, "../..")
+}
+
+/**
+ * What a command printed, with every path of the store as it is from the folder of the organisation:
+ * `organisations/acme/processes/...` as `processes/...`. A store path printed without `organisations/acme/`
+ * in front is marked `UNPREFIXED-`, so that no test passes on it.
+ */
+function inside(text: string): string {
+  return text.replace(/(organisations\/acme\/)?\b(processes|organisation|exports)\//g, (_match, prefix: string | undefined, name: string) =>
+    prefix === undefined ? `UNPREFIXED-${name}/` : `${name}/`,
+  )
+}
+
 function runCommand(commandArguments: string[], input?: string) {
-  return spawnSync(process.execPath, [commandFile, ...commandArguments], { cwd: workingDirectory, encoding: "utf8", input })
+  const result = spawnSync(process.execPath, [commandFile, ...commandArguments], { cwd: projectDirectory(), encoding: "utf8", input })
+  return { ...result, stdout: inside(result.stdout), stderr: inside(result.stderr) }
 }
 
 const startedServers: ChildProcess[] = []
 
-/** Starts a server command of the command line on a free port of the working directory and gives the line it printed. */
+/** Starts a server command of the command line on a free port of the project and gives the line it printed. */
 async function startServer(command: string): Promise<string> {
-  const child = spawn(process.execPath, [commandFile, command, "--port", "0"], { cwd: workingDirectory, stdio: ["ignore", "pipe", "pipe"] })
+  const child = spawn(process.execPath, [commandFile, command, "--port", "0"], { cwd: projectDirectory(), stdio: ["ignore", "pipe", "pipe"] })
   startedServers.push(child)
   child.stdout.setEncoding("utf8")
   let printed = ""
@@ -78,28 +99,82 @@ async function stopServers(): Promise<void> {
   )
 }
 
+/** The address of the one organisation of these tests on a server at `address`. */
+function organisationAddress(address: string): string {
+  return `${address}/${organisationId}`
+}
+
+/** An address on a page of the organisation as it is from inside it; one without `/acme` in front is marked `UNPREFIXED`. */
+function insideAddress(address: string): string {
+  if (address === `/${organisationId}`) return "/"
+  return address.startsWith(`/${organisationId}/`) ? address.slice(organisationId.length + 1) : `UNPREFIXED${address}`
+}
+
+/**
+ * A page of the organisation as it is from inside it: without the line that names the organisation as the first
+ * element of its body, and with every address of a link and a form through `insideAddress`. A page without that
+ * line is marked `NO ORGANISATION LINE`, so that no test passes on it.
+ */
+function insidePage(body: string): string {
+  if (body === "") return body
+  const line = /<body>\s*<p>Organisation: acme<\/p>\s*/
+  const named = line.test(body) ? body.replace(line, "<body>\n") : `NO ORGANISATION LINE\n${body}`
+  return named.replace(/(href|action)="(\/[^"]*)"/g, (_match, attribute: string, to: string) => `${attribute}="${insideAddress(to)}"`)
+}
+
+/** An `Origin` header as a browser sends it: the origin of an address, without its path. */
+function originOf(value: string): string {
+  try {
+    return new URL(value).origin
+  } catch {
+    return value
+  }
+}
+
+/** The path inside the organisation of an address such as `http://127.0.0.1:50123/acme`, which `/` is the organisation itself of. */
+function organisationPath(address: string, pathname: string): string {
+  const organisation = new URL(address).pathname
+  return organisation === "/" ? pathname : `${organisation}${pathname === "/" ? "" : pathname}`
+}
+
 async function requestPage(address: string, pathname: string, method = "GET") {
-  const response = await fetch(`${address}${pathname}`, { method })
-  return { status: response.status, headers: response.headers, body: await response.text() }
+  const url = new URL(address)
+  const response = await fetch(`${url.origin}${organisationPath(address, pathname)}`, { method })
+  const body = await response.text()
+  return { status: response.status, headers: response.headers, body: url.pathname === "/" ? body : insidePage(body) }
 }
 
 /** Sends a request with a body to a server on a connection of its own. An answer that arrived counts, also when the server closes the connection early. */
 function send(address: string, pathname: string, body: string, more: { method?: string; headers?: Record<string, string> } = {}) {
   const url = new URL(address)
+  const isInside = url.pathname !== "/"
+  const headers: Record<string, string> = {}
+  for (const [name, value] of Object.entries(more.headers ?? {})) {
+    headers[name] = name.toLowerCase() === "origin" ? originOf(value) : value
+  }
+  const answerInside = (answer: { status: number; headers: IncomingHttpHeaders; body: string }): { status: number; headers: IncomingHttpHeaders; body: string } => {
+    if (!isInside) return answer
+    const location = answer.headers.location
+    return {
+      ...answer,
+      headers: location === undefined ? answer.headers : { ...answer.headers, location: insideAddress(location) },
+      body: insidePage(answer.body),
+    }
+  }
   return new Promise<{ status: number; headers: IncomingHttpHeaders; body: string }>((resolve, reject) => {
     let answer: { status: number; headers: IncomingHttpHeaders; body: string } | undefined
     const fail = (error: Error): void => {
       if (answer === undefined) reject(error)
-      else resolve(answer)
+      else resolve(answerInside(answer))
     }
     const sent = httpRequest(
       {
         host: url.hostname,
         port: url.port,
-        path: pathname,
+        path: organisationPath(address, pathname),
         method: more.method ?? "POST",
         agent: false,
-        headers: { "Content-Type": "application/x-www-form-urlencoded", "Content-Length": String(Buffer.byteLength(body)), ...more.headers },
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "Content-Length": String(Buffer.byteLength(body)), ...headers },
       },
       (response) => {
         const received = { status: response.statusCode ?? 0, headers: response.headers, body: "" }
@@ -109,7 +184,7 @@ function send(address: string, pathname: string, body: string, more: { method?: 
           received.body += chunk
         })
         response.on("end", () => {
-          resolve(received)
+          resolve(answerInside(received))
         })
         response.on("error", fail)
       },
@@ -134,9 +209,15 @@ function readWorkingFile(file: string): string {
   return readFileSync(path.join(workingDirectory, file), "utf8")
 }
 
+function writeProjectFile(file: string, content: string): void {
+  const absolute = path.join(projectDirectory(), file)
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writeFileSync(absolute, content)
+}
+
 function installedFilesEqualTheirTemplates(): boolean {
   return skillFiles.every((file) =>
-    readFileSync(path.join(workingDirectory, skillFolder, file)).equals(
+    readFileSync(path.join(projectDirectory(), skillFolder, file)).equals(
       readFileSync(path.join(repositoryRoot, "templates", "skills", "process", file)),
     ),
   )
@@ -169,27 +250,27 @@ describe("process-factory init", () => {
     expect(result.stdout).toBe(skillFiles.map((file) => `Installed ${skillFolder}/${file}\n`).join(""))
     expect(result.stderr).toBe("")
     expect(result.status).toBe(0)
-    expect(readdirSync(path.join(workingDirectory, skillFolder)).sort()).toEqual([...skillFiles].sort())
+    expect(readdirSync(path.join(projectDirectory(), skillFolder)).sort()).toEqual([...skillFiles].sort())
     expect(installedFilesEqualTheirTemplates()).toBe(true)
   })
 
   it("replaces older copies of the files of the skill", () => {
-    for (const file of skillFiles) writeWorkingFile(`${skillFolder}/${file}`, "old\n")
+    for (const file of skillFiles) writeProjectFile(`${skillFolder}/${file}`, "old\n")
     expect(runCommand(["init"]).status).toBe(0)
     expect(installedFilesEqualTheirTemplates()).toBe(true)
   })
 
   it("keeps other files under .claude", () => {
-    writeWorkingFile(".claude/skills/factory/SKILL.md", "factory\n")
-    writeWorkingFile(".claude/settings.json", "{}\n")
+    writeProjectFile(".claude/skills/factory/SKILL.md", "factory\n")
+    writeProjectFile(".claude/settings.json", "{}\n")
     expect(runCommand(["init"]).status).toBe(0)
-    expect(readFileSync(path.join(workingDirectory, ".claude/skills/factory/SKILL.md"), "utf8")).toBe("factory\n")
-    expect(readFileSync(path.join(workingDirectory, ".claude/settings.json"), "utf8")).toBe("{}\n")
-    expect(readdirSync(workingDirectory)).toEqual([".claude"])
+    expect(readFileSync(path.join(projectDirectory(), ".claude/skills/factory/SKILL.md"), "utf8")).toBe("factory\n")
+    expect(readFileSync(path.join(projectDirectory(), ".claude/settings.json"), "utf8")).toBe("{}\n")
+    expect(readdirSync(projectDirectory()).sort()).toEqual([".claude", "organisations"])
   })
 
   it("fails with exit code 1 and one error line when .claude is a file", () => {
-    writeWorkingFile(".claude", "file\n")
+    writeProjectFile(".claude", "file\n")
     const result = runCommand(["init"])
     expect(result.status).toBe(1)
     expect(result.stdout).toBe("")
@@ -455,7 +536,7 @@ describe("process-factory answer", () => {
       { id: "001-handle-a-breach", title: "Handle a breach", stage: "clarify", history: [{ at: "2026-11-18T17:02:11.123Z", stage: "clarify" }] },
     ])
     for (const file of questionsFiles) writeWorkingFile(`${processFolder}/${file}`, "# Questions\n")
-    writeWorkingFile("my-answers.md", answers)
+    writeProjectFile("my-answers.md", answers)
   }
 
   it("stores the answers under the number of the newest questions file and moves the process to spec", () => {
@@ -467,7 +548,7 @@ describe("process-factory answer", () => {
     expect(result.stderr).toBe("")
     expect(result.status).toBe(0)
     expect(readWorkingFile(`${processFolder}/answers-10.md`)).toBe(answers)
-    expect(readWorkingFile("my-answers.md")).toBe(answers)
+    expect(readFileSync(path.join(projectDirectory(), "my-answers.md"), "utf8")).toBe(answers)
     expect(JSON.parse(readWorkingFile(boardPath))).toEqual({
       processes: [
         {
@@ -486,7 +567,7 @@ describe("process-factory answer", () => {
   it("names the stage when the process is not in clarify and writes nothing", () => {
     writeBoardFile([{ id: "001-handle-a-breach", title: "Handle a breach", stage: "intake" }])
     writeWorkingFile(`${processFolder}/questions-1.md`, "# Questions\n")
-    writeWorkingFile("my-answers.md", answers)
+    writeProjectFile("my-answers.md", answers)
     const before = readWorkingFile(boardPath)
 
     const result = runCommand(["answer", "001-handle-a-breach", "my-answers.md"])
@@ -539,7 +620,7 @@ describe("process-factory answer", () => {
 
   it("says the file is empty when it holds only whitespace", () => {
     prepareClarify(["questions-1.md"])
-    writeWorkingFile("blank.md", " \n\t\n")
+    writeProjectFile("blank.md", " \n\t\n")
 
     const result = runCommand(["answer", "001-handle-a-breach", "blank.md"])
 
@@ -782,8 +863,8 @@ describe("process-factory round", () => {
     writeBoardFile([
       { id: "001-handle-a-breach", title: "Handle a breach", stage: "review", history: [{ at: "2026-11-18T17:02:11.123Z", stage: "review" }], ...more },
     ])
-    writeWorkingFile(`${skillFolder}/reviewer.md`, "# Reviewer\n")
-    for (const reviewer of reviewers) writeWorkingFile(`${skillFolder}/${reviewer}-reviewer.md`, `# ${reviewer} reviewer\n`)
+    writeProjectFile(`${skillFolder}/reviewer.md`, "# Reviewer\n")
+    for (const reviewer of reviewers) writeProjectFile(`${skillFolder}/${reviewer}-reviewer.md`, `# ${reviewer} reviewer\n`)
     writeWorkingFile(`${processFolder}/drafts/draft-1.md`, "# Handle a breach\n")
     for (const [round, files] of Object.entries(rounds)) {
       for (const [file, content] of Object.entries(files)) writeWorkingFile(`${processFolder}/rounds/round-${round}/${file}`, content)
@@ -1382,10 +1463,10 @@ describe("process-factory send-back", () => {
     { round: 2, draft: "draft-2.md", at: "2026-11-22T10:00:00.000Z", verdicts: [{ reviewer: "legal", verdict: "CHANGES" }] },
   ]
 
-  /** A process in `stage` with the recorded rounds 1 and 2, and a `note.md` next to the store. */
+  /** A process in `stage` with the recorded rounds 1 and 2, and a `note.md` in the project the command runs in. */
   function prepareSendBack(stage = "approval", more: Record<string, unknown> = {}): void {
     writeBoardFile([{ id: processId, title: "Handle a lost laptop", stage, history: [{ at: "2026-11-22T10:00:00.000Z", stage }], rounds, ...more }])
-    writeWorkingFile("note.md", note)
+    writeProjectFile("note.md", note)
   }
 
   it("writes every line of the note as a finding of the owner in the folder of the newest round and prints the file and the stage", () => {
@@ -1422,7 +1503,7 @@ describe("process-factory send-back", () => {
 
   it.each(refusals)("refuses %s with one line, exits with 1 and writes nothing", (_name, id, file, stage, more, line) => {
     prepareSendBack(stage, more)
-    writeWorkingFile("empty.md", "\n   \n\t\n")
+    writeProjectFile("empty.md", "\n   \n\t\n")
     const before = readWorkingFile(boardPath)
 
     const result = runCommand(["send-back", id, file])
@@ -1497,14 +1578,14 @@ describe("process-factory edit", () => {
   const oldSpec = specText("The laptop is blocked within 48 hours.")
   const newSpec = specText("The laptop is blocked within 24 hours.")
 
-  /** The process in `stage`, owned by Kari Nordmann unless `more` says otherwise, with its specification, the case 2, these drafts and a `new.md` of the new text. */
+  /** The process in `stage`, owned by Kari Nordmann unless `more` says otherwise, with its specification, the case 2, these drafts and a `new.md` of the new text in the project. */
   function prepareEdit(stage: string, more: Record<string, unknown> = {}, drafts: number[] = [1]): void {
     writeWorkingFile("organisation/roles.md", `# Roles\n\n## Data protection officer\n\n${owner} is the data protection officer. Ola Hansen steps in when she is away.\n`)
     writeBoardFile([{ id: processId, title: "Handle a lost laptop", stage, owner, history: [{ at: "2026-11-22T10:00:00.000Z", stage }], ...more }])
     writeWorkingFile(specFile, oldSpec)
     writeWorkingFile(caseFile, caseText)
     for (const number of drafts) writeWorkingFile(`${processFolder}/drafts/draft-${String(number)}.md`, `# Draft ${String(number)}\n`)
-    writeWorkingFile("new.md", newSpec)
+    writeProjectFile("new.md", newSpec)
   }
 
   function runEdit(name: string, file: string, by = owner) {
@@ -1513,7 +1594,7 @@ describe("process-factory edit", () => {
 
   it("replaces the file, prints it with the stage draft, records the edit in the history and marks the process", () => {
     prepareEdit("rework")
-    writeWorkingFile("new.md", `${newSpec.replace(/\n/g, "\r\n")}\r\n\r\n`)
+    writeProjectFile("new.md", `${newSpec.replace(/\n/g, "\r\n")}\r\n\r\n`)
 
     const result = runEdit("spec.md", "new.md")
 
@@ -1533,10 +1614,10 @@ describe("process-factory edit", () => {
 
     expect(runEdit("spec.md", "new.md").stdout).toBe(`Stored ${specFile}\ncases\n`)
     expect(storedProcesses()[0]?.needsDraft).toEqual(["spec.md"])
-    writeWorkingFile("new.md", "# Case 2: Laptop 2\n\n## Situation\n\nThe laptop is stolen abroad.\n")
+    writeProjectFile("new.md", "# Case 2: Laptop 2\n\n## Situation\n\nThe laptop is stolen abroad.\n")
     expect(runEdit("case-2.md", "new.md").status).toBe(0)
     expect(storedProcesses()[0]?.needsDraft).toEqual(["spec.md", "case-2.md"])
-    writeWorkingFile("new.md", oldSpec)
+    writeProjectFile("new.md", oldSpec)
     expect(runEdit("spec.md", "new.md").status).toBe(0)
 
     expect(storedProcesses()[0]?.needsDraft).toEqual(["spec.md", "case-2.md"])
@@ -1589,8 +1670,8 @@ describe("process-factory edit", () => {
 
   it.each(refusals)("refuses %s with one line, exits with 1 and changes no file", (_name, stage, more, commandArguments, line) => {
     prepareEdit(stage, more)
-    writeWorkingFile("empty.md", "\n  \r\n\t\n")
-    writeWorkingFile("same.md", `${oldSpec.replace(/\n/g, "\r\n")}\r\n`)
+    writeProjectFile("empty.md", "\n  \r\n\t\n")
+    writeProjectFile("same.md", `${oldSpec.replace(/\n/g, "\r\n")}\r\n`)
     const board = readWorkingFile(boardPath)
 
     const result = runCommand(["edit", ...commandArguments])
@@ -1625,7 +1706,7 @@ describe("process-factory edit", () => {
 
   it("refuses a specification that would leave a section open unless the process is in spec", () => {
     prepareEdit("cases")
-    writeWorkingFile("open.md", specText("The laptop is blocked within 24 hours.", ["Scope", "Records"]))
+    writeProjectFile("open.md", specText("The laptop is blocked within 24 hours.", ["Scope", "Records"]))
 
     const refused = runEdit("spec.md", "open.md")
 
@@ -1635,7 +1716,7 @@ describe("process-factory edit", () => {
     expect(readWorkingFile(specFile)).toBe(oldSpec)
 
     prepareEdit("spec")
-    writeWorkingFile("open.md", specText("The laptop is blocked within 24 hours.", ["Scope", "Records"]))
+    writeProjectFile("open.md", specText("The laptop is blocked within 24 hours.", ["Scope", "Records"]))
 
     const stored = runEdit("spec.md", "open.md")
 
@@ -2565,11 +2646,11 @@ describe("the reading view of process-factory serve", () => {
 
   afterEach(stopServers)
 
-  /** Starts the view on a free port of the working directory and gives the address it printed. */
+  /** Starts the view on a free port of the project and gives the address of its one organisation. */
   async function openView(): Promise<string> {
     const printed = await startServer("serve")
     expect(printed).toMatch(/^Reading view on http:\/\/127\.0\.0\.1:[1-9]\d*\n$/)
-    return printed.trim().replace("Reading view on ", "")
+    return organisationAddress(printed.trim().replace("Reading view on ", ""))
   }
 
   /** The text between `<li>` and `</li>` of every such item of a page, in order. */
@@ -3023,11 +3104,11 @@ describe("the dashboard of process-factory dashboard", () => {
 
   afterEach(stopServers)
 
-  /** Starts the dashboard on a free port of the working directory and gives the address it printed. */
+  /** Starts the dashboard on a free port of the project and gives the address of its one organisation. */
   async function openDashboard(): Promise<string> {
     const printed = await startServer("dashboard")
     expect(printed).toMatch(/^Dashboard on http:\/\/127\.0\.0\.1:[1-9]\d*\n$/)
-    return printed.trim().replace("Dashboard on ", "")
+    return organisationAddress(printed.trim().replace("Dashboard on ", ""))
   }
 
   /** The page of the dashboard of the working directory, which must answer with 200. */
@@ -4215,7 +4296,8 @@ describe("process-factory export", () => {
   const title = "Handle a lost laptop"
   const owner = "Kari Nordmann"
   const address = "https://intranet.example/processes"
-  const link = `${address}/${processId}/2`
+  /** The address of version 2 in the reading view: the organisation stands between the address and the process. */
+  const link = `${address}/${organisationId}/${processId}/2`
   const documentText = "# Handle a lost laptop\n\n## Steps\n\n1. IT manager (Ola Hansen): Block the laptop in Intune."
   const htmlFile = `exports/${processId}-v2.html`
   const markdownFile = `exports/${processId}-v2.md`
@@ -4316,7 +4398,7 @@ describe("process-factory export", () => {
 
     expect(readWorkingFile(htmlFile)).toBe(plain)
     runExport("html", "http://10.0.0.5:4173")
-    expect(readWorkingFile(htmlFile)).toContain(htmlStamp(title, owner, owner, "2026-11-21", `http://10.0.0.5:4173/${processId}/2`))
+    expect(readWorkingFile(htmlFile)).toContain(htmlStamp(title, owner, owner, "2026-11-21", `http://10.0.0.5:4173/${organisationId}/${processId}/2`))
   })
 
   it("says not recorded for an owner the board does not have and for a version without an approval", () => {
@@ -4455,4 +4537,252 @@ describe("process-factory with anything other than a command", () => {
       expect(readdirSync(workingDirectory)).toEqual([])
     },
   )
+})
+
+describe("the organisations of a project", () => {
+  const projects: string[] = []
+  const noOrganisation = 'process-factory: there is no organisation: run process-factory org new "<name>" first\n'
+  const moreThanOne = "process-factory: there is more than one organisation: name one with --org <org-id>\n  berg-as  Berg AS\n  fjord-skole  Fjord Skole\n"
+
+  afterEach(() => {
+    for (const project of projects.splice(0)) rmSync(project, { recursive: true, force: true })
+  })
+
+  /** A new empty project outside the repository, which is removed after the test. */
+  function emptyProject(): string {
+    const project = mkdtempSync(path.join(tmpdir(), "process-factory-organisations-"))
+    projects.push(project)
+    return project
+  }
+
+  /** Runs the command line in a project, with everything it printed as it printed it. */
+  function runIn(project: string, commandArguments: string[]) {
+    return spawnSync(process.execPath, [commandFile, ...commandArguments], { cwd: project, encoding: "utf8" })
+  }
+
+  /** The sorted names in a folder of a project, or an empty list when the folder is not there. */
+  function names(project: string, folder = "."): string[] {
+    const absolute = path.join(project, folder)
+    return existsSync(absolute) ? readdirSync(absolute).sort() : []
+  }
+
+  /** Creates the organisations Fjord Skole and Berg AS, and expects both to succeed. */
+  function createBoth(project: string): void {
+    expect(runIn(project, ["org", "new", "Fjord Skole"]).stdout).toBe("fjord-skole\n")
+    expect(runIn(project, ["org", "new", "Berg AS"]).stdout).toBe("berg-as\n")
+  }
+
+  it("creates an organisation with org new: the id from the name, organisation.json and the five templates", () => {
+    const project = emptyProject()
+
+    const result = runIn(project, ["org", "new", "  Acme Holding AS "])
+
+    expect(result.stdout).toBe("acme-holding-as\n")
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    expect(names(project)).toEqual(["organisations"])
+    expect(names(project, "organisations/acme-holding-as")).toEqual(["organisation", "organisation.json"])
+    expect(readFileSync(path.join(project, "organisations/acme-holding-as/organisation.json"), "utf8")).toBe('{\n  "name": "Acme Holding AS"\n}\n')
+    expect(names(project, "organisations/acme-holding-as/organisation")).toEqual([...organisationFiles].sort())
+    for (const file of organisationFiles) {
+      const created = readFileSync(path.join(project, "organisations/acme-holding-as/organisation", file))
+      expect(created.equals(readFileSync(path.join(repositoryRoot, "templates", "organisation", file)))).toBe(true)
+    }
+  })
+
+  it.each([["???"], ["   "], ["Acme\nHolding"]])("refuses the name %j with one line and creates nothing", (name) => {
+    const project = emptyProject()
+
+    const result = runIn(project, ["org", "new", name])
+
+    expect(result.stderr).toBe("process-factory: the name must be one line with at least one letter or digit\n")
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(names(project)).toEqual([])
+  })
+
+  it("refuses a name whose id exists and leaves that organisation as it was", () => {
+    const project = emptyProject()
+    expect(runIn(project, ["org", "new", "Acme Holding AS"]).status).toBe(0)
+    writeFileSync(path.join(project, "organisations/acme-holding-as/organisation/roles.md"), "# Roles\n\nWhat the user wrote.\n")
+
+    const result = runIn(project, ["org", "new", "acme holding as"])
+
+    expect(result.stderr).toBe("process-factory: cannot create organisation acme-holding-as: it already exists\n")
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(readFileSync(path.join(project, "organisations/acme-holding-as/organisation/roles.md"), "utf8")).toBe("# Roles\n\nWhat the user wrote.\n")
+  })
+
+  it("lists the organisations with org list, sorted by id, and gives the id as the name of one whose organisation.json cannot be read", () => {
+    const project = emptyProject()
+    expect(runIn(project, ["org", "list"]).stdout).toBe("No organisations.\n")
+    createBoth(project)
+
+    expect(runIn(project, ["org", "list"]).stdout).toBe("berg-as  Berg AS\nfjord-skole  Fjord Skole\n")
+
+    writeFileSync(path.join(project, "organisations/fjord-skole/organisation.json"), "{ not json")
+    mkdirSync(path.join(project, "organisations/Not_An_Id"), { recursive: true })
+    expect(runIn(project, ["org", "list"]).stdout).toBe("berg-as  Berg AS\nfjord-skole  fjord-skole\n")
+  })
+
+  it.each([[["new", "Handle a breach"]], [["show"]], [["check"]], [["org", "init"]]])("refuses %j in a project without an organisation and creates nothing", (commandArguments) => {
+    const project = emptyProject()
+
+    const result = runIn(project, commandArguments)
+
+    expect(result.stderr).toBe(noOrganisation)
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(names(project)).toEqual([])
+  })
+
+  it("works on the only organisation without --org and writes nothing beside it", () => {
+    const project = emptyProject()
+    expect(runIn(project, ["org", "new", "Fjord Skole"]).status).toBe(0)
+
+    expect(runIn(project, ["new", "Handle a breach"]).stdout).toBe("001-handle-a-breach\n")
+
+    expect(runIn(project, ["show"]).stdout).toBe("001-handle-a-breach  intake  Handle a breach\n")
+    expect(names(project)).toEqual(["organisations"])
+    expect(names(project, "organisations/fjord-skole/processes")).toEqual(["001-handle-a-breach", "board.json"])
+  })
+
+  it.each([[["new", "Handle a breach"]], [["show"]], [["check"]], [["org", "init"]]])("refuses %j without --org when there is more than one organisation", (commandArguments) => {
+    const project = emptyProject()
+    createBoth(project)
+
+    const result = runIn(project, commandArguments)
+
+    expect(result.stderr).toBe(moreThanOne)
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+    expect(names(project, "organisations/fjord-skole")).toEqual(["organisation", "organisation.json"])
+  })
+
+  it.each([["nowhere"], ["../fjord-skole"], ["Fjord_Skole"]])("says there is no organisation %s for an --org that names none", (organisation) => {
+    const project = emptyProject()
+    createBoth(project)
+
+    const result = runIn(project, ["show", "--org", organisation])
+
+    expect(result.stderr).toBe(`process-factory: there is no organisation ${organisation}\n`)
+    expect(result.stdout).toBe("")
+    expect(result.status).toBe(1)
+  })
+
+  it("numbers the processes of each organisation from 001 on its own board, and shows only its own", () => {
+    const project = emptyProject()
+    createBoth(project)
+
+    expect(runIn(project, ["new", "Handle a breach", "--org", "fjord-skole"]).stdout).toBe("001-handle-a-breach\n")
+    expect(runIn(project, ["new", "Handle a breach", "--org", "berg-as"]).stdout).toBe("001-handle-a-breach\n")
+    expect(runIn(project, ["new", "Order a badge", "--org", "fjord-skole"]).stdout).toBe("002-order-a-badge\n")
+
+    expect(runIn(project, ["show", "--org", "berg-as"]).stdout).toBe("001-handle-a-breach  intake  Handle a breach\n")
+    expect(names(project, "organisations/berg-as/processes")).toEqual(["001-handle-a-breach", "board.json"])
+    expect(names(project, "organisations/fjord-skole/processes")).toEqual(["001-handle-a-breach", "002-order-a-badge", "board.json"])
+  })
+
+  it("names every path of the store it prints from the project's folder", () => {
+    const project = emptyProject()
+    createBoth(project)
+    rmSync(path.join(project, "organisations/fjord-skole/organisation/systems.md"))
+
+    expect(runIn(project, ["org", "init", "--org", "fjord-skole"]).stdout).toBe("Created organisations/fjord-skole/organisation/systems.md\n")
+    expect(names(project, "organisations/berg-as/organisation")).toEqual([...organisationFiles].sort())
+
+    expect(runIn(project, ["new", "Handle a breach", "--org", "fjord-skole"]).status).toBe(0)
+    writeFileSync(path.join(project, "organisations/fjord-skole/processes/board.json"), "{ not json")
+
+    const result = runIn(project, ["show", "--org", "fjord-skole"])
+
+    expect(result.stderr.startsWith("process-factory: cannot read organisations/fjord-skole/processes/board.json: ")).toBe(true)
+    expect(result.status).toBe(1)
+  })
+
+  it.each([[["init", "--org", "fjord-skole"]], [["org", "new", "Third School", "--org", "fjord-skole"]], [["org", "list", "--org", "fjord-skole"]], [["serve", "--org", "fjord-skole"]], [["dashboard", "--org", "fjord-skole"]], [["--org", "fjord-skole", "show"]]])(
+    "prints the usage for %j, which takes no organisation, and changes nothing",
+    (commandArguments) => {
+      const project = emptyProject()
+      createBoth(project)
+
+      const result = runIn(project, commandArguments)
+
+      expect(result.stderr).toBe(usage)
+      expect(result.stdout).toBe("")
+      expect(result.status).toBe(1)
+      expect(names(project, "organisations")).toEqual(["berg-as", "fjord-skole"])
+    },
+  )
+})
+
+describe("the migration of the layout of one organisation", () => {
+  const projects: string[] = []
+  const moved = "process-factory: moved organisation/ and processes/ to organisations/fjordlys-laering/\n"
+  const boardText = `${JSON.stringify({ processes: [{ id: "001-handle-a-breach", title: "Handle a breach", stage: "intake", history: [{ at: "2026-11-18T17:02:11.123Z", stage: "intake" }] }] }, null, 2)}\n`
+
+  afterEach(() => {
+    for (const project of projects.splice(0)) rmSync(project, { recursive: true, force: true })
+  })
+
+  /** A new project with the folders `organisation/` and `processes/` of the layout before this change. */
+  function projectOfTheOldLayout(): string {
+    const project = mkdtempSync(path.join(tmpdir(), "process-factory-migration-"))
+    projects.push(project)
+    mkdirSync(path.join(project, "organisation"), { recursive: true })
+    mkdirSync(path.join(project, "processes"), { recursive: true })
+    writeFileSync(path.join(project, "organisation/roles.md"), "# Roles\n\n## Data protection officer\n\nKari Nordmann is the data protection officer.\n")
+    writeFileSync(path.join(project, "processes/board.json"), boardText)
+    return project
+  }
+
+  function runIn(project: string, commandArguments: string[]) {
+    return spawnSync(process.execPath, [commandFile, ...commandArguments], { cwd: project, encoding: "utf8" })
+  }
+
+  it("moves both folders into the first organisation, says so on standard error and goes on with the command", () => {
+    const project = projectOfTheOldLayout()
+
+    const result = runIn(project, ["show"])
+
+    expect(result.stdout).toBe("001-handle-a-breach  intake  Handle a breach\n")
+    expect(result.stderr).toBe(moved)
+    expect(result.status).toBe(0)
+    expect(readdirSync(project)).toEqual(["organisations"])
+    expect(readdirSync(path.join(project, "organisations/fjordlys-laering")).sort()).toEqual(["organisation", "organisation.json", "processes"])
+    expect(readFileSync(path.join(project, "organisations/fjordlys-laering/processes/board.json"), "utf8")).toBe(boardText)
+    expect(readFileSync(path.join(project, "organisations/fjordlys-laering/organisation.json"), "utf8")).toBe('{\n  "name": "Fjordlys Læring AS"\n}\n')
+  })
+
+  it("names the first organisation Fjordlys Læring AS and moves nothing a second time", () => {
+    const project = projectOfTheOldLayout()
+    expect(runIn(project, ["show"]).status).toBe(0)
+
+    const listed = runIn(project, ["org", "list"])
+
+    expect(listed.stdout).toBe("fjordlys-laering  Fjordlys Læring AS\n")
+    expect(listed.stderr).toBe("")
+  })
+
+  it("is not run by init, which leaves both folders where they are", () => {
+    const project = projectOfTheOldLayout()
+
+    expect(runIn(project, ["init"]).status).toBe(0)
+
+    expect(readdirSync(project).sort()).toEqual([".claude", "organisation", "processes"])
+    expect(runIn(project, ["org", "list"]).stderr).toBe(moved)
+    expect(readdirSync(project).sort()).toEqual([".claude", "organisations"])
+  })
+
+  it("leaves a root exports/ folder where it is", () => {
+    const project = projectOfTheOldLayout()
+    mkdirSync(path.join(project, "exports"), { recursive: true })
+    writeFileSync(path.join(project, "exports/001-handle-a-breach-v1.md"), "an earlier export\n")
+
+    expect(runIn(project, ["show"]).status).toBe(0)
+
+    expect(readdirSync(project).sort()).toEqual(["exports", "organisations"])
+    expect(readFileSync(path.join(project, "exports/001-handle-a-breach-v1.md"), "utf8")).toBe("an earlier export\n")
+  })
 })

@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto"
 import path from "node:path"
-import { fileLines, readProcessesOrPrintReason, sectionLines } from "./store.mjs"
+import { fileLines, printedPath, readProcessesOrPrintReason, sectionLines, storePath } from "./store.mjs"
 
 /** The kinds of dependency the command line watches, each with the file of `organisation/` that describes them. */
-const dependencyFiles = { Role: "organisation/roles.md", System: "organisation/systems.md", Agreement: "organisation/processors.md", Policy: "organisation/policies.md" }
+const dependencyFiles = { Role: "roles.md", System: "systems.md", Agreement: "processors.md", Policy: "policies.md" }
 
 /** The `Role`, `System`, `Agreement` and `Policy` lines of the section `Dependencies` of a `spec.md`, in their order. */
 export function specDependencies(folder) {
@@ -18,7 +18,7 @@ export function specDependencies(folder) {
 
 /** The hash of the section `## <name>` in the file of this kind, or null when the file or the section is missing. */
 export function dependencyHash(kind, name) {
-  const lines = fileLines(path.join(process.cwd(), dependencyFiles[kind]))
+  const lines = fileLines(storePath("organisation", dependencyFiles[kind]))
   const body = lines === null ? null : sectionLines(lines, name)
   return body === null ? null : createHash("sha256").update(body.join("\n").trim()).digest("hex")
 }
@@ -28,7 +28,7 @@ export function changedDependencies(entry) {
   return (entry.dependencies ?? []).flatMap((dependency) => {
     const hash = dependencyHash(dependency.kind, dependency.name)
     if (hash === dependency.hash) return []
-    const file = dependencyFiles[dependency.kind]
+    const file = printedPath("organisation", dependencyFiles[dependency.kind])
     return [{ name: `${dependency.kind}: ${dependency.name}`, what: hash === null ? `removed from ${file}` : `changed in ${file}` }]
   })
 }

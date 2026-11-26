@@ -1,11 +1,44 @@
+import { AsyncLocalStorage } from "node:async_hooks"
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
 const boardPath = "processes/board.json"
 const processFolders = ["cases", "drafts", "rounds", "versions", "feedback"]
+/**
+ * The organisation the running code works on. A server keeps it per request, not in a plain variable, so that it
+ * still holds the organisation of a post after its body is read while another request is answered in between.
+ */
+const chosenOrganisation = new AsyncLocalStorage()
+/** The folder of the working directory that holds one folder per organisation. */
+export const organisationsFolder = "organisations"
 /** What the command line, the reading view, the dashboard and an export show for a value the store does not record. */
 export const notRecorded = "not recorded"
 export const packageFolder = path.dirname(import.meta.dirname)
+
+/** Runs an action on one organisation: every path of the store then lies in the folder of that organisation. */
+export function inOrganisation(organisation, action) {
+  return chosenOrganisation.run(organisation, action)
+}
+
+/** The id of the organisation the running code works on. */
+export function currentOrganisation() {
+  return chosenOrganisation.getStore()
+}
+
+/** The absolute path of a file of an organisation of the working directory. */
+export function organisationPath(organisation, ...parts) {
+  return path.join(process.cwd(), organisationsFolder, organisation, ...parts)
+}
+
+/** The absolute path of a file of the organisation the running code works on. */
+export function storePath(...parts) {
+  return organisationPath(currentOrganisation(), ...parts)
+}
+
+/** The path of a file of the organisation the running code works on, as every message of the command line shows it. */
+export function printedPath(...parts) {
+  return [organisationsFolder, currentOrganisation(), ...parts].join("/")
+}
 
 export function errorMessage(error) {
   return error instanceof Error ? error.message : String(error)
@@ -24,7 +57,7 @@ export function folderNames(folder) {
 export function readProcesses() {
   let text
   try {
-    text = readFileSync(path.join(process.cwd(), boardPath), "utf8")
+    text = readFileSync(storePath(boardPath), "utf8")
   } catch {
     return []
   }
@@ -38,7 +71,7 @@ export function readProcessesOrPrintReason() {
   try {
     return readProcesses()
   } catch (error) {
-    process.stderr.write(`process-factory: cannot read ${boardPath}: ${errorMessage(error)}\n`)
+    process.stderr.write(`process-factory: cannot read ${printedPath(boardPath)}: ${errorMessage(error)}\n`)
     return null
   }
 }
@@ -51,24 +84,28 @@ export function findProcessOrPrintReason(processes, id) {
 }
 
 export function writeBoard(processes) {
-  writeFileSync(path.join(process.cwd(), boardPath), `${JSON.stringify({ processes }, null, 2)}\n`)
+  writeFileSync(storePath(boardPath), `${JSON.stringify({ processes }, null, 2)}\n`)
 }
 
-function processId(processes, title) {
-  const highestNumber = processes.reduce((highest, entry) => Math.max(highest, Number.parseInt(entry.id, 10) || 0), 0)
-  const slug = title
+/** A title as a name: lower case, every run of other characters than `a-z0-9` as one `-`, none at the ends, the first six parts. */
+export function titleSlug(title) {
+  return title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .split("-")
     .slice(0, 6)
     .join("-")
-  return `${String(highestNumber + 1).padStart(3, "0")}-${slug}`
+}
+
+function processId(processes, title) {
+  const highestNumber = processes.reduce((highest, entry) => Math.max(highest, Number.parseInt(entry.id, 10) || 0), 0)
+  return `${String(highestNumber + 1).padStart(3, "0")}-${titleSlug(title)}`
 }
 
 function writeProcessFolder(id, title, prompt) {
-  const folder = path.join(process.cwd(), "processes", id)
-  mkdirSync(path.join(process.cwd(), "processes"), { recursive: true })
+  const folder = storePath("processes", id)
+  mkdirSync(storePath("processes"), { recursive: true })
   mkdirSync(folder)
   writeFileSync(path.join(folder, "request.md"), prompt === "" ? `# ${title}\n` : `# ${title}\n\n${prompt}\n`)
   for (const name of processFolders) mkdirSync(path.join(folder, name))
@@ -165,7 +202,7 @@ export function oneLine(text) {
 /** The files `feedback-<k>.md` of a process whose first line `Status: ` says open, each with its number, in ascending order of `<k>`. */
 export function openFeedbackFiles(id) {
   if (typeof id !== "string" || !/^[a-z0-9-]+$/.test(id)) return []
-  const folder = path.join(process.cwd(), "processes", id, "feedback")
+  const folder = storePath("processes", id, "feedback")
   return folderNumbers(folder, /^feedback-(\d+)\.md$/)
     .map((number) => ({ number, file: path.join(folder, `feedback-${number}.md`) }))
     .filter((feedback) => labelledValue(feedback.file, "Status") === "open")

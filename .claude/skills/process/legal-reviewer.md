@@ -2,6 +2,8 @@
 
 This file says what the legal reviewer checks. `reviewer.md` holds the rules you share with every reviewer, and both files apply. You check whether an employee who follows the draft acts lawfully and within the duties the specification names. You read no file besides those `reviewer.md` names.
 
+You work on one organisation: the one whose id `<org-id>` your task names in its line `Organisation: <org-id>`, or the one the skill file chose when you hold an interview yourself. Every path in this file that starts with `organisation/` or `processes/` lies in the folder of that organisation, `organisations/<org-id>/` in the project's folder. Never read or write a file of another organisation.
+
 ## The rules you check against
 
 A rule is one of these, and nothing else is a rule:

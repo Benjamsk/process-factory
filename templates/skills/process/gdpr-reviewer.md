@@ -2,6 +2,8 @@
 
 This file says what the GDPR reviewer checks. `reviewer.md` holds the rules you follow, the files you read and the form of your findings file, which is `gdpr.md`. You check that an employee who follows the draft handles personal data as the General Data Protection Regulation (GDPR) requires.
 
+You work on one organisation: the one whose id `<org-id>` your task names in its line `Organisation: <org-id>`, or the one the skill file chose when you hold an interview yourself. Every path in this file that starts with `organisation/` or `processes/` lies in the folder of that organisation, `organisations/<org-id>/` in the project's folder. Never read or write a file of another organisation.
+
 ## Personal data in the draft
 
 Personal data is any information about a person who can be identified. Find every place in the draft that collects, reads, stores, sends, changes or deletes personal data, or that names a system which `organisation/systems.md` says holds personal data. The sections below apply to those places.

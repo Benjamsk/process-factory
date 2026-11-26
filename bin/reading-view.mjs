@@ -1,8 +1,9 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { createServer } from "node:http"
 import path from "node:path"
+import { migrateOldLayout, organisations } from "./organisation.mjs"
 import { cleanedText } from "./state-machine.mjs"
-import { errorMessage, fileLines, labelledValue, newestNumber, notRecorded, oneLine, readProcesses } from "./store.mjs"
+import { currentOrganisation, errorMessage, fileLines, inOrganisation, labelledValue, newestNumber, notRecorded, oneLine, readProcesses, storePath } from "./store.mjs"
 
 /** The port the reading view listens on when `--port` names none. */
 export const viewPort = "4173"
@@ -37,7 +38,20 @@ export function escapeHtml(text) {
 
 /** The path of a file in the folder of a version of a process. */
 export function versionFile(id, number, name) {
-  return path.join(process.cwd(), "processes", id, "versions", String(number), name)
+  return storePath("processes", id, "versions", String(number), name)
+}
+
+/** An address of a page of the organisation the running code works on: `/<org-id>` and the parts of the path inside it. */
+export function organisationAddress(...parts) {
+  return `/${[currentOrganisation(), ...parts].join("/")}`
+}
+
+/** A page of the organisation the running code works on, with the line that names it as the first element of its body. */
+export function organisationPage(page) {
+  const listed = organisations()
+  const name = escapeHtml(listed.find((other) => other.id === currentOrganisation())?.name ?? currentOrganisation())
+  const others = listed.length > 1 ? ' (<a href="/">all organisations</a>)' : ""
+  return page.replace("<body>\n", `<body>\n<p>Organisation: ${name}${others}</p>\n`)
 }
 
 /** The versions a board entry lists whose `process.md` is there, in ascending order. */
@@ -147,7 +161,7 @@ function frontPage(published) {
     const number = versions.at(-1)
     const owner = entry.owner === undefined ? notRecorded : escapeHtml(entry.owner)
     const approved = versionApproval(entry.id, number)
-    return `<li><a href="/${entry.id}">${escapeHtml(entry.title)}</a> Owner: ${owner}. Version ${number}. Approved on: ${approved.on}.</li>`
+    return `<li><a href="${organisationAddress(entry.id)}">${escapeHtml(entry.title)}</a> Owner: ${owner}. Version ${number}. Approved on: ${approved.on}.</li>`
   })
   const list = items.length === 0 ? "<p>No process is published yet.</p>" : `<ul>\n${items.join("\n")}\n</ul>`
   return htmlPage("Published processes", `<h1>Published processes</h1>\n${list}`)
@@ -157,7 +171,7 @@ function frontPage(published) {
 function feedbackForm(id, number, steps) {
   return [
     "<h2>Feedback</h2>",
-    `<form method="post" action="/${id}/${number}/feedback">`,
+    `<form method="post" action="${organisationAddress(id, number, "feedback")}">`,
     "<fieldset>",
     "<legend>What went wrong?</legend>",
     '<label><input type="radio" name="kind" value="document" required> I did not understand the document</label>',
@@ -183,7 +197,7 @@ function receivedPage(entry, number) {
   const body = [
     "<h1>Feedback received</h1>",
     `<p>Thank you. Your feedback on version ${number} of ${escapeHtml(entry.title)} is stored.</p>`,
-    `<p><a href="/${entry.id}/${number}">Back to the document</a></p>`,
+    `<p><a href="${organisationAddress(entry.id, number)}">Back to the document</a></p>`,
   ]
   return htmlPage("Feedback received", body.join("\n"))
 }
@@ -196,7 +210,7 @@ export function reasonsPage(title, reasons, back) {
 
 /** The page that says why a post of feedback was refused, with the way back to the document. */
 function notStoredPage(entry, number, reasons) {
-  return reasonsPage("Feedback not stored", reasons, `<p><a href="/${entry.id}/${number}">Back to the document</a></p>`)
+  return reasonsPage("Feedback not stored", reasons, `<p><a href="${organisationAddress(entry.id, number)}">Back to the document</a></p>`)
 }
 
 /** The page of one published version: a notice when it is not the current one, the facts, the document and the version history. */
@@ -209,14 +223,16 @@ function versionPage({ entry, versions }, number) {
   const history = [...versions].reverse().map((other) => {
     const approvedOther = versionApproval(entry.id, other)
     const shown = other === number ? " (this version)" : ""
-    return `<li><a href="/${entry.id}/${other}">Version ${other}</a> Approved by: ${approvedOther.by}. Approved on: ${approvedOther.on}.${shown}</li>`
+    return `<li><a href="${organisationAddress(entry.id, other)}">Version ${other}</a> Approved by: ${approvedOther.by}. Approved on: ${approvedOther.on}.${shown}</li>`
   })
   const notice =
     number === current
       ? []
-      : [`<p class="notice">This is version ${number}, not the current version. <a href="/${entry.id}">Read the current version, version ${current}.</a></p>`]
+      : [
+          `<p class="notice">This is version ${number}, not the current version. <a href="${organisationAddress(entry.id)}">Read the current version, version ${current}.</a></p>`,
+        ]
   const body = [
-    '<p><a href="/">All processes</a></p>',
+    `<p><a href="${organisationAddress()}">All processes</a></p>`,
     ...notice,
     `<dl>\n<dt>Owner</dt><dd>${owner}</dd>\n<dt>Version</dt><dd>${number}</dd>\n<dt>Approved by</dt><dd>${approved.by}</dd>\n<dt>Approved on</dt><dd>${approved.on}</dd>\n</dl>`,
     `<main>\n${documentHtml(document)}\n</main>`,
@@ -252,8 +268,43 @@ function answerPath(pathname) {
   }
   const target = feedbackTarget(pathname)
   if (target !== null) return { status: 200, page: receivedPage(target.entry, target.number) }
-  const notFound = '<h1>Not found</h1>\n<p>There is no published process at this address.</p>\n<p><a href="/">All processes</a></p>'
-  return { status: 404, page: htmlPage("Not found", notFound) }
+  return { status: 404, page: viewNotFoundPage(organisationAddress()) }
+}
+
+/** The page `Not found` of the reading view, with the way to every process of `to`. */
+function viewNotFoundPage(to) {
+  return htmlPage("Not found", `<h1>Not found</h1>\n<p>There is no published process at this address.</p>\n<p><a href="${to}">All processes</a></p>`)
+}
+
+/** The page that lists the organisations of the working directory, each with its name, or says there is none. */
+function organisationsPage(listed) {
+  const items = listed.map((found) => `<li><a href="/${found.id}">${escapeHtml(found.name)}</a></li>`)
+  const list = items.length === 0 ? "<p>No organisation yet.</p>" : `<ul>\n${items.join("\n")}\n</ul>`
+  return htmlPage("Organisations", `<h1>Organisations</h1>\n${list}`)
+}
+
+/** The organisation the first part of a path names, with the path inside it, or null when that part is no organisation. */
+export function organisationOfPath(pathname, listed) {
+  const parts = pathname.slice(1).split("/")
+  const found = listed.find((other) => other.id === parts[0])
+  return found === undefined ? null : { organisation: found.id, pathname: `/${parts.slice(1).join("/")}` }
+}
+
+/** The answer of a server at `/` and at an address whose first part is no organisation. */
+export function answerOutsideOrganisation(pathname, listed, notFound) {
+  if (pathname !== "/") return { status: 404, page: notFound }
+  if (listed.length === 1) return { status: 302, location: `/${listed[0].id}` }
+  return { status: 200, page: organisationsPage(listed) }
+}
+
+/** Sends the answer of a server: the page, or the redirect to the only organisation. */
+export function sendAnswer(response, answer, method) {
+  if (answer.location !== undefined) {
+    response.writeHead(302, { Location: answer.location })
+    response.end()
+    return
+  }
+  sendPage(response, answer.status, method === "HEAD" ? undefined : answer.page)
 }
 
 export function sendPage(response, status, page) {
@@ -283,7 +334,7 @@ export function readBody(request, limit) {
 
 /** Writes one feedback as the next file `feedback-<k>.md` in the folder `feedback` of the process, which is created when it is missing. */
 function writeFeedbackFile(id, number, { step, kind, name, text }) {
-  const folder = path.join(process.cwd(), "processes", id, "feedback")
+  const folder = storePath("processes", id, "feedback")
   mkdirSync(folder, { recursive: true })
   const next = (newestNumber(folder, /^feedback-(\d+)\.md$/) ?? 0) + 1
   const lines = [
@@ -314,7 +365,7 @@ export function isOwnOrigin(request) {
 /** Reads a post of feedback, stores it when every check of it passes, and answers the reader. */
 async function storeFeedback(request, response, { entry, number }) {
   const refuse = (status, reasons) => {
-    sendPage(response, status, notStoredPage(entry, number, reasons))
+    sendPage(response, status, organisationPage(notStoredPage(entry, number, reasons)))
   }
   if (!isOwnOrigin(request)) {
     refuse(403, ["Feedback can only be sent from the reading view itself."])
@@ -344,30 +395,31 @@ async function storeFeedback(request, response, { entry, number }) {
   try {
     writeFeedbackFile(entry.id, number, { step: step === "whole" ? "whole document" : step, kind, name: name === "" ? "anonymous" : name, text })
   } catch {
-    sendPage(response, 500, errorPage("The feedback could not be stored."))
+    sendPage(response, 500, organisationPage(errorPage("The feedback could not be stored.")))
     return
   }
-  response.writeHead(303, { Location: `/${entry.id}/${number}/feedback` })
+  response.writeHead(303, { Location: organisationAddress(entry.id, number, "feedback") })
   response.end()
 }
 
-export function answerRequest(request, response) {
-  const pathname = request.url.split("?")[0]
-  if (request.method === "GET" || request.method === "HEAD") {
-    let answer
-    try {
-      answer = answerPath(pathname)
-    } catch {
-      answer = { status: 500, page: errorPage("The reading view cannot read the processes.") }
-    }
-    sendPage(response, answer.status, request.method === "HEAD" ? undefined : answer.page)
-    return
+/** The status and the page of a GET of the reading view inside an organisation, with the line that names it. */
+function answerInsideOrganisation(pathname) {
+  let answer
+  try {
+    answer = answerPath(pathname)
+  } catch {
+    answer = { status: 500, page: errorPage("The reading view cannot read the processes.") }
   }
+  return { status: answer.status, page: organisationPage(answer.page) }
+}
+
+/** Answers a post of feedback inside an organisation, or says which methods its address allows. */
+function answerFeedbackPost(request, response, pathname) {
   let target
   try {
     target = feedbackTarget(pathname)
   } catch {
-    sendPage(response, 500, errorPage("The reading view cannot read the processes."))
+    sendPage(response, 500, organisationPage(errorPage("The reading view cannot read the processes.")))
     return
   }
   if (target === null) {
@@ -383,8 +435,30 @@ export function answerRequest(request, response) {
   storeFeedback(request, response, target)
 }
 
+export function answerRequest(request, response) {
+  const pathname = request.url.split("?")[0]
+  const listed = organisations()
+  const target = organisationOfPath(pathname, listed)
+  if (request.method === "GET" || request.method === "HEAD") {
+    const answer =
+      target === null ? answerOutsideOrganisation(pathname, listed, viewNotFoundPage("/")) : inOrganisation(target.organisation, () => answerInsideOrganisation(target.pathname))
+    sendAnswer(response, answer, request.method)
+    return
+  }
+  if (target === null) {
+    response.writeHead(405, { Allow: "GET, HEAD" })
+    response.end()
+    return
+  }
+  inOrganisation(target.organisation, () => {
+    answerFeedbackPost(request, response, target.pathname)
+  })
+}
+
 /** Starts a server of the command line on `127.0.0.1` and keeps running until the process is stopped. */
 export function serveOnLocalhost(name, defaultPort, handler, portArgument) {
+  const moved = migrateOldLayout()
+  if (moved !== 0) return moved
   const port = portArgument ?? defaultPort
   if (!/^\d+$/.test(port) || Number(port) > 65535) {
     process.stderr.write("process-factory: the port must be a number from 0 to 65535\n")

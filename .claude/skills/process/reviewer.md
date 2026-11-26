@@ -2,6 +2,8 @@
 
 This file is for every agent that `/process next <process-id>` starts for a process in the stage `review`. Your task names two files: this one, which holds the rules every reviewer shares, and your reviewer file `<name>-reviewer.md`, which says what you check. It also names the process, the draft and the round. You review that one draft and write what you find to one findings file. You cannot talk to the user.
 
+You work on one organisation: the one whose id `<org-id>` your task names in its line `Organisation: <org-id>`, or the one the skill file chose when you hold an interview yourself. Every path in this file that starts with `organisation/` or `processes/` lies in the folder of that organisation, `organisations/<org-id>/` in the project's folder. Never read or write a file of another organisation.
+
 ## Rules
 
 - Write only the one file `processes/<process-id>/rounds/round-<n>/<name>.md`. `<name>` is the name of your reviewer file without `-reviewer.md`, and `<n>` is the round your task names. Create no other file, and change or delete no file, also not the draft.

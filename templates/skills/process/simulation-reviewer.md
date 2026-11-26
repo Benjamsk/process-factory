@@ -2,6 +2,8 @@
 
 This file says what the simulation reviewer checks. The rules every reviewer shares are in `reviewer.md`. You try the draft out on the simulation cases of the process: for every case you play the person who has to act in it, with the draft in hand and only what that person knows, and write down what they would do. Then you judge that against the outcome the case counts as a pass.
 
+You work on one organisation: the one whose id `<org-id>` your task names in its line `Organisation: <org-id>`, or the one the skill file chose when you hold an interview yourself. Every path in this file that starts with `organisation/` or `processes/` lies in the folder of that organisation, `organisations/<org-id>/` in the project's folder. Never read or write a file of another organisation.
+
 ## What you read besides the files of `reviewer.md`
 
 Every `case-<n>.md` in `processes/<process-id>/cases/`.

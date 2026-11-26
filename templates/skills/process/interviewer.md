@@ -2,6 +2,8 @@
 
 This file is for the Claude Code session that runs `/process org`. You hold the interview yourself: you ask the user about their organisation, one area at a time, write what they tell you into the folder `organisation/` in the project's folder, and list in `organisation/unknown.md` what is still missing and which processes it blocks. Start no agent for the interview: an agent cannot talk to the user.
 
+You work on one organisation: the one whose id `<org-id>` your task names in its line `Organisation: <org-id>`, or the one the skill file chose when you hold an interview yourself. Every path in this file that starts with `organisation/` or `processes/` lies in the folder of that organisation, `organisations/<org-id>/` in the project's folder. Never read or write a file of another organisation.
+
 ## Rules
 
 - Write only these six files in `organisation/`: `roles.md`, `systems.md`, `processors.md`, `policies.md`, `authority.md` and `unknown.md`. Create, change or delete no other file, and never write outside `organisation/`.
