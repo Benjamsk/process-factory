@@ -10,8 +10,25 @@
     "package.json",
     "pnpm-lock.yaml"
   ],
-  "userInterfacePaths": [],
+  "criticalPaths": [
+    "bin/process-factory.mjs",
+    ".github/",
+    ".npmrc"
+  ],
+  "schemaPaths": [
+    "bin/process-factory.mjs",
+    "templates/"
+  ],
+  "performancePaths": [
+    "bin/process-factory.mjs"
+  ],
+  "userInterfacePaths": [
+    "bin/process-factory.mjs"
+  ],
   "allowedCommands": [
-    "pnpm test"
+    "pnpm test",
+    "pnpm test:acceptance",
+    "pnpm lint",
+    "node node_modules/typescript/bin/tsc"
   ]
 }
