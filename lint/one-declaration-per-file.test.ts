@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 import { oneDeclarationPerFile } from "./one-declaration-per-file.ts"
 
 const linter = new TSESLint.Linter({ configType: "flat" })
+const local = { rules: { "one-declaration-per-file": oneDeclarationPerFile } }
 
 function lint(fileName: string, text: string) {
   const messages = linter.verify(
@@ -12,7 +13,12 @@ function lint(fileName: string, text: string) {
       {
         files: ["**/*.ts"],
         languageOptions: { parser: tseslint.parser },
-        plugins: { local: { rules: { "one-declaration-per-file": oneDeclarationPerFile } } },
+        plugins: { local },
+        rules: { "local/one-declaration-per-file": "error" },
+      },
+      {
+        files: ["**/*.mjs"],
+        plugins: { local },
         rules: { "local/one-declaration-per-file": "error" },
       },
     ],
@@ -21,18 +27,18 @@ function lint(fileName: string, text: string) {
   return messages.map((message) => ({ messageId: message.messageId, message: message.message, line: message.line }))
 }
 
-function tooMany(name: string, line: number) {
+function tooMany(name: string, line: number, extension = ".ts") {
   return {
     messageId: "tooMany",
-    message: `A file declares at most one class, interface, type alias or enum. Move "${name}" to its own file "${name}.ts".`,
+    message: `A file declares at most one class, interface, type alias or enum. Move "${name}" to its own file "${name}${extension}".`,
     line,
   }
 }
 
-function nameMismatch(fileName: string, kind: string, name: string, line: number) {
+function nameMismatch(fileName: string, kind: string, name: string, line: number, extension = ".ts") {
   return {
     messageId: "nameMismatch",
-    message: `The file "${fileName}" declares the ${kind} "${name}" and must be named "${name}.ts".`,
+    message: `The file "${fileName}" declares the ${kind} "${name}" and must be named "${name}${extension}".`,
     line,
   }
 }
@@ -100,6 +106,16 @@ describe("oneDeclarationPerFile", () => {
       nameMismatch("Greeter.ts", "type alias", "Mood", 1),
       tooMany("Tone", 2),
     ])
+  })
+
+  it("names the file a class of a .mjs file needs with .mjs", () => {
+    expect(lint("bin/tools.mjs", "class Greeter {}\n")).toEqual([nameMismatch("tools.mjs", "class", "Greeter", 1, ".mjs")])
+    expect(lint("bin/Greeter.mjs", "class Greeter {}\nclass Other {}\n")).toEqual([tooMany("Other", 2, ".mjs")])
+  })
+
+  it("accepts a .mjs file with only functions and constants", () => {
+    const text = 'const punctuation = "!"\nexport function shout(text) {\n  return text + punctuation\n}\n'
+    expect(lint("bin/tools.mjs", text)).toEqual([])
   })
 
   it("counts a declaration nested in a function like one at the top level", () => {

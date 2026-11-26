@@ -22,13 +22,14 @@ export const oneDeclarationPerFile = ESLintUtils.RuleCreator.withoutDocs<[], "to
     schema: [],
     messages: {
       tooMany:
-        'A file declares at most one class, interface, type alias or enum. Move "{{name}}" to its own file "{{name}}.ts".',
-      nameMismatch: 'The file "{{fileName}}" declares the {{kind}} "{{name}}" and must be named "{{name}}.ts".',
+        'A file declares at most one class, interface, type alias or enum. Move "{{name}}" to its own file "{{name}}{{extension}}".',
+      nameMismatch: 'The file "{{fileName}}" declares the {{kind}} "{{name}}" and must be named "{{name}}{{extension}}".',
     },
     defaultOptions: [],
   },
   create(context) {
     const fileName = path.basename(context.filename)
+    const extension = path.extname(fileName)
     let countedDeclarations = 0
 
     function checkDeclaration(
@@ -45,11 +46,11 @@ export const oneDeclarationPerFile = ESLintUtils.RuleCreator.withoutDocs<[], "to
       countedDeclarations += 1
       const name = identifier.name
       if (countedDeclarations > 1) {
-        context.report({ node: identifier, messageId: "tooMany", data: { name } })
+        context.report({ node: identifier, messageId: "tooMany", data: { name, extension } })
         return
       }
       if (name !== baseNameOf(fileName)) {
-        context.report({ node: identifier, messageId: "nameMismatch", data: { fileName, kind: declarationKinds[node.type], name } })
+        context.report({ node: identifier, messageId: "nameMismatch", data: { fileName, kind: declarationKinds[node.type], name, extension } })
       }
     }
 
