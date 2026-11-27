@@ -154,9 +154,14 @@ export function newestNumber(folder, pattern) {
   return folderNumbers(folder, pattern).at(-1) ?? null
 }
 
+/** The numbers of the files `draft-<n>.md` in the folder `drafts` of a process, in ascending order. */
+export function draftNumbers(processFolder) {
+  return folderNumbers(path.join(processFolder, "drafts"), /^draft-(\d+)\.md$/)
+}
+
 /** The number of the newest `draft-<n>.md` in the folder `drafts` of a process, or null when there is none. */
 export function newestDraftNumber(processFolder) {
-  return newestNumber(path.join(processFolder, "drafts"), /^draft-(\d+)\.md$/)
+  return draftNumbers(processFolder).at(-1) ?? null
 }
 
 /** The bytes of a file, or of standard input when the file is `-`, or null after printing why it cannot be read. */

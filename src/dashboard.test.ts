@@ -27,6 +27,7 @@ import {
   stages,
   stagesWithCard,
   title,
+  trail,
   writeQuestions,
 } from "./dashboard-pages.ts"
 
@@ -56,7 +57,7 @@ describe("the dashboard of process-factory dashboard", () => {
     expect(page.body).not.toContain("<script")
   })
 
-  it("shows the owner, the newest recorded round, the open questions and the failing cases of that round on the card", async () => {
+  it("shows the owner, the newest recorded round, the counts of the open questions and of the failing cases of that round, the line that says whose turn it is and the trail on the card", async () => {
     writeBoardFile([
       {
         id: processId,
@@ -85,13 +86,15 @@ describe("the dashboard of process-factory dashboard", () => {
 
     expect(stagesWithCard(body)).toEqual(["rework"])
     expect(cardOf(body)).toBe(
-      `<h3><a href="/${processId}">${title}</a></h3><p>${processId}</p><dl><dt>Owner</dt><dd>${owner}</dd><dt>Round</dt><dd>2</dd><dt>Open questions</dt><dd><ol><li value="1">Who decides that the police are called?</li><li value="2">How long may the laptop stay unblocked?</li></ol></dd><dt>Failing cases</dt><dd>case 3, case 5</dd></dl>`,
+      `<h3><a href="/${processId}">${title}</a></h3><p>${processId}</p><dl><dt>Owner</dt><dd>${owner}</dd><dt>Round</dt><dd>2</dd><dt>Open questions</dt><dd>2</dd><dt>Failing cases</dt><dd>2</dd></dl><p>Waits for Claude Code: /process next ${processId}.</p>${trail("rework")}`,
     )
     expect(body).not.toContain(answeredQuestion)
+    expect(body).not.toContain("Who decides that the police are called?")
+    expect(body).not.toContain("case 3")
     expect(body).not.toContain("case 4")
   })
 
-  it("shows not recorded and none on the card of a new process whose newest questions file is answered", async () => {
+  it("shows not recorded, none and 0 on the card of a new process whose newest questions file is answered", async () => {
     writeBoardFile([{ id: processId, title, stage: "intake" }])
     writeQuestions(1, [answeredQuestion])
     writeWorkingFile(`processes/${processId}/answers-1.md`, "1. Whoever lost it.\n")
@@ -99,12 +102,12 @@ describe("the dashboard of process-factory dashboard", () => {
     const body = await dashboardBody()
 
     expect(cardOf(body)).toBe(
-      `<h3><a href="/${processId}">${title}</a></h3><p>${processId}</p><dl><dt>Owner</dt><dd>not recorded</dd><dt>Round</dt><dd>none</dd><dt>Open questions</dt><dd>none</dd><dt>Failing cases</dt><dd>none</dd></dl>`,
+      `<h3><a href="/${processId}">${title}</a></h3><p>${processId}</p><dl><dt>Owner</dt><dd>not recorded</dd><dt>Round</dt><dd>none</dd><dt>Open questions</dt><dd>0</dd><dt>Failing cases</dt><dd>0</dd></dl><p>Waits for Claude Code: /process next ${processId}.</p>${trail("intake")}`,
     )
     expect(body).not.toContain(answeredQuestion)
   })
 
-  it("escapes the title, the owner and a question", async () => {
+  it("escapes the title and the owner, counts a question of a process in clarify and shows no text of it", async () => {
     writeBoardFile([{ id: processId, title: "Laptops & <phones>", stage: "clarify", owner: `Kari "K" O'Hara` }])
     writeQuestions(1, ["Is <b>this</b> & that decided?"])
 
@@ -112,7 +115,9 @@ describe("the dashboard of process-factory dashboard", () => {
 
     expect(body).toContain(`<h3><a href="/${processId}">Laptops &amp; &lt;phones&gt;</a></h3>`)
     expect(body).toContain("<dd>Kari &quot;K&quot; O&#39;Hara</dd>")
-    expect(body).toContain('<li value="1">Is &lt;b&gt;this&lt;/b&gt; &amp; that decided?</li>')
+    expect(cardOf(body)).toContain("<dt>Open questions</dt><dd>1</dd>")
+    expect(cardOf(body)).toContain("<p>Waits for a person: answer the open questions.</p>")
+    expect(body).not.toContain("that decided?")
     expect(body).not.toContain("<b>")
   })
 

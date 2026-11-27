@@ -1,7 +1,9 @@
 import { spawnSync } from "node:child_process"
 import path from "node:path"
+import { dashboardStyle } from "./dashboard-style.mjs"
 import { organisations } from "./organisation.mjs"
-import { boardText, needsDraftMark, openQuestions, processPanel } from "./panel.mjs"
+import { boardText, needsDraftMark, openQuestions, turnLine } from "./panel.mjs"
+import { processPage, progressTrail } from "./process-page.mjs"
 import {
   answerOutsideOrganisation,
   boardProcesses,
@@ -24,17 +26,6 @@ import { currentOrganisation, inOrganisation, notRecorded, storePath } from "./s
 
 /** The port the dashboard listens on when `--port` names none. */
 export const dashboardPort = "4174"
-/** What the dashboard adds to those defaults: its ten sections stand next to each other, so the page scrolls sideways on a narrow screen. */
-const dashboardStyle = `body { max-width: none; min-width: 100rem; }
-section { display: inline-block; vertical-align: top; width: 9rem; margin-right: 1rem; }
-h2 { font-size: 1rem; }
-article { margin-bottom: 1rem; border: 1px solid #c4c4c4; padding: 0.5rem; }
-h3 { font-size: 1rem; margin-top: 0; }`
-/** What an open panel adds to the look of the dashboard: it stands at the right edge over the board, scrolls on its own, and leaves the board room beside it. */
-const panelStyle = `body { padding-right: 32rem; }
-aside { position: fixed; top: 0; right: 0; box-sizing: border-box; width: 30rem; max-width: 100%; height: 100%; overflow-y: auto; padding: 1rem 1.5rem; background: #fff; border-left: 1px solid #c4c4c4; box-shadow: -0.25rem 0 0.75rem rgba(0, 0, 0, 0.15); }
-aside section { display: block; width: auto; margin-right: 0; }
-aside article { border: 0; padding: 0; }`
 /** What tells the browser to load a page of the dashboard again every five seconds. */
 const refreshElement = '<meta http-equiv="refresh" content="5">'
 /** The decisions the dashboard takes for a person, each the last part of the address it is posted to. */
@@ -42,16 +33,16 @@ const decisionActions = ["answer", "accept-spec", "approve", "send-back", "regen
 /** The number of bytes of a post of an edit the dashboard reads at most. */
 const editBodyLimit = 524288
 
-/** A page of the dashboard: a page of `htmlPage` that the browser loads again every five seconds and that has room for the ten sections. */
-function dashboardPage(page) {
-  return page.replace("<head>\n", `<head>\n${refreshElement}\n`).replace("</style>", `${dashboardStyle}\n</style>`)
+/** A page of the dashboard: a page of `htmlPage` with the look of the board and of a process, which the browser loads again every five seconds when `reloads`. */
+function dashboardPage(page, reloads = true) {
+  const styled = page.replace("</style>", `${dashboardStyle}\n</style>`)
+  return reloads ? styled.replace("<head>\n", `<head>\n${refreshElement}\n`) : styled
 }
 
-/** The card of one process: its title, its id, whether it needs a new draft, its owner, its newest recorded round, its open questions and the cases that failed in that round. */
+/** The card of one process: its title, its id, whether it needs a new draft, its owner, its newest recorded round, how many questions are open and how many cases failed in that round, who it waits for and its progress. */
 function processCard(entry) {
   const newest = (entry.rounds ?? []).at(-1)
-  const failing = (newest?.cases ?? []).filter((stored) => stored.result === "FAIL").map((stored) => `case ${stored.case}`)
-  const questions = openQuestions(entry.id).questions.map((question) => `<li value="${question.number}">${escapeHtml(question.text)}</li>`)
+  const failing = (newest?.cases ?? []).filter((stored) => stored.result === "FAIL")
   return [
     "<article>",
     `<h3><a href="${organisationAddress(entry.id)}">${escapeHtml(entry.title)}</a></h3>`,
@@ -60,9 +51,11 @@ function processCard(entry) {
     "<dl>",
     `<dt>Owner</dt><dd>${entry.owner === undefined ? notRecorded : escapeHtml(entry.owner)}</dd>`,
     `<dt>Round</dt><dd>${newest?.round ?? "none"}</dd>`,
-    `<dt>Open questions</dt><dd>${questions.length === 0 ? "none" : `<ol>\n${questions.join("\n")}\n</ol>`}</dd>`,
-    `<dt>Failing cases</dt><dd>${failing.length === 0 ? "none" : failing.join(", ")}</dd>`,
+    `<dt>Open questions</dt><dd>${openQuestions(entry.id).questions.length}</dd>`,
+    `<dt>Failing cases</dt><dd>${failing.length}</dd>`,
     "</dl>",
+    turnLine(entry),
+    progressTrail(entry),
     "</article>",
   ].join("\n")
 }
@@ -75,16 +68,10 @@ function boardSections(processes) {
   })
 }
 
-/** The dashboard: the board that the browser loads again every five seconds. */
+/** The dashboard: the board of wrapping columns that the browser loads again every five seconds. */
 function dashboardMainPage(processes) {
-  const body = ["<h1>Dashboard</h1>", "<p>This page reloads every 5 seconds.</p>", ...boardSections(processes)]
+  const body = ["<h1>Dashboard</h1>", "<p>This page reloads every 5 seconds.</p>", '<main class="board">', ...boardSections(processes), "</main>"]
   return dashboardPage(htmlPage("Dashboard", body.join("\n")))
-}
-
-/** The board with the panel of one process over it: the sections and cards of the dashboard, the title of the process and the panel after them, and no refresh. */
-function dashboardProcessPage(processes, entry) {
-  const body = ["<h1>Dashboard</h1>", ...boardSections(processes), processPanel(entry)]
-  return htmlPage(boardText(entry.title), body.join("\n")).replace("</style>", `${dashboardStyle}\n${panelStyle}\n</style>`)
 }
 
 /** The process and the action of the address `/<process-id>/<action>` of a decision, or null for every other path. */
@@ -291,10 +278,10 @@ function answerInsideOrganisation(pathname) {
   let answer
   try {
     const processes = boardProcesses()
-    const open = /^\/[a-z0-9-]+$/.test(pathname) ? processes.find((entry) => entry.id === pathname.slice(1)) : undefined
-    const edit = open === undefined ? editTarget(pathname) : null
+    const open = processPage(pathname, processes)
+    const edit = open === null ? editTarget(pathname) : null
     if (pathname === "/") answer = { status: 200, page: dashboardMainPage(processes) }
-    else if (open !== undefined) answer = { status: 200, page: dashboardProcessPage(processes, open) }
+    else if (open !== null) answer = { status: 200, page: dashboardPage(htmlPage(open.title, open.body), open.reloads) }
     else if (edit !== null) answer = { status: 200, page: editPage(edit) }
     else answer = { status: 404, page: dashboardNotFoundPage(organisationAddress()) }
   } catch {
