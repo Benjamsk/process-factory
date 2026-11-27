@@ -73,9 +73,9 @@ describe("the section What the input means", () => {
 })
 
 describe("the section Greet the user", () => {
-  it("lists seven forms, the fourth being /process org init", () => {
+  it("lists eight forms, the fourth being /process org init", () => {
     const text = skillSection("Greet the user")
-    expect(text).toContain("list the seven forms")
+    expect(text).toContain("list the eight forms")
     expect(text).toContain("`/process org init` creates the organisation context")
   })
 })

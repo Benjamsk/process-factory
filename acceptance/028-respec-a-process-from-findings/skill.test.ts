@@ -52,7 +52,7 @@ describe("the section What the input means of the skill", () => {
     )
   })
 
-  it("has a table with the nine forms of input, in order, in which respec <process-id> sends a process back and respec alone greets", () => {
+  it("has a table with the ten forms of input, in order, in which respec <process-id> sends a process back and respec alone greets", () => {
     expect(tableRows(skillTemplate, "What the input means")).toEqual([
       "| nothing, or only `next`, `incident` or `respec` | Greet the user |",
       "| `show` | Show the board |",
@@ -61,6 +61,7 @@ describe("the section What the input means of the skill", () => {
       "| `incident <process-id>` | Record an incident |",
       "| `respec <process-id>` | Send a process back to spec |",
       "| `org init` | Create the organisation context |",
+      "| `org read`, alone or followed by a path or by text | Interview the user |",
       "| `org` | Interview the user |",
       "| anything else | Create a process |",
     ])
@@ -68,9 +69,9 @@ describe("the section What the input means of the skill", () => {
 })
 
 describe("the section Greet the user of the skill", () => {
-  it("lists seven forms, the seventh being /process respec <process-id>", () => {
+  it("lists eight forms, the eighth being /process respec <process-id>", () => {
     expect(section(skillTemplate, "Greet the user")).toContain(
-      "Greet the user in one or two sentences and list the seven forms: `/process <prompt>` creates a process, `/process show` or `/process show <process-id>` shows the board or one process, `/process next <process-id>` runs the stage a process is in, `/process org init` creates the organisation context, `/process org` interviews the user about the organisation, `/process incident <process-id>` turns a real event the process was used in into new cases, and `/process respec <process-id>` sends a process in `rework` or `approval` back to its specification with the findings of its newest review round.",
+      "Greet the user in one or two sentences and list the eight forms: `/process <prompt>` creates a process, `/process show` or `/process show <process-id>` shows the board or one process, `/process next <process-id>` runs the stage a process is in, `/process org init` creates the organisation context, `/process org` interviews the user about the organisation, `/process org read <path>`, or `/process org read` followed by pasted text, fills the organisation context from a document the user already has, `/process incident <process-id>` turns a real event the process was used in into new cases, and `/process respec <process-id>` sends a process in `rework` or `approval` back to its specification with the findings of its newest review round.",
     )
   })
 })

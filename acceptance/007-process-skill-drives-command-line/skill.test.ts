@@ -80,7 +80,7 @@ describe("the body of the process skill", () => {
 })
 
 describe("the section What the input means", () => {
-  it("has a table with the nine forms of input, in order", () => {
+  it("has a table with the ten forms of input, in order", () => {
     expect(tableRows("What the input means")).toEqual([
       "| nothing, or only `next`, `incident` or `respec` | Greet the user |",
       "| `show` | Show the board |",
@@ -89,6 +89,7 @@ describe("the section What the input means", () => {
       "| `incident <process-id>` | Record an incident |",
       "| `respec <process-id>` | Send a process back to spec |",
       "| `org init` | Create the organisation context |",
+      "| `org read`, alone or followed by a path or by text | Interview the user |",
       "| `org` | Interview the user |",
       "| anything else | Create a process |",
     ])

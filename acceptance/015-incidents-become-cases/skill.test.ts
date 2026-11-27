@@ -79,7 +79,7 @@ describe("the section What the input means of the skill", () => {
     )
   })
 
-  it("has a table with the nine forms of input, in order, in which incident <process-id> records an incident and incident alone greets", () => {
+  it("has a table with the ten forms of input, in order, in which incident <process-id> records an incident and incident alone greets", () => {
     expect(tableRows(skillTemplate, "What the input means")).toEqual([
       "| nothing, or only `next`, `incident` or `respec` | Greet the user |",
       "| `show` | Show the board |",
@@ -88,6 +88,7 @@ describe("the section What the input means of the skill", () => {
       "| `incident <process-id>` | Record an incident |",
       "| `respec <process-id>` | Send a process back to spec |",
       "| `org init` | Create the organisation context |",
+      "| `org read`, alone or followed by a path or by text | Interview the user |",
       "| `org` | Interview the user |",
       "| anything else | Create a process |",
     ])
@@ -95,9 +96,9 @@ describe("the section What the input means of the skill", () => {
 })
 
 describe("the section Greet the user of the skill", () => {
-  it("lists seven forms, the sixth being /process incident <process-id>", () => {
+  it("lists eight forms, the seventh being /process incident <process-id>", () => {
     const text = section(skillTemplate, "Greet the user")
-    expect(text).toContain("list the seven forms")
+    expect(text).toContain("list the eight forms")
     expect(text).toContain("`/process incident <process-id>` turns a real event the process was used in into new cases")
     expect(text).toContain("Run no command and create nothing.")
   })
