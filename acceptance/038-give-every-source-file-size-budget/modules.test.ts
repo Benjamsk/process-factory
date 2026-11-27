@@ -13,7 +13,7 @@ const reviewNames = [
   "editableText",
   "stagesThatMoveToDraft",
 ]
-const panelNames = ["processPanel", "boardText", "openQuestions", "needsDraftMark"]
+const panelNames = ["boardText", "openQuestions", "needsDraftMark", "turnLine", "processParts", "processPart"]
 
 /** The names of the list a file of `bin/` declares as a function or as a constant. */
 function declared(file: string, names: string[]): string[] {

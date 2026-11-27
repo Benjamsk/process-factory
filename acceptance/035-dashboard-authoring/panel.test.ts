@@ -33,11 +33,11 @@ describe("the panel of a process whose specification and cases can be edited", (
 
     const { panel } = await openPanel(await openDashboard(project), processId)
 
-    expect(part(panel, "spec").startsWith(`<h3>Specification</h3>${specLink}<h4>Specification: Handle a lost laptop</h4>`)).toBe(true)
+    expect(part(panel, "spec").startsWith(`<h2>Specification</h2>${specLink}<h3>Specification: Handle a lost laptop</h3>`)).toBe(true)
     const cases = articles(part(panel, "cases"))
     expect(cases).toHaveLength(2)
-    expect(cases[0]?.startsWith(`${caseLink(1)}<h4>Case 1: Laptop 1</h4>`)).toBe(true)
-    expect(cases[1]?.startsWith(`${caseLink(2)}<h4>Case 2: Laptop 2</h4>`)).toBe(true)
+    expect(cases[0]?.startsWith(`${caseLink(1)}<h3>Case 1: Laptop 1</h3>`)).toBe(true)
+    expect(cases[1]?.startsWith(`${caseLink(2)}<h3>Case 2: Laptop 2</h3>`)).toBe(true)
     expect(panel.split("/edit/")).toHaveLength(4)
   })
 
@@ -58,13 +58,13 @@ describe("the panel of a process whose specification and cases can be edited", (
       const { panel } = await openPanel(address, processId)
       expect(compact(panel)).toContain(`<dt>Stage</dt><dd>${stage}</dd>`)
       expect(panel).not.toContain("/edit/")
-      expect(part(panel, "spec").startsWith("<h3>Specification</h3><h4>Specification: Handle a lost laptop</h4>")).toBe(true)
+      expect(part(panel, "spec").startsWith("<h2>Specification</h2><h3>Specification: Handle a lost laptop</h3>")).toBe(true)
     }
   })
 })
 
 describe("the mark that a process needs a new draft", () => {
-  it("stands on the card directly after the id and in the panel directly before the links, and nowhere for a process without it", async () => {
+  it("stands on the card directly after the id and in the header of the page of the process directly before the line that says whose turn it is, and nowhere for a process without it", async () => {
     prepare(project, "draft", { needsDraft: ["spec.md", "case-2.md"] })
     const address = await openDashboard(project)
     const mark = "<p>Needs a new draft: spec.md, case-2.md</p>"
@@ -73,7 +73,7 @@ describe("the mark that a process needs a new draft", () => {
     const { panel } = await openPanel(address, processId)
 
     expect(cardOf(board, processId).startsWith(`<h3><a href="/${processId}">Handle a lost laptop</a></h3><p>${processId}</p>${mark}<dl>`)).toBe(true)
-    expect(compact(panel)).toContain(`</dl>${mark}<nav>`)
+    expect(compact(panel)).toContain(`</dl>${mark}<p>Waits for Claude Code: /process next ${processId}.</p><ol class="trail">`)
 
     prepare(project, "draft")
     expect((await request(address, "/")).body).not.toContain("Needs a new draft")
@@ -94,7 +94,7 @@ describe("the timeline of the panel", () => {
 
     expect(part(panel, "timeline")).toBe(
       compact(`
-        <h3>Timeline</h3>
+        <h2>Timeline</h2>
         <ol>
         <li><time>2026-11-22T10:00:00.000Z</time> rework</li>
         <li><time>2026-11-24T12:00:00.000Z</time> draft, spec.md edited by Kari &lt;Nordmann&gt;</li>

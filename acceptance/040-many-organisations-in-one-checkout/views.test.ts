@@ -190,12 +190,13 @@ describe("the name of the organisation on a page", () => {
 })
 
 describe("the dashboard of a project with two organisations", () => {
-  it("shows the board of an organisation at /<org-id> and the panel of a process at /<org-id>/<process-id>, with every link and form inside that organisation", async () => {
+  it("shows the board of an organisation at /<org-id> and the page of a process at /<org-id>/<process-id>, with every link and form inside that organisation", async () => {
     writeTwoInSpec()
     const address = await start(project, "dashboard")
 
     const board = await get(address, `/${fjord}`)
     const panel = await get(address, `/${fjord}/${laptopId}`)
+    const specification = await get(address, `/${fjord}/${laptopId}/spec`)
 
     expect(board.status).toBe(200)
     expect(board.body).toContain("<h1>Dashboard</h1>")
@@ -204,12 +205,16 @@ describe("the dashboard of a project with two organisations", () => {
     expect(board.body).not.toContain(bergTitle)
     expect(localAddresses(board.body).filter((to) => to !== "/" && !to.startsWith(`/${fjord}/`))).toEqual([])
     expect(panel.status).toBe(200)
-    expect(panel.body).toContain("<aside>")
-    expect(panel.body).toContain(`<a href="/${fjord}">Close</a>`)
+    expect(panel.body).not.toContain("<aside")
+    expect(panel.body).toContain(`<a href="/${fjord}">Back to the board</a>`)
+    expect(panel.body).toContain(`<a href="/${fjord}/${laptopId}/spec">Specification</a>`)
     expect(panel.body).toContain(`<form method="post" action="/${fjord}/${laptopId}/accept-spec">`)
-    expect(panel.body).toContain(`href="/${fjord}/${laptopId}/edit/spec.md"`)
-    expect(panel.body).not.toContain(bergTitle)
-    expect(localAddresses(panel.body).filter((to) => to !== "/" && to !== `/${fjord}` && !to.startsWith(`/${fjord}/`))).toEqual([])
+    expect(specification.status).toBe(200)
+    expect(specification.body).toContain(`href="/${fjord}/${laptopId}/edit/spec.md"`)
+    for (const page of [panel, specification]) {
+      expect(page.body).not.toContain(bergTitle)
+      expect(localAddresses(page.body).filter((to) => to !== "/" && to !== `/${fjord}` && !to.startsWith(`/${fjord}/`))).toEqual([])
+    }
     expect((await get(address, `/${berg}`)).body).toContain(bergTitle)
   })
 

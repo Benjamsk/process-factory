@@ -183,16 +183,26 @@ describe("a card of the dashboard", () => {
         <dl>
         <dt>Owner</dt><dd>Kari Nordmann</dd>
         <dt>Round</dt><dd>2</dd>
-        <dt>Open questions</dt><dd><ol>
-        <li value="1">Who decides that the police are called?</li>
-        <li value="2">How long may the laptop stay unblocked?</li>
-        </ol></dd>
-        <dt>Failing cases</dt><dd>case 3, case 5</dd>
-        </dl>`),
+        <dt>Open questions</dt><dd>2</dd>
+        <dt>Failing cases</dt><dd>2</dd>
+        </dl>
+        <p>Waits for Claude Code: /process next 001-handle-a-lost-laptop.</p>
+        <ol class="trail">
+        <li>intake</li>
+        <li>clarify</li>
+        <li>spec</li>
+        <li>cases</li>
+        <li>draft</li>
+        <li>review</li>
+        <li class="now" aria-current="step">rework: current</li>
+        <li>approval</li>
+        <li>published</li>
+        <li>regenerate</li>
+        </ol>`),
     )
   })
 
-  it("is the card of the spec for a new process: not recorded for the owner and none for the round, the open questions and the failing cases", async () => {
+  it("is the card of the spec for a new process: not recorded for the owner, none for the round and 0 for the open questions and the failing cases", async () => {
     const card = await cardOfEntry(entry(employeeId, employeeTitle, "intake"))
 
     expect(card).toBe(
@@ -202,16 +212,30 @@ describe("a card of the dashboard", () => {
         <dl>
         <dt>Owner</dt><dd>not recorded</dd>
         <dt>Round</dt><dd>none</dd>
-        <dt>Open questions</dt><dd>none</dd>
-        <dt>Failing cases</dt><dd>none</dd>
-        </dl>`),
+        <dt>Open questions</dt><dd>0</dd>
+        <dt>Failing cases</dt><dd>0</dd>
+        </dl>
+        <p>Waits for Claude Code: /process next 002-onboard-a-new-employee.</p>
+        <ol class="trail">
+        <li class="now" aria-current="step">intake: current</li>
+        <li>clarify</li>
+        <li>spec</li>
+        <li>cases</li>
+        <li>draft</li>
+        <li>review</li>
+        <li>rework</li>
+        <li>approval</li>
+        <li>published</li>
+        <li>regenerate</li>
+        </ol>`),
     )
   })
 
-  it("has one list with the terms Owner, Round, Open questions and Failing cases, in that order", async () => {
+  it("has one list with the terms Owner, Round, Open questions and Failing cases, in that order, and the trail after it", async () => {
     const card = await cardOfEntry(laptopEntry())
 
     expect(card.split("<dl>")).toHaveLength(2)
+    expect(card.indexOf('<ol class="trail">')).toBeGreaterThan(card.indexOf("</dl>"))
     expect(terms(card)).toEqual(["Owner", "Round", "Open questions", "Failing cases"])
   })
 
@@ -234,31 +258,36 @@ describe("a card of the dashboard", () => {
     expect(fact(await cardOfEntry(entry(laptopId, laptopTitle, "review")), "Round")).toBe("none")
   })
 
-  it("lists the questions of the newest questions file that has no answers, with their numbers, and nothing of an answered file or of the missing facts", async () => {
+  it("counts the questions of the newest questions file that has no answers, and shows no text of a question, of an answered file or of the missing facts", async () => {
     writeLaptopQuestions(project)
     writeBoard(project, [laptopEntry()])
 
     const body = await dashboard()
 
-    expect(fact(cardOf(body, laptopId), "Open questions")).toBe(`<ol><li value="1">${firstQuestion}</li><li value="2">${secondQuestion}</li></ol>`)
+    expect(fact(cardOf(body, laptopId), "Open questions")).toBe("2")
+    expect(body).not.toContain(firstQuestion)
+    expect(body).not.toContain(secondQuestion)
     expect(body).not.toContain(answeredQuestion)
     expect(body).not.toContain(missingFact)
     expect(body).not.toContain("These are not questions to answer here.")
   })
 
-  it("shows the open questions in every stage, also in clarify", async () => {
+  it("counts the open questions in every stage, also in clarify, where the card says that the process waits for a person", async () => {
     writeFile(project, `processes/${laptopId}/questions-1.md`, questionsText(1, [firstQuestion]))
 
-    expect(fact(await cardOfEntry(entry(laptopId, laptopTitle, "clarify")), "Open questions")).toBe(`<ol><li value="1">${firstQuestion}</li></ol>`)
+    const card = await cardOfEntry(entry(laptopId, laptopTitle, "clarify"))
+
+    expect(fact(card, "Open questions")).toBe("1")
+    expect(card).toContain("<p>Waits for a person: answer the open questions.</p>")
   })
 
-  it("shows none for the open questions of a process without a questions file", async () => {
+  it("shows 0 for the open questions of a process without a questions file", async () => {
     writeFile(project, `processes/${laptopId}/request.md`, `# ${laptopTitle}\n\n1. This is the request, not a question.\n`)
 
-    expect(fact(await cardOfEntry(laptopEntry()), "Open questions")).toBe("none")
+    expect(fact(await cardOfEntry(laptopEntry()), "Open questions")).toBe("0")
   })
 
-  it("shows none for the open questions of a process whose newest questions file has answers", async () => {
+  it("shows 0 for the open questions of a process whose newest questions file has answers", async () => {
     writeFile(project, `processes/${laptopId}/questions-1.md`, questionsText(1, [answeredQuestion]))
     writeFile(project, `processes/${laptopId}/questions-2.md`, questionsText(2, [firstQuestion]))
     writeFile(project, `processes/${laptopId}/answers-2.md`, "1. The IT manager.\n")
@@ -266,17 +295,16 @@ describe("a card of the dashboard", () => {
 
     const body = await dashboard()
 
-    expect(fact(cardOf(body, laptopId), "Open questions")).toBe("none")
+    expect(fact(cardOf(body, laptopId), "Open questions")).toBe("0")
     expect(body).not.toContain(firstQuestion)
     expect(body).not.toContain(answeredQuestion)
   })
 
-  it("names the cases that fail in the newest recorded round, and not a case that failed only in an earlier round", async () => {
+  it("counts the cases that fail in the newest recorded round, and not a case that failed only in an earlier round, and names no case", async () => {
     const card = await cardOfEntry(laptopEntry())
 
-    expect(fact(card, "Failing cases")).toBe("case 3, case 5")
-    expect(card).not.toContain("case 4")
-    expect(card).not.toContain("case 1")
+    expect(fact(card, "Failing cases")).toBe("2")
+    expect(card).not.toContain("case ")
   })
 
   it.each([
@@ -294,18 +322,19 @@ describe("a card of the dashboard", () => {
         ],
       },
     ],
-  ])("shows none for the failing cases of a process %s", async (_name, more) => {
-    expect(fact(await cardOfEntry(entry(laptopId, laptopTitle, "approval", more)), "Failing cases")).toBe("none")
+  ])("shows 0 for the failing cases of a process %s", async (_name, more) => {
+    expect(fact(await cardOfEntry(entry(laptopId, laptopTitle, "approval", more)), "Failing cases")).toBe("0")
   })
 
-  it("escapes the title, the owner and a question", async () => {
+  it("escapes the title and the owner, and shows nothing of a question", async () => {
     writeFile(project, `processes/${laptopId}/questions-1.md`, questionsText(1, ["Is <b>this</b> & that decided?"]))
 
     const card = await cardOfEntry(entry(laptopId, "Laptops & <phones>", "clarify", { owner: `Kari "K" O'Hara` }))
 
     expect(card).toContain('<h3><a href="/001-handle-a-lost-laptop">Laptops &amp; &lt;phones&gt;</a></h3>')
     expect(fact(card, "Owner")).toBe("Kari &quot;K&quot; O&#39;Hara")
-    expect(fact(card, "Open questions")).toBe('<ol><li value="1">Is &lt;b&gt;this&lt;/b&gt; &amp; that decided?</li></ol>')
+    expect(fact(card, "Open questions")).toBe("1")
+    expect(card).not.toContain("that decided?")
     expect(card).not.toContain("<b>")
     expect(card).not.toContain("<phones>")
   })

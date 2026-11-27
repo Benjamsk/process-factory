@@ -93,7 +93,7 @@ describe("the comments", () => {
     "/** The readable defaults of every page of the reading view, of the dashboard and of an HTML export. */",
     "/** What the command line, the reading view, the dashboard and an export show for a value the store does not record. */",
     "/** The first problem of the lines of a change list of a regeneration, in the order of the checks below, or undefined when it has none. */",
-    "/** The panel of one process: where it stands, links to the decision it waits for and to its seven parts, and each of them as the store has it at this moment. */",
+    "/** One part of the page of a process as the store has it at this moment, and whether it holds a form: the decision, the timeline, the specification, the cases, a draft, the rounds, the versions or the open feedback. */",
     "/** The page `Not done`: why a decision was not taken or an edit was not saved, with the way back to the process. */",
     "/** The process and the name of the address `/<process-id>/<part>/<name>` of a file of a process on the board, or null for every other path. */",
   ])("has the comment %s", (comment) => {

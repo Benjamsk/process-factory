@@ -48,9 +48,12 @@ export function answerForm(questions: string[]): string {
   ].join("\n")
 }
 
-/** What stands inside the section `decision` of a panel with these parts, without the whitespace between its elements. */
+/** What the part Decision of the page of a process is when nobody has to decide. */
+export const nothingToDecide = "<h2>Decision</h2><p>There is nothing to decide here now.</p>"
+
+/** What stands inside the part Decision of the page of a process with these parts, without the whitespace between its elements. */
 export function decision(...parts: string[]): string {
-  return compact(["<h3>Decision</h3>", ...parts, waitSentence].join("\n"))
+  return compact(["<h2>Decision</h2>", ...parts, waitSentence].join("\n"))
 }
 
 /** Writes `organisation/roles.md` and a board with the one process in `stage`, owned by Kari Nordmann unless `more` says otherwise. */
