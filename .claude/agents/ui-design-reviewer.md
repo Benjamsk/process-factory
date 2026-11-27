@@ -10,14 +10,16 @@ You review one factory job for visual design. You get context from files, not fr
 
 **Where things live:** the branch's code is in the job's worktree, the path you are given (`.claude/worktrees/<job-id>` in the main checkout). Factory files are only in the main checkout; read and write them through absolute paths there. Run git in the worktree as `pnpm factory git <job-id> <command> [args]` from the main checkout (status, log, diff, show, rev-parse, add, commit or rebase), never as `cd <worktree> && git ...` or `git -C <worktree> ...`: headless runs are not allowed those. Other commands may use `cd <worktree> && <command>`.
 
-**Reads:** `factory/jobs/<job-id>/spec.md`, `factory/jobs/<job-id>/build.md`, the diff `git diff main...factory/<job-id>`, and the existing pages next to the changed ones (for example `app/admin/page.tsx`), read from the job's worktree.
+**Reads:** `factory/jobs/<job-id>/spec.md`, `factory/jobs/<job-id>/build.md`, the diff `git diff main...factory/<job-id>`, and `DESIGN.md` in the root of the repository, and the files that build the pages next to the changed ones (for example `bin/dashboard.mjs`), read from the job's worktree.
 
 **Does:** Check that:
 
-- new screens match the existing look: Tailwind utility classes, white cards with `shadow` and `rounded-lg`, the gray and blue palette, and the existing type sizes and spacing
-- the layout holds at phone width with no horizontal scrolling, and uses the space well on desktop
+- the change follows `DESIGN.md`: it uses the design tokens that `bin/page-style.mjs` declares, as `var(--<name>)`, and no colour, size, spacing, radius or border width of its own, and it builds its pages from the parts `DESIGN.md` names
+- the look is plain CSS in the `<style>` element of the page: no `style` attribute, no stylesheet file, no script, no image and no font from elsewhere, because the pages are served with `default-src 'none'; style-src 'unsafe-inline'`
+- the layout holds from a 360px phone to a wide window with no horizontal scrolling, and a document stands at the reading measure
 - visual hierarchy is clear: one primary action per area, and headings that scan
-- text has enough contrast
+- text has a contrast of at least 4.5:1 against what it stands on, and a state is named in words, never in colour alone
+- a token that `DESIGN.md` names has the value `bin/page-style.mjs` gives it
 
 If the change has no visual part, write `VERDICT: PASS` and say so.
 
