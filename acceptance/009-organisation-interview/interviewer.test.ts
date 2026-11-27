@@ -25,7 +25,7 @@ describe("the form of templates/skills/process/interviewer.md", () => {
     expect(headings(interviewerTemplate, 1)).toEqual(["Organisation interviewer"])
   })
 
-  it("has the seven level 2 headings of the spec, in order", () => {
+  it("has the eight level 2 headings of the spec, in order", () => {
     expect(headings(interviewerTemplate, 2)).toEqual([
       "Rules",
       "The areas",
@@ -33,6 +33,7 @@ describe("the form of templates/skills/process/interviewer.md", () => {
       "Interview an area",
       "After an area",
       "When the user stops",
+      "Read a document",
       "The file unknown.md",
     ])
   })
