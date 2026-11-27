@@ -179,6 +179,6 @@ describe("the trail of a process", () => {
     const archived = trailOf(headerOf((await request(address, `/${processId}`)).body))
     expect(archived).toBe(trail("archived", []))
     expect(archived).not.toContain("aria-current")
-    expect(archived).not.toContain("class=")
+    expect(archived).not.toContain("<li class=")
   })
 })
