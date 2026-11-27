@@ -3,18 +3,19 @@ import path from "node:path"
 import { projectOf, root, runInProject } from "../006-process-state-machine/store.ts"
 
 export const entryFile = "process-factory.mjs"
-/** The files of `bin/` in the order of section 3.5 of the spec of job 038, which split two of them, lowest level first. */
+/** The files of `bin/` in the order of section 3.6 of the spec of job 043, which added the two style files and the page of a process, lowest level first. */
 export const levels = [
-  ["store.mjs", "usage.mjs"],
+  ["store.mjs", "usage.mjs", "page-style.mjs", "dashboard-style.mjs"],
   ["skill.mjs", "organisation.mjs", "dependencies.mjs"],
   ["state-machine.mjs"],
   ["review.mjs"],
   ["reading-view.mjs"],
   ["export.mjs", "panel.mjs"],
+  ["process-page.mjs"],
   ["dashboard.mjs"],
   [entryFile],
 ]
-/** The twelve files of `bin/`, sorted. */
+/** The fifteen files of `bin/`, sorted. */
 export const binFiles = levels.flat().sort()
 
 const importStatement = /^import\s+([^"']+?)\s+from\s+["']([^"']+)["']/gm
@@ -92,7 +93,7 @@ export function exportedNames(name: string): string[] {
 
 /**
  * Builds the package as it is installed in the project of `project`, the folder of an organisation:
- * `node_modules/process-factory` with the twelve files of `bin/`, `templates/` and `package.json`, and nothing else.
+ * `node_modules/process-factory` with the fifteen files of `bin/`, `templates/` and `package.json`, and nothing else.
  * Gives the folder of the copy.
  */
 export function installPackage(project: string): string {

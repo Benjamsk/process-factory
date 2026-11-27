@@ -18,14 +18,17 @@ import {
 } from "./modules.ts"
 
 describe("the folder bin", () => {
-  it("holds exactly the twelve files of the spec and no subfolder", () => {
+  it("holds exactly the fifteen files of the spec and no subfolder", () => {
     expect(presentNames()).toEqual([
+      "dashboard-style.mjs",
       "dashboard.mjs",
       "dependencies.mjs",
       "export.mjs",
       "organisation.mjs",
+      "page-style.mjs",
       "panel.mjs",
       "process-factory.mjs",
+      "process-page.mjs",
       "reading-view.mjs",
       "review.mjs",
       "skill.mjs",

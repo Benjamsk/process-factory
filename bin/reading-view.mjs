@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { createServer } from "node:http"
 import path from "node:path"
 import { migrateOldLayout, organisations } from "./organisation.mjs"
+import { pageStyle } from "./page-style.mjs"
 import { cleanedText } from "./state-machine.mjs"
 import { currentOrganisation, errorMessage, fileLines, inOrganisation, labelledValue, newestNumber, notRecorded, oneLine, readProcesses, storePath } from "./store.mjs"
 
@@ -14,15 +15,6 @@ const pageHeaders = {
   "X-Content-Type-Options": "nosniff",
   "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
 }
-/** The readable defaults of every page of the reading view, of the dashboard and of an HTML export. */
-const pageStyle = `body { margin: 0 auto; max-width: 40rem; padding: 2rem 1rem; background: #fff; color: #1b1b1b; font-family: system-ui, sans-serif; line-height: 1.5; }
-a { color: #11467b; }
-dt { font-weight: 700; }
-dd { margin: 0 0 0.5rem 0; }
-legend { font-weight: 700; }
-form label { display: block; }
-textarea, #name, #by { box-sizing: border-box; width: 100%; font: inherit; }
-:focus { outline: 2px solid #11467b; outline-offset: 2px; }`
 /** The number of bytes that are read at most of a post of feedback to the reading view and of a post of a decision to the dashboard. */
 export const formBodyLimit = 32768
 /** The number of characters the cleaned text of a feedback may have. */

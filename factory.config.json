@@ -23,7 +23,15 @@
     "bin/process-factory.mjs"
   ],
   "userInterfacePaths": [
-    "bin/process-factory.mjs"
+    "bin/process-factory.mjs",
+    "bin/dashboard.mjs",
+    "bin/panel.mjs",
+    "bin/process-page.mjs",
+    "bin/page-style.mjs",
+    "bin/dashboard-style.mjs",
+    "bin/reading-view.mjs",
+    "bin/export.mjs",
+    "DESIGN.md"
   ],
   "allowedCommands": [
     "pnpm test",

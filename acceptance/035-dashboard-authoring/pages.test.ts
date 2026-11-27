@@ -170,7 +170,7 @@ describe("POST /<process-id>/edit/<name>", () => {
 })
 
 describe("POST /<process-id>/save/<name>", () => {
-  it("saves the text through the command line as the owner, sends the browser back to the panel, and the process is in draft and needs a new draft", async () => {
+  it("saves the text through the command line as the owner, sends the browser back to the page of the process, and the process is in draft and needs a new draft", async () => {
     prepare(project, "approval")
     const dashboard = await openDashboard(project)
 
@@ -184,7 +184,7 @@ describe("POST /<process-id>/save/<name>", () => {
     expect(ownProcess(project).needsDraft).toEqual(["spec.md"])
     const { panel } = await openPanel(dashboard, processId)
     expect(compact(panel)).toContain("<dt>Stage</dt><dd>draft</dd>")
-    expect(compact(panel)).toContain(`</dl>${needsSentence}<nav>`)
+    expect(compact(panel)).toContain(`</dl>${needsSentence}<p>Waits for Claude Code: /process next ${processId}.</p><ol class="trail">`)
     expect(part(panel, "timeline").endsWith(` draft, spec.md edited by ${kari}</li></ol>`)).toBe(true)
     expect(part(panel, "spec")).toContain(`<p>${firstNewLine} ${secondNewLine}</p>`)
   })
